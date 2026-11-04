@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<!--
+  ============================================================
+   EASY SETTINGS
+   Everything you may want to change is in the box below.
+   Only change the text inside the "quotes" or the numbers.
+   Do NOT touch anything under the line "DO NOT EDIT BELOW".
+  ============================================================
+-->
+<script>
+/* 1) YOUR GOOGLE SHEET LINK (from Apps Script > Deploy > Web app) */
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzfMfuN12OyRAIvR6RKTMOCXopSbnbq2wkcKyPtzeq8cDxCCzzvqemWwohOyJzwj5Bp/exec";
+
+/* 2) LOOK OF THE PAGE */
+const PAGE_TITLE  = "Print Orders for Utsob🥲";      // big text at the top
+const LIST_SECTION = "A";                           // section of everyone in the STUDENTS list (other students type their own)
+const VIBRATE_ON = true;                            // phone buzz
+const BUTTON_BUZZ_MS = 45;                           // how long a button tap buzzes (milliseconds, bigger = stronger)
+const OWNER_NAME  = "Utsob";                         // who prints the pages for your friends
+const HANDOVER_TEXT = "in the next class";           // when the printed copy is given (used in "will give you the printed copy ...")
+const SUBTITLE    = "Get your cover page printed by Utsob, or download the docs file.";   // small text under it
+const THEME_COLOR = "#D8BBFF";                       // main color (any color code)
+
+/* 3) PRICE */
+const PRICE_PER_PAGE = 1.2;        // price of one page
+const CURRENCY       = "Taka";     // word shown after the price
+const SHEET_URL = "https://docs.google.com/spreadsheets/d/1z1w-TnYr9rVPlzbamm-NWqCpl-H3vZw-RqDRqDTdBOs/edit?usp=sharing";   // admin page: opens your Google Sheet
+const DRIVE_URL = "https://drive.google.com/drive/folders/1lswfHWoFw2NP8xW-gqSBGfHNxxkf49h_?usp=drive_link";           // admin page: opens the Drive folder with uploaded files
+const MAX_COPIES     = 10;         // most copies someone can order at once
+const MESSENGER_LINK = "";       // optional: your Messenger link (e.g. "https://m.me/your.username"). If set, a "Message Utsob" button shows in the upload help.
+const MAX_UPLOAD_MB  = 0;          // biggest file a friend can upload in MB. 0 = NO limit (also keep MAX_UPLOAD_BYTES = 0 in the Google script)
+
+/* 4) WHAT PEOPLE CAN ORDER (add more lines like the first one)
+   NOTE FOR ANY AI / EDITOR: KEEP THIS LIST NEWEST-FIRST.
+   The most recently added file must be the FIRST line in OPTIONS, so it shows as number 1
+   on the file buttons (numbers 1, 2, 3... are added automatically from the order of this list - do not type them).
+   Do NOT put numbers on the step headings ("What do you want printed?", "About you", "Preview"):
+   the numbers on the file buttons are the only numbers on the page, so nothing is confusing.
+   When you add a new file, put its line at the TOP, above the older ones.
+   Optional flags:  upload: true = the friend uploads THEIR OWN file (needs the Google script upload add-on, see
+                    apps-script-upload-addon.gs). Not in the list of files: it has its own upload box under the list (tap it, or drop a file anywhere on the page), asks for the file FIRST and the ID/name/section LAST (so a failed upload can be retried without retyping). Only for "Get it printed" (hidden in "Download only"). The file is saved
+                    in Google Drive by the script; the order text becomes  "Upload: <file name> (<pages> pages) | <drive link>".
+                    The pages number is typed/guessed by the friend and is used for the price.
+                    img: true  = the file is a photo (JPG) instead of the Word cover page.
+                    A photo needs personal info only when it is SENT TO PRINT (so the admin knows who asked): ID, name, section are
+                    asked as usual. In "Download only" mode a photo skips the "About you" step (nothing is asked or saved).
+                    A photo option has "tabs": each tab = { key, label, file }. Inside the preview the person sees one
+                    tab button per entry (first tab is shown first) and can switch between the pictures.
+                    The picture of each tab is a separate file listed in ASSET_FILES (section 7 below) under the tab's "key".
+                    "file" is the download name.
+                    A sent order is saved as  "<title> – <tab label>"  (e.g. "Final Exam Routine – Full Routine") so the
+                    admin knows which picture to print. Tab labels must not be part of each other's text.
+   Old orders are matched by "title", so never rename a title that already has orders in the Google Sheet. */
+const OPTIONS = [
+  { id: "upload", title: "Upload your own file", desc: "Send any PDF, Word, PowerPoint or photo to be printed", pages: 1, upload: true },   // newest = 1
+  { id: "exam-routine", title: "Final Exam Routine", desc: "Spring 2026", pages: 1, img: true,   // newest = 1
+    tabs: [ { key: "exam-routine",      label: "2nd Year 1st Sem", file: "Final_Exam_Routine_2nd_Year_1st_Sem_Spring_2026.jpg" },
+            { key: "exam-routine-full", label: "Full Routine",    file: "Final_Exam_Routine_Full_Spring_2026.jpg" } ] },
+  { id: "math-cover", title: "Math Cover Page", desc: "MTH 201 · Math-III · Samsun Nahar", pages: 1 }
+];
+
+/* 5) STUDENT LIST  ("ID": "Name")  - Section A only (from Student_list_2.pdf) */
+const STUDENTS = {
+  "25101001": "Riana Iftekhar",
+  "25101003": "Utsob Ghosh",
+  "25101004": "Priangona Bhowmik",
+  "25101005": "Prakas Saha",
+  "25101006": "Mohammad Sadnan Hossain Sakib",
+  "25101007": "Aysha Binte Mohshin",
+  "25101008": "M. Arshad Karim Rahat",
+  "25101009": "Md. Ahnaf Shohan",
+  "25101010": "Shariar Nafiz",
+  "25101012": "Md. Tanvir Rana Shuvo",
+  "25101013": "Md. Inan Sadman",
+  "25101014": "Israt Anjum Taspia",
+  "25101016": "Joysree Saha",
+  "25101019": "Talha Mahin",
+  "25101020": "Sarika Islam Nabila",
+  "25101021": "Towhid Al Afsari",
+  "25101022": "Md. Mustafizur Rahman",
+  "25101025": "Syed Talha Bin Iqbal",
+  "25101027": "Maliha Tabassum Nadia",
+  "25101028": "Sadman Mahmud Ornob",
+  "25101029": "Ganga Dey",
+  "25101030": "Samiya Aktar Mim",
+  "25101031": "Shahriar Khan Arafat",
+  "25101032": "Md. Jehad",
+  "25101033": "Mashrur Hossain Zarif",
+  "25101035": "Md. Ruhul Amin Tasin",
+  "25101036": "Redwan Hossain Ratul",
+  "25101039": "Arifa Orna",
+  "25101040": "Maimona Uddin",
+  "25101041": "Jannatul Ferdous Rimi",
+  "25101042": "Jannatul Ferdaus Jabin",
+  "25101043": "Anjumanara Islam",
+  "25101044": "Mehzabin Islam Easha",
+  "25101045": "Arpa Dutta",
+  "25101046": "Hasan Mahmud",
+  "25101047": "Ilme Rahman Reae",
+  "25101048": "Ayesha Mahmud",
+  "25101049": "Tanha Moni",
+  "25101050": "Md. Riad",
+  "25101051": "Nandika Saha",
+  "25101052": "Md. Zabedur Rahman",
+  "25101053": "Anisha Mahajabin",
+  "25101055": "Md. Ibrahim Hossain Shakib"
+};
+
+/* 6) EFFECTS */
+const EFFECTS_ON      = true;                                  // false = turn all effects off
+const TAP_SPARKLES    = true;                                  // little sparkles when you tap
+const TRAIL_SPARKLES = true;                                  // small sparkles that follow your finger when you slide or scroll
+const BEAR_AUTO_CHANGE = true;                                // bear changes its look by itself now and then
+const BEAR_CHANGE_MIN = 10, BEAR_CHANGE_MAX = 60;              // how often (in seconds) it changes by itself
+const NIGHT_MODE_ON   = true;                                  // moon, stars and a sleep cap at night
+const NIGHT_FROM = 19, NIGHT_TO = 6;                           // night hours (19 = 7 PM to 6 AM)
+const BEAR_ON         = true;                                  // the teddy bear helper (false = hide it)
+const FLOATING_EMOJIS = ["⭐", "✨", "☁️", "🔷"];              // slowly floating in the background
+const CONFETTI_EMOJIS = ["🎉", "✨", "⭐", "🚀", "🎊", "🔷"];  // falling when an order is sent
+
+/* 7) FILES: the pictures and the Word cover template sit NEXT TO this page, in the same folder.
+      To change a picture: put the new file in the folder (same name, or change the name below),
+      then change ASSET_VERSION (for example "1" to "2") so phones do not show the old picture. */
+const ASSET_VERSION = "1";
+const ASSET_FILES = {
+  template: "math-cover-template.docx",                 // Word template of the Math cover page
+  images: {"exam-routine": "exam-routine.jpg", "exam-routine-full": "exam-routine-full.jpg"},   // pictures of the exam routine tabs (name = the tab "key")
+  thumbs: {"math-cover": "math-cover-thumb.jpg"}                      // small pictures on the front screen
+};
+
+/* The admin PIN is set in the Google script (Code.gs), at the top: ADMIN_PIN */
+</script>
+<!-- ================= DO NOT EDIT BELOW THIS LINE ================= -->
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Print Orders</title>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx-preview@0.3.3/dist/docx-preview.min.js"></script>
+<link rel="stylesheet" href="style.css?v=1"></head><body>
+<div id="warn" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="warnT">
+ <div class="mbox"><div class="micon">⚠️</div><h3 id="warnT"></h3><p id="warnMsg"></p>
+  <button class="p wide" id="warnYes"></button>
+  <button class="s wide" id="warnDl">📥 No, just download the docs file</button>
+  <button class="s wide" id="warnBack">← Go back</button></div>
+</div>
+<div class="wrap">
+<div id="student">
+ <h1>Print Orders for Utsob🥲</h1><p class="sub">Pick what you need printed.</p>
+ <div id="iab" class="handnote hidden"><div id="iabT"></div><div style="margin-top:8px"><button class="s" id="iabOpen">🌐 Open in browser</button> <button class="s" id="iabCopy">📋 Copy link</button></div></div>
+ <div class="tabs"><button class="tab on" id="tabNew">🖨️ Get it printed</button><button class="tab" id="tabDl">📥 Download only</button><button class="tab" id="tabMine">📋 Print status</button></div>
+ <div class="card" id="s1"><b id="s1t">What do you want printed?</b><p class="note" id="modeHint" style="margin:4px 0 0"></p><div id="opts"></div>
+  <div id="upBlock" class="upbox"><label class="dz" for="upPick">📤 <b>Upload your own file to print</b><small>PDF · Word · PowerPoint · photo</small></label><input type="file" id="upPick" class="hid" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,image/*"></div>
+  <div id="ppBlock" class="upbox hidden"><button type="button" class="dz" id="ppOpen" style="width:100%;font:inherit;color:inherit">🖼️ <b>Photos → PDF</b><small>Make one PDF from your photos and download it. Nothing is sent to anyone.</small></button></div></div>
+ <div class="card hidden" id="sp"><b>🖼️ Photos → PDF</b>
+  <p class="note" style="margin:4px 0 0">Choose your photos, one photo = one page. Nothing is sent to anyone.</p>
+  <div class="pickrow"><label class="bigpick pk1" for="ppAdd">📂 Choose photos<small>you can pick many</small></label><label class="bigpick pk2" for="ppCam">📷 Take a photo<small>add pages one by one</small></label></div>
+  <input type="file" id="ppAdd" class="hid" multiple accept="image/*"><input type="file" id="ppCam" class="hid" accept="image/*" capture="environment">
+  <div class="tiny" id="ppBusy"></div><div class="errmsg hidden" id="errPp"></div>
+  <div id="ppGrid" class="ppgrid"></div><div class="tiny" id="ppInfo"></div>
+  <button class="p big" id="ppDl" disabled>📥 Download PDF</button>
+  <div class="ok hidden" id="ppOk" style="margin-top:8px">✅ Downloaded. Look in your Downloads folder (or the Files app)</div>
+  <details id="ppHelp" class="uphelp"><summary>😕 Can't choose photos?</summary></details>
+  <div style="margin-top:10px"><button class="s" id="ppBack">Back</button></div></div>
+ <div class="card hidden" id="su"><b>Upload your file</b><div id="suBody"></div>
+  <div class="errmsg hidden" id="errSu"></div>
+  <div style="margin-top:10px"><button class="p" id="suNext">Next</button> <button class="s" id="suBack">Back</button></div></div>
+ <div class="card hidden" id="s2"><b>About you</b>
+   <div class="row2"><div><label for="sid">Registration number</label><input id="sid" inputmode="numeric" enterkeyhint="next" placeholder="e.g. 25101003"></div><div><label for="ssec">Section</label><input id="ssec" placeholder="e.g. A" maxlength="3" autocapitalize="characters" enterkeyhint="next"></div><div class="sugg hidden" id="sugg"></div></div>
+   <div id="extra"><label for="sname">Full name</label><input id="sname" enterkeyhint="done" placeholder="Your full name"></div>
+   <div id="mism" class="hidden"></div>
+   <div class="tiny"><a href="#" id="forget">Not you? Clear my details</a></div>
+  <div id="upProg" class="hidden" style="margin:10px 0"><div class="tiny" id="pbTxt"></div><div class="pbar" id="pbBar"><i id="pbFill"></i></div></div>
+  <div class="errmsg hidden" id="errS2"></div>
+  <button class="p" id="next">Show preview</button> <button class="s" id="back1">Back</button></div>
+ <div class="card hidden" id="s3"><b>Preview</b><div id="stage"></div>
+   <div id="printOnly"><label for="note">Instructions for printing (optional)</label><textarea id="note" rows="2" maxlength="200" placeholder="e.g. both side print koiro, stapled, black &amp; white"></textarea><label for="copies">Copies</label><input id="copies" type="number" min="1" max="10" value="1" style="max-width:120px"><div class="tiny" id="price"></div>
+   <div class="errmsg hidden" id="errS3"></div>
+   <button class="p big" id="confirm">🖨️ Confirm and send to print</button>
+   <button class="s wide" id="dlPrev">📥 Download only (skip printing)</button></div>
+   <div id="dlOnly" class="hidden"><button class="p big" id="dlMain">📥 Download docs file</button><div class="ok hidden" id="dlOk" style="margin-top:8px">✅ Downloaded. Look in your Downloads folder (or the Files app)</div></div>
+   <div><button class="s" id="back2">Back</button></div></div>
+ <div class="card hidden" id="c1"><div id="banner" class="hidden"></div><b>Print status</b><div class="tiny" style="margin:2px 0 0">See if your pages are waiting, being printed, or done.</div><label for="cid">Registration number</label><input id="cid" inputmode="numeric" placeholder="e.g. 25101003"><button class="p" id="find">Show my prints</button><div id="clist" style="margin-top:12px"></div></div>
+ <p class="tiny"><a href="#admin">Admin</a></p>
+</div>
+<div id="admin" class="hidden">
+ <h1>Orders to print</h1><p class="sub" id="mode"></p>
+ <button class="p" id="dlAll">Download all pending</button> <button class="s" id="refresh">Refresh</button> <button class="s" id="toStudent">Student page</button>
+  <div style="margin:10px 0 2px"><a class="lnkbtn" id="openSheet" target="_blank" rel="noopener">📊 Open Google Sheet</a> <a class="lnkbtn" id="openDrive" target="_blank" rel="noopener">📁 Open Drive folder</a></div>
+ <h2 class="h2">To print</h2><div class="card" style="overflow-x:auto"><table><thead><tr><th>Time</th><th>ID</th><th>Name</th><th>Option</th><th>Copies</th><th>Price</th><th>Status</th><th></th></tr></thead><tbody id="rows"></tbody></table><p class="note" id="none"></p></div>
+ <h2 class="h2">Already processed</h2><div class="card" style="overflow-x:auto"><table><thead><tr><th>Time</th><th>ID</th><th>Name</th><th>Option</th><th>Copies</th><th>Price</th><th>Status</th><th></th></tr></thead><tbody id="rows2"></tbody></table><p class="note" id="none2"></p></div>
+</div>
+</div>
+<script src="app.js?v=1"></script>
+</body></html>
