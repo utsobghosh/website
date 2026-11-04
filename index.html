@@ -13,13 +13,13 @@
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzfMfuN12OyRAIvR6RKTMOCXopSbnbq2wkcKyPtzeq8cDxCCzzvqemWwohOyJzwj5Bp/exec";
 
 /* 2) LOOK OF THE PAGE */
-const PAGE_TITLE  = "Print Orders for Utsob🥲";      // big text at the top
+const PAGE_TITLE  = "Utsob's Little Corner🥲";      // big text at the top
 const LIST_SECTION = "A";                           // section of everyone in the STUDENTS list (other students type their own)
 const VIBRATE_ON = true;                            // phone buzz
 const BUTTON_BUZZ_MS = 45;                           // how long a button tap buzzes (milliseconds, bigger = stronger)
 const OWNER_NAME  = "Utsob";                         // who prints the pages for your friends
 const HANDOVER_TEXT = "in the next class";           // when the printed copy is given (used in "will give you the printed copy ...")
-const SUBTITLE    = "Get your cover page printed by Utsob, or download the docs file.";   // small text under it
+const SUBTITLE    = "Grab what you need, or ask Utsob to print it for you.";   // small text under it
 const THEME_COLOR = "#D8BBFF";                       // main color (any color code)
 
 /* 3) PRICE */
@@ -133,7 +133,7 @@ const ASSET_FILES = {
 </script>
 <!-- ================= DO NOT EDIT BELOW THIS LINE ================= -->
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Print Orders</title>
+<title>Utsob's Little Corner</title>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/docx-preview@0.3.3/dist/docx-preview.min.js"></script>
 <link rel="stylesheet" href="style.css?v=1"></head><body>
@@ -145,12 +145,15 @@ const ASSET_FILES = {
 </div>
 <div class="wrap">
 <div id="student">
- <h1>Print Orders for Utsob🥲</h1><p class="sub">Pick what you need printed.</p>
+ <h1>Utsob's Little Corner🥲</h1><p class="sub">Pick the file you need.</p>
  <div id="iab" class="handnote hidden"><div id="iabT"></div><div style="margin-top:8px"><button class="s" id="iabOpen">🌐 Open in browser</button> <button class="s" id="iabCopy">📋 Copy link</button></div></div>
- <div class="tabs"><button class="tab on" id="tabNew">🖨️ Get it printed</button><button class="tab" id="tabDl">📥 Download only</button><button class="tab" id="tabMine">📋 Print status</button></div>
- <div class="card" id="s1"><b id="s1t">What do you want printed?</b><p class="note" id="modeHint" style="margin:4px 0 0"></p><div id="opts"></div>
-  <div id="upBlock" class="upbox"><label class="dz" for="upPick">📤 <b>Upload your own file to print</b><small>PDF · Word · PowerPoint · photo</small></label><input type="file" id="upPick" class="hid" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,image/*"></div>
-  <div id="ppBlock" class="upbox hidden"><button type="button" class="dz" id="ppOpen" style="width:100%;font:inherit;color:inherit">🖼️ <b>Photos → PDF</b><small>Make one PDF from your photos and download it. Nothing is sent to anyone.</small></button></div></div>
+ <div class="tabs"><button class="tab on" id="tabNew">📥 Get your file</button><button class="tab" id="tabMine">📋 Print status</button></div>
+ <div class="card" id="s1"><b id="s1t">Which file do you want?</b><p class="note" id="modeHint" style="margin:4px 0 0"></p><div id="opts"></div>
+  <div class="tiny" style="margin:14px 0 6px;font-weight:600">📤 Your own file</div>
+  <div id="upBlock" class="upbox"><label class="dz" for="upPick">📤 <b>Upload your own file</b><small>PDF · Word · PowerPoint · photos · download it or get it printed</small></label><input type="file" id="upPick" class="hid" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,image/*"></div>
+  <div class="tiny" style="margin:16px 0 6px;padding-top:10px;border-top:1px solid #8884;font-weight:600">🛠️ PDF tools</div>
+  <div id="ppBlock" class="upbox"><button type="button" class="dz" id="ppOpen" style="width:100%;font:inherit;color:inherit">🖼️ <b>Photos → PDF</b><small>Make one PDF from your photos and download it. Nothing is sent to anyone.</small></button></div>
+  <div id="peBlock" class="upbox"><button type="button" class="dz" id="peOpen" style="width:100%;font:inherit;color:inherit">📄 <b>Edit a PDF</b><small>See every page, remove pages, or add pages anywhere. Nothing is sent to anyone.</small></button></div></div>
  <div class="card hidden" id="sp"><b>🖼️ Photos → PDF</b>
   <p class="note" style="margin:4px 0 0">Choose your photos, one photo = one page. Nothing is sent to anyone.</p>
   <div class="pickrow"><label class="bigpick pk1" for="ppAdd">📂 Choose photos<small>you can pick many</small></label><label class="bigpick pk2" for="ppCam">📷 Take a photo<small>add pages one by one</small></label></div>
@@ -161,9 +164,20 @@ const ASSET_FILES = {
   <div class="ok hidden" id="ppOk" style="margin-top:8px">✅ Downloaded. Look in your Downloads folder (or the Files app)</div>
   <details id="ppHelp" class="uphelp"><summary>😕 Can't choose photos?</summary></details>
   <div style="margin-top:10px"><button class="s" id="ppBack">Back</button></div></div>
+ <div class="card hidden" id="se"><b>📄 Edit a PDF</b>
+  <div id="pePick"><p class="note" style="margin:4px 0 0">Choose a PDF. You will see every page, and can remove pages or add new pages (from another PDF or photos) anywhere. Nothing is sent to anyone.</p>
+   <div class="pickrow"><label class="bigpick pk1" for="peFile">📂 Choose a PDF<small>or drop it on this page</small></label></div></div>
+  <input type="file" id="peFile" class="hid" accept=".pdf,application/pdf"><input type="file" id="peIns" class="hid" multiple accept=".pdf,application/pdf,image/*">
+  <div class="tiny" id="peBusy"></div><div class="errmsg hidden" id="errPe"></div>
+  <div id="peBody" class="hidden"><button type="button" class="s" id="peStart">＋ Add pages at the very start</button>
+   <div id="peGrid" class="peg"></div><div class="tiny" id="peInfo"></div>
+   <button class="p big" id="peDl" disabled>📥 Download PDF</button>
+   <div class="ok hidden" id="peOk" style="margin-top:8px">✅ Downloaded. Look in your Downloads folder (or the Files app)</div>
+   <button class="s wide" id="pePrint" disabled>🖨️ Print this PDF</button></div>
+  <div style="margin-top:10px"><button class="s" id="peBack">Back</button></div></div>
  <div class="card hidden" id="su"><b>Upload your file</b><div id="suBody"></div>
   <div class="errmsg hidden" id="errSu"></div>
-  <div style="margin-top:10px"><button class="p" id="suNext">Next</button> <button class="s" id="suBack">Back</button></div></div>
+  <div style="margin-top:10px"><button class="s" id="suNext">🖨️ Print it</button> <button class="s" id="suBack">Back</button></div></div>
  <div class="card hidden" id="s2"><b>About you</b>
    <div class="row2"><div><label for="sid">Registration number</label><input id="sid" inputmode="numeric" enterkeyhint="next" placeholder="e.g. 25101003"></div><div><label for="ssec">Section</label><input id="ssec" placeholder="e.g. A" maxlength="3" autocapitalize="characters" enterkeyhint="next"></div><div class="sugg hidden" id="sugg"></div></div>
    <div id="extra"><label for="sname">Full name</label><input id="sname" enterkeyhint="done" placeholder="Your full name"></div>
@@ -173,10 +187,12 @@ const ASSET_FILES = {
   <div class="errmsg hidden" id="errS2"></div>
   <button class="p" id="next">Show preview</button> <button class="s" id="back1">Back</button></div>
  <div class="card hidden" id="s3"><b>Preview</b><div id="stage"></div>
+   <button class="p big" id="dlPrev">📥 Download docs file</button>
+   <button class="s wide" id="dlPdf">📄 Download as PDF</button>
+   <button class="s wide" id="dlJpg">🖼️ Download as photo</button>
    <div id="printOnly"><label for="note">Instructions for printing (optional)</label><textarea id="note" rows="2" maxlength="200" placeholder="e.g. both side print koiro, stapled, black &amp; white"></textarea><label for="copies">Copies</label><input id="copies" type="number" min="1" max="10" value="1" style="max-width:120px"><div class="tiny" id="price"></div>
    <div class="errmsg hidden" id="errS3"></div>
-   <button class="p big" id="confirm">🖨️ Confirm and send to print</button>
-   <button class="s wide" id="dlPrev">📥 Download only (skip printing)</button></div>
+   <button class="s wide" id="confirm">🖨️ Confirm and send to print</button></div>
    <div id="dlOnly" class="hidden"><button class="p big" id="dlMain">📥 Download docs file</button><div class="ok hidden" id="dlOk" style="margin-top:8px">✅ Downloaded. Look in your Downloads folder (or the Files app)</div></div>
    <div><button class="s" id="back2">Back</button></div></div>
  <div class="card hidden" id="c1"><div id="banner" class="hidden"></div><b>Print status</b><div class="tiny" style="margin:2px 0 0">See if your pages are waiting, being printed, or done.</div><label for="cid">Registration number</label><input id="cid" inputmode="numeric" placeholder="e.g. 25101003"><button class="p" id="find">Show my prints</button><div id="clist" style="margin-top:12px"></div></div>
@@ -190,5 +206,13 @@ const ASSET_FILES = {
  <h2 class="h2">Already processed</h2><div class="card" style="overflow-x:auto"><table><thead><tr><th>Time</th><th>ID</th><th>Name</th><th>Option</th><th>Copies</th><th>Price</th><th>Status</th><th></th></tr></thead><tbody id="rows2"></tbody></table><p class="note" id="none2"></p></div>
 </div>
 </div>
-<script src="app.js?v=1"></script>
+<script src="app.js?v=2"></script>
+<script>
+/* app.js builds the page only after the pictures have loaded, and these extra scripts need what it builds (see the
+   "Bridge" block at the end of app.js). So they are loaded here, one after the other and in this order, AFTER that.
+   A missing file is reported in the console and skipped. */
+window.__assetsReady.then(function(){
+ ["photos-pdf.js","pdf-edit.js","docx-pdf.js"].reduce(function(p,f){return p.then(function(){return new Promise(function(done){
+  var s=document.createElement("script");s.src=f+"?v=2";s.onload=done;s.onerror=function(){console.error("Could not load "+f);done()};document.body.appendChild(s)})})},Promise.resolve())});
+</script>
 </body></html>

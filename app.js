@@ -106,7 +106,7 @@ var BEAR_SVG='<svg viewBox="0 0 100 110">' +
 function vis(id){return!$(id).classList.contains("hidden")}
 function bearTarget(){   // what should be pressed next?
  if(vis("admin"))return"hide";
- if(vis("s3"))return{el:mode==="dl"?$("dlMain"):$("confirm"),point:true};
+ if(vis("s3"))return{el:$("dlPrev"),point:true};
  if(vis("s2")){if(!$("sid").value.trim())return{el:$("sid"),point:true};if(!$("sname").value.trim())return{el:$("sname"),point:true};return{el:$("next"),point:true}}
  if(vis("s1"))return{el:document.querySelector("#opts .opt"),point:true};
  if(vis("c1")){if($("banner").className.indexOf("shine")>-1)return{el:$("banner"),point:false};if(!$("cid").value.trim())return{el:$("cid"),point:true};if(!$("clist").children.length)return{el:$("find"),point:true}}
@@ -407,7 +407,7 @@ async function proceed(id,name){
   $("mism").classList.add("hidden");cur.id=id;cur.name=name;cur.section=cur.skip?"-":$("ssec").value.trim().toUpperCase();if(!cur.skip){try{localStorage.setItem("me",JSON.stringify({id:id,name:name,sec:cur.section}))}catch(e){}}
   /* Download only on a photo: nothing is saved about the person */
   show(["s3"]);$("stage").innerHTML='<p class="note" style="padding:16px">Loading preview…</p>';
-  $("dlMain").textContent="📥 Download "+fileWord(cur.opt);$("warnDl").textContent="📥 No, just download the "+fileWord(cur.opt);
+  $("dlMain").textContent="📥 Download "+fileWord(cur.opt);$("dlPrev").textContent="📥 Download "+fileWord(cur.opt);$("warnDl").textContent="📥 No, just download the "+fileWord(cur.opt);
   if(cur.opt.img){renderPic();return}
   try{var blob=await buildDocx([{id:id,name:name,section:cur.section,copies:1}]);$("stage").innerHTML="";
    await docx.renderAsync(blob,$("stage"),null,{className:"docx",inWrapper:true,ignoreLastRenderedPageBreak:true});fit()}
@@ -423,7 +423,21 @@ $("mism").addEventListener("click",function(e){var k=e.target.getAttribute("data
 function renderSugg(){var q=$("sid").value.trim(),b=$("sugg");
   var ks=Object.keys(STUDENTS).filter(function(k){return k.indexOf(q)>-1});
   if(document.activeElement!==$("sid")||!ks.length||(STUDENTS[q]&&ks.length===1)){b.classList.add("hidden");return}
-  b.innerHTML=ks.map(function(k){return'<button type="button" data-i="'+k+'"><b>'+k+'</b> <small>'+esc(STUDENTS[k])+"</small></button>"}).join("");b.classList.remove("hidden")}
+  b.innerHTML=ks.map(function(k){return'<button type="button" data-i="'+k+'"><b>'+k+'</b> <small>'+esc(STUDENTS[k])+"</small></button>"}).join("");b.classList.remove("hidden");suggHint(b)}
+/* phones hide scrollbars until you scroll: when the list is longer than its box, it bounces down a little and back (small, again and again after a short pause) until the person touches it */
+var suggRun=0;
+function suggHint(b){if(b.scrollHeight<=b.clientHeight+2)return;
+ if(window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches)return;
+ var id=++suggRun,touched=false,amp=Math.min(14,b.scrollHeight-b.clientHeight);
+ function stop(){touched=true}
+ ["touchstart","wheel","pointerdown"].forEach(function(ev){b.addEventListener(ev,stop,{passive:true,once:true})});
+ function bounce(){if(id!==suggRun||touched||b.classList.contains("hidden")||b.scrollTop>0)return;
+  var t0=performance.now(),D=900;
+  (function step(now){if(id!==suggRun||touched){return}
+   var t=Math.min(1,(now-t0)/D);
+   b.scrollTop=amp*Math.exp(-2.6*t)*Math.abs(Math.sin(t*Math.PI*2.5));   // down, back, smaller down, back
+   if(t<1)requestAnimationFrame(step);else{b.scrollTop=0;setTimeout(bounce,1800)}})(t0)}
+ setTimeout(bounce,1200)}
 $("sid").addEventListener("focus",renderSugg);$("sid").addEventListener("input",renderSugg);
 $("sid").addEventListener("blur",function(){setTimeout(function(){$("sugg").classList.add("hidden")},200)});
 $("sugg").addEventListener("pointerdown",function(e){e.preventDefault()});     // keeps the keyboard open while you scroll the list
@@ -608,7 +622,7 @@ function renderUpload(){
   '<div id="upOpts" class="hidden">'+
    '<div id="pgBox" class="hidden"><label for="upPages">Number of pages <span id="pgWarn" class="hidden">⚠️</span></label><div class="stepper" id="pgRow"><button type="button" class="s" id="pgMinus">−</button><input id="upPages" type="number" min="1" max="500" value="1"><button type="button" class="s" id="pgPlus">+</button></div><div class="tiny">We cannot read the page count of this file. Please set it (used for the price).</div></div>'+
    '<label for="suCopies">Copies</label><div class="stepper"><button type="button" class="s" id="cpMinus">−</button><input id="suCopies" type="number" min="1" max="'+MAX_COPIES+'" value="1"><button type="button" class="s" id="cpPlus">+</button></div><div class="tiny" id="suPrice"></div>'+
-   '<label for="suNote">Instructions for printing (optional)</label><textarea id="suNote" rows="2" maxlength="200" placeholder="e.g. both side print koiro, stapled, black &amp; white"></textarea><button type="button" class="s wide" id="suDl">📥 Download</button></div>'+
+   '<label for="suNote">Instructions for printing (optional)</label><textarea id="suNote" rows="2" maxlength="200" placeholder="e.g. both side print koiro, stapled, black &amp; white"></textarea><button type="button" class="p wide" id="suDl">📥 Download</button></div>'+
   '<details id="upHelp" class="uphelp"><summary>😕 Can\'t choose a file?</summary>'+guideSteps()+'<div class="frow">'+
    (IAB&&!IOS?'<button type="button" class="p" id="hpChrome">🌐 Open in Chrome</button><button type="button" class="s" id="hpOther">🌍 Other browser</button>':'')+
    '<button type="button" class="s" id="hpCopy">📋 Copy link</button>'+
@@ -696,42 +710,6 @@ async function pickMany(fs,add){
  try{var pdf=await photosToPdf(list);await readUpload(pdf,list);if(cut)say("errSu","Only the first "+PHOTO_MAX+" photos were used.")}
  catch(e){$("upInfo").textContent="";say("errSu",e&&e.message==="blocked"?"Could not combine the photos here. Send them one by one as separate orders, or open this page in your browser.":(e&&e.message)||"Could not combine the photos. Try fewer photos.")}}
 
-// ----- Photos -> PDF tool (Download only tab): pick photos, put them in order, download ONE pdf -----
-var PP=[],ppUrls=[];
-function ppRender(){
- ppUrls.forEach(function(u){URL.revokeObjectURL(u)});ppUrls=PP.map(function(f){return URL.createObjectURL(f)});
- $("ppGrid").innerHTML=PP.map(function(f,i){return'<div class="pph"><span class="pn">'+(i+1)+'</span><img alt="Photo '+(i+1)+'" src="'+ppUrls[i]+'"><div class="pb"><button type="button" class="s" data-pm="'+i+'"'+(i===0?" disabled":"")+'>◀</button><button type="button" class="s" data-pp="'+i+'"'+(i===PP.length-1?" disabled":"")+'>▶</button><button type="button" class="s danger" data-px="'+i+'">✕</button></div></div>'}).join("");
- $("ppInfo").textContent=PP.length?PP.length+" photo"+(PP.length>1?"s":"")+" → "+PP.length+" page"+(PP.length>1?"s":"")+". Use ◀ ▶ to change the order, ✕ to remove, tap a photo to see it bigger.":"";
- $("ppDl").disabled=!PP.length;$("ppDl").textContent="📥 Download PDF"+(PP.length?" ("+PP.length+" page"+(PP.length>1?"s":"")+")":"")}
-async function ppAddFiles(fs){
- fs=Array.prototype.slice.call(fs);if(!fs.length)return;say("errPp","");$("ppOk").classList.add("hidden");
- var bad=[],full=false;$("ppBusy").textContent="⏳ Adding…";
- for(var i=0;i<fs.length;i++){var f=fs[i];
-  if(!isImgFile(f)){bad.push(f.name||"file");continue}
-  if(PP.length>=PHOTO_MAX){full=true;break}
-  try{var r=await loadImg(f);URL.revokeObjectURL(r.url);PP.push(f)}catch(e){bad.push(f.name||"photo")}}
- $("ppBusy").textContent="";
- if(bad.length)say("errPp","Could not use: "+bad.join(", ")+". Only photos (JPG, PNG…) work here. For iPhone HEIC photos, use Take a photo or open this page in Safari.");
- else if(full)say("errPp","Only "+PHOTO_MAX+" photos fit in one PDF.");
- ppRender()}
-$("ppAdd").onchange=function(){var fs=Array.prototype.slice.call(this.files);this.value="";ppAddFiles(fs)};
-$("ppCam").onchange=function(){var fs=Array.prototype.slice.call(this.files);this.value="";ppAddFiles(fs)};
-$("ppGrid").addEventListener("click",function(e){var t=e.target,m=t.getAttribute("data-pm"),p=t.getAttribute("data-pp"),x=t.getAttribute("data-px");$("ppOk").classList.add("hidden");
- if(m!==null){m=+m;if(m>0){var a=PP[m];PP[m]=PP[m-1];PP[m-1]=a;ppRender()}}
- else if(p!==null){p=+p;if(p<PP.length-1){var b=PP[p];PP[p]=PP[p+1];PP[p+1]=b;ppRender()}}
- else if(x!==null){PP.splice(+x,1);ppRender()}});
-$("ppDl").onclick=async function(){
- if(!PP.length)return;var b=this;b.disabled=true;b.textContent="⏳ Making your PDF…";say("errPp","");
- try{var f=await photosToPdf(PP),d=new Date(),z=function(n){return(n<10?"0":"")+n};
-  await save(f,"Photos_"+d.getFullYear()+z(d.getMonth()+1)+z(d.getDate())+"-"+z(d.getHours())+z(d.getMinutes())+".pdf");
-  $("ppOk").classList.remove("hidden");bearReact("cheer")}
- catch(e){say("errPp",e&&e.message==="blocked"?"Could not load the PDF maker here. Open this page in your browser and try again.":(e&&e.message)||"Could not make the PDF. Try fewer photos.")}
- finally{ppRender()}};
-$("ppOpen").onclick=function(){mode="dl";PP=[];$("ppOk").classList.add("hidden");say("errPp","");ppRender();show(["sp"]);needPdfLib().catch(function(){})};
-$("ppBack").onclick=function(){show(["s1"])};
-$("ppHelp").innerHTML+=guideSteps()+'<div class="frow">'+(IAB&&!IOS?'<button type="button" class="p" id="ppChrome">🌐 Open in Chrome</button><button type="button" class="s" id="ppOther">🌍 Other browser</button>':'')+'<button type="button" class="s" id="ppCopy">📋 Copy link</button></div>';
-$("ppCopy").onclick=function(){copyLink(this)};if($("ppChrome"))$("ppChrome").onclick=function(){location.href=chromeUrl()};if($("ppOther"))$("ppOther").onclick=function(){location.href=browserUrl()};
-if(IAB&&!IOS)$("ppHelp").open=true;
 function upWord(){var e=cur.file&&/\.([A-Za-z0-9]{1,5})$/.exec(cur.file.name);return e?e[1].toUpperCase():"file"}   // PDF, DOCX, PPTX, JPG...
 async function downloadUp(fromWarn){   // saves the chosen file straight from the phone: nothing is sent, nothing is uploaded
  if(!cur.file)return;
@@ -741,7 +719,7 @@ async function downloadUp(fromWarn){   // saves the chosen file straight from th
 async function startUpload(f){mode="print";cur.opt=OPTIONS.filter(function(o){return o.upload})[0];cur.tab=null;cur.skip=false;show(["su"]);renderUpload();await readUpload(f)}
 $("upPick").onchange=async function(){var fs=Array.prototype.slice.call(this.files);this.value="";if(!fs.length)return;if(fs.length===1)startUpload(fs[0]);else{await startUpload(null);await pickMany(fs,false)}};
 // ----- Drop a file anywhere on the page -----
-var dragN=0,dov=document.createElement("div");dov.className="dropov hidden";dov.textContent="📤 Drop your file here to print it";document.body.appendChild(dov);
+var dragN=0,dov=document.createElement("div");dov.className="dropov hidden";dov.textContent="📤 Drop your file here";document.body.appendChild(dov);
 function hasFiles(e){var t=e.dataTransfer&&e.dataTransfer.types;return !!t&&Array.prototype.indexOf.call(t,"Files")>=0}
 function onAdmin(){return !$("admin").classList.contains("hidden")}
 window.addEventListener("dragenter",function(e){if(!hasFiles(e))return;e.preventDefault();dragN++;if(!onAdmin())dov.classList.remove("hidden")});
@@ -749,7 +727,10 @@ window.addEventListener("dragover",function(e){if(hasFiles(e))e.preventDefault()
 window.addEventListener("dragleave",function(e){if(!hasFiles(e))return;dragN=Math.max(0,dragN-1);if(!dragN)dov.classList.add("hidden")});
 window.addEventListener("drop",async function(e){if(!hasFiles(e))return;e.preventDefault();dragN=0;dov.classList.add("hidden");if(onAdmin())return;
   var fs=Array.prototype.slice.call(e.dataTransfer.files||[]);if(!fs.length)return;
+  if(vis("se")&&window.peDrop){await peDrop(fs);return}   // on the Edit a PDF page
+  if(vis("sp")){await ppAddFiles(fs);return}   // on the Photos -> PDF page: add the dropped photos to the list
   var inSu=cur.opt&&cur.opt.upload&&vis("su");
+  if(inSu&&cur.photos&&fs.every(isImgFile)){await pickMany(fs,true);return}   // already have photos: add the new ones, do not replace
   if(fs.length>1&&fs.every(isImgFile)){if(!inSu)await startUpload(null);await pickMany(fs,false);return}
   if(inSu)await readUpload(fs[0]);else await startUpload(fs[0]);
   if(fs.length>1)say("errSu","Only the first file was taken ("+fs[0].name+"). To send several files at once, use photos only.")});
@@ -766,19 +747,15 @@ function startProg(){var t0=Date.now();$("upProg").classList.remove("hidden");$(
  tick();clearInterval(progT);progT=setInterval(tick,1000)}
 function stopProg(){clearInterval(progT);progT=null;$("upProg").classList.add("hidden")}
 async function post(b){return parse(await fetch(SCRIPT_URL,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(b)}))}
-var _show=show;show=function(ids){_show(ids);var m=ids[0]==="c1",dl=mode==="dl";$("tabNew").classList.toggle("on",!m&&!dl);$("tabDl").classList.toggle("on",!m&&dl);$("tabMine").classList.toggle("on",m);
- $("s1t").textContent=dl?"Which file do you want?":"What do you want printed?";
- $("upBlock").classList.toggle("hidden",dl);   // uploading is only for printing
- $("ppBlock").classList.toggle("hidden",!dl);   // photos -> PDF is only in Download only
+var _show=show;show=function(ids){_show(ids);var m=ids[0]==="c1",dl=mode==="dl";$("tabNew").classList.toggle("on",!m);$("tabMine").classList.toggle("on",m);
  var upm=!!(cur.opt&&cur.opt.upload&&ids[0]==="s2");$("next").textContent=upm?"🖨️ Send to print":"Show preview";
- $("modeHint").textContent=dl?"📥 Download the file.":"🖨️ "+OWNER_NAME+" prints it for you. You send it at the end.";
+ $("modeHint").textContent="📥 Download the file, or send it to "+OWNER_NAME+" to print at the end.";
  $("printOnly").classList.toggle("hidden",dl);$("dlOnly").classList.toggle("hidden",!dl);$("dlOk").classList.add("hidden");if(ids[0]==="s3")updPrice();bearStep()};
 function copiesNow(){return Math.max(1,Math.min(MAX_COPIES,+$(cur.opt&&cur.opt.upload?"suCopies":"copies").value||1))}
 function banner(msg,bad){var b=$("banner");if(!msg){b.className="hidden";return}b.className=bad?"banner err":"banner shine";b.textContent=msg;if(bad)flashBad(b)}
 var mine=[];
 function showMine(id,msg){show(["c1"]);$("cid").value=id||"";banner(msg);if(id)findOrders(false,!!msg);else $("clist").innerHTML=""}
 $("tabNew").onclick=function(){mode="print";show(["s1"])};
-$("tabDl").onclick=function(){mode="dl";show(["s1"])};
 $("tabMine").onclick=function(){showMine($("cid").value.trim()||cur.id||sessionStorage.getItem("myid")||"")};
 $("dlPrev").onclick=async function(){var b=this,t=b.textContent;await dlFile(cur.opt,{id:cur.id,name:cur.name,section:cur.section,copies:copiesNow()},cur.tab);b.textContent="✅ Downloaded. Look in your Downloads folder (or the Files app)";setTimeout(function(){b.textContent=t},2500)};
 $("dlMain").onclick=async function(){await dlFile(cur.opt,{id:cur.id,name:cur.name,section:cur.section,copies:1},cur.tab);$("dlOk").classList.remove("hidden");bearReact("cheer")};
@@ -950,5 +927,18 @@ $("dlAll").onclick=async function(){
 $("openSheet").href=SHEET_URL;$("openDrive").href=DRIVE_URL;
 $("refresh").onclick=load;$("toStudent").onclick=function(){location.hash=""};
 function route(){var a=location.hash==="#admin";$("admin").classList.toggle("hidden",!a);$("student").classList.toggle("hidden",a);if(a)load()}
+/* ===== Bridge for the extra scripts (photos-pdf.js, pdf-edit.js, docx-pdf.js) =====
+   All the code above lives inside one function, so those files cannot see its names. Plain helpers are copied to window.
+   show, renderUpload and readUpload are different: the extra files WRAP them (x=function(){...old x...}), and the wrapper
+   must replace the one used in here, so they are linked both ways (reading gives the real one, assigning replaces it). */
+[["$",$],["say",say],["save",save],["openPdf",openPdf],["needPdfLib",needPdfLib],["photosToPdf",photosToPdf],["photoJpeg",photoJpeg],["isImgFile",isImgFile],["startUpload",startUpload],["buildDocx",buildDocx],["imgBlob",imgBlob],["addScript",addScript],["bearReact",bearReact],["H2C",H2C],["cur",cur]].forEach(function(p){window[p[0]]=p[1]});
+window.sleep=function(ms){return new Promise(function(r){setTimeout(r,ms)})};
+function bridgeLink(n,get,set){Object.defineProperty(window,n,{configurable:true,get:get,set:set})}
+/* photos-pdf.js reads everything from window.APP */
+window.APP={$:$,say:say,save:save,openPdf:openPdf,needPdfLib:needPdfLib,photosToPdf:photosToPdf,photoJpeg:photoJpeg,isImgFile:isImgFile,loadImg:loadImg,startUpload:startUpload,buildDocx:buildDocx,imgBlob:imgBlob,addScript:addScript,sleep:window.sleep,bearReact:bearReact,guideSteps:guideSteps,copyLink:copyLink,chromeUrl:chromeUrl,browserUrl:browserUrl,IAB:IAB,IOS:IOS,H2C:H2C,PHOTO_MAX:PHOTO_MAX,cur:cur};
+bridgeLink("show",function(){return show},function(f){show=f});
+Object.defineProperty(window.APP,"show",{get:function(){return show}});
+bridgeLink("renderUpload",function(){return renderUpload},function(f){renderUpload=f});
+bridgeLink("readUpload",function(){return readUpload},function(f){readUpload=f});
 window.addEventListener("hashchange",function(){route();guide(100)});show(["s1"]);route();guide(900);
 });
