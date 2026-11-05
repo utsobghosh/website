@@ -153,7 +153,7 @@ const ASSET_FILES = {
   <div id="upBlock" class="upbox"><label class="dz" for="upPick">📤 <b>Upload your own file</b><small>PDF · Word · PowerPoint · photos · download it or get it printed</small></label><input type="file" id="upPick" class="hid" multiple accept=".pdf,.doc,.docx,.ppt,.pptx,.txt,image/*"></div>
   <div class="tiny" style="margin:16px 0 6px;padding-top:10px;border-top:1px solid #8884;font-weight:600">🛠️ PDF tools</div>
   <div id="ppBlock" class="upbox"><button type="button" class="dz" id="ppOpen" style="width:100%;font:inherit;color:inherit">🖼️ <b>Photos → PDF</b><small>Make one PDF from your photos and download it. Nothing is sent to anyone.</small></button></div>
-  <div id="peBlock" class="upbox"><button type="button" class="dz" id="peOpen" style="width:100%;font:inherit;color:inherit">📄 <b>Edit a PDF</b><small>See every page, remove pages, or add pages anywhere. Nothing is sent to anyone.</small></button></div></div>
+  <div id="peBlock" class="upbox"><button type="button" class="dz" id="peOpen" style="width:100%;font:inherit;color:inherit">📄 <b>Merge &amp; arrange PDF</b><small>Combine several PDFs or photos, reorder, remove or add pages. Nothing is sent to anyone.</small></button></div></div>
  <div class="card hidden" id="sp"><b>🖼️ Photos → PDF</b>
   <p class="note" style="margin:4px 0 0">Choose your photos, one photo = one page. Nothing is sent to anyone.</p>
   <div class="pickrow"><label class="bigpick pk1" for="ppAdd">📂 Choose photos<small>you can pick many</small></label><label class="bigpick pk2" for="ppCam">📷 Take a photo<small>add pages one by one</small></label></div>
@@ -164,10 +164,10 @@ const ASSET_FILES = {
   <div class="ok hidden" id="ppOk" style="margin-top:8px">✅ Downloaded. Look in your Downloads folder (or the Files app)</div>
   <details id="ppHelp" class="uphelp"><summary>😕 Can't choose photos?</summary></details>
   <div style="margin-top:10px"><button class="s" id="ppBack">Back</button></div></div>
- <div class="card hidden" id="se"><b>📄 Edit a PDF</b>
-  <div id="pePick"><p class="note" style="margin:4px 0 0">Choose a PDF. You will see every page, and can remove pages or add new pages (from another PDF or photos) anywhere. Nothing is sent to anyone.</p>
-   <div class="pickrow"><label class="bigpick pk1" for="peFile">📂 Choose a PDF<small>or drop it on this page</small></label></div></div>
-  <input type="file" id="peFile" class="hid" accept=".pdf,application/pdf"><input type="file" id="peIns" class="hid" multiple accept=".pdf,application/pdf,image/*">
+ <div class="card hidden" id="se"><b>📄 Merge &amp; arrange PDF</b>
+  <div id="pePick"><p class="note" style="margin:4px 0 0">Choose one or more PDFs (or photos) - they are joined in one list. You will see every page, and can reorder, remove or add pages anywhere. Nothing is sent to anyone.</p>
+   <div class="pickrow"><label class="bigpick pk1" for="peFile">📂 Choose PDF(s)<small>select several at once, or drop them on this page</small></label></div></div>
+  <input type="file" id="peFile" class="hid" multiple accept=".pdf,application/pdf,image/*"><input type="file" id="peIns" class="hid" multiple accept=".pdf,application/pdf,image/*">
   <div class="tiny" id="peBusy"></div><div class="errmsg hidden" id="errPe"></div>
   <div id="peBody" class="hidden"><button type="button" class="s" id="peStart">＋ Add pages at the very start</button>
    <div id="peGrid" class="peg"></div><div class="tiny" id="peInfo"></div>
