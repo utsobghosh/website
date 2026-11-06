@@ -33,7 +33,7 @@ function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;
 function hl(p){p=p.toLowerCase();return HIGHLIGHT.some(function(k){return p.indexOf(k.toLowerCase())>=0})}
 function catOf(p){for(var i=0;i<CATS.length;i++)if(CATS[i].re.test(p))return CATS[i].id;return OTHERS.id}
 
-var FILES=(window.NOTES_FILES||[]).map(function(f){f.c=catOf(f.p);return f}).sort(function(a,b){return b.t-a.t});
+var FILES=(window.NOTES_FILES||[]).map(function(f){f.c=catOf(f.p);return f}).sort(function(a,b){return (hl(b.p)-hl(a.p))||(b.t-a.t)});   // coloured (purple) notes first, then newest first
 var ALL=CATS.concat([OTHERS]),curCat="",curSub=-1,curTab="files",curExtra=null;
 
 var st=document.createElement("style");
