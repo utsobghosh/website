@@ -113,7 +113,7 @@ body::after{width:60vmax;height:60vmax;right:-20vmax;bottom:-20vmax;background:r
 /* ---- bear looks ---- */
 #bear{--fur:#b98558;--fur2:#a8734f;--muz:#f1d7b5;--ear:#e8b98f;--nose:#3b2a22}
 #bear .of,#earsCat,#earsBunny,#whisk,.pp{display:none}
-#bear.of-cap #ofCap,#bear.of-shades #ofShades,#bear.of-cape #ofCape,#bear.of-crown #ofCrown,#bear.of-sleep #ofSleep{display:inline}
+#bear.of-cap #ofCap,#bear.of-shades #ofShades,#bear.of-cape #ofCape,#bear.of-crown #ofCrown,#bear.of-sleep #ofSleep,#bear.of-bow #ofBow,#bear.of-flowers #ofFlowers,#bear.of-scarf #ofScarf,#bear.of-glasses #ofGlasses,#bear.of-headphones #ofPhones{display:inline}
 #bear.sk-cat #earsBear,#bear.sk-bunny #earsBear{display:none}
 #bear.sk-cat #earsCat,#bear.sk-bunny #earsBunny,#bear.sk-cat #whisk{display:inline}
 #bear.sk-panda .pp{display:inline}
@@ -211,3 +211,22 @@ a.lnkbtn{display:inline-block;text-decoration:none;color:var(--text);padding:10p
 #clist img.thumb,#stage img,#upThumb img,#upThumb canvas{cursor:zoom-in}
 
 .sugg::-webkit-scrollbar{width:8px}.sugg::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px}
+/* ---- more bear moves ---- */
+#bear.a-flip #bearBody{transform-origin:50px 60px;animation:bflip .9s ease}@keyframes bflip{0%{transform:translateY(0) rotate(0)}40%{transform:translateY(-26px) rotate(180deg)}100%{transform:translateY(0) rotate(360deg)}}
+#bear.a-bounce #bearBody{transform-origin:50px 100px;animation:bbounce .9s ease}@keyframes bbounce{0%,100%{transform:scale(1,1)}15%{transform:scale(1.12,.82)}40%{transform:scale(.9,1.14) translateY(-14px)}65%{transform:scale(1.1,.86)}85%{transform:scale(.97,1.04)}}
+#bear.a-sway #bearBody{transform-origin:50px 100px;animation:bsway 1.15s ease-in-out 2}@keyframes bsway{0%,100%{transform:rotate(-7deg)}50%{transform:rotate(7deg)}}
+#bear.a-heart #bearBody{transform-origin:50px 100px;animation:bheart .5s ease-in-out 4}@keyframes bheart{0%,100%{transform:scale(1)}50%{transform:scale(1.09)}}
+#bear.a-shy #bearBody{transform-origin:50px 100px;animation:bshy 1.4s ease}@keyframes bshy{0%,100%{transform:rotate(0)}30%,70%{transform:rotate(-12deg) scale(.94)}}
+/* ---- bear props (football, camera, book, snack, music, zzz, speech) ---- */
+.bprop{position:fixed;z-index:46;pointer-events:none;font-size:24px;line-height:1}
+.bprop.ball{animation:bball 3s ease-out forwards}@keyframes bball{0%{transform:translate(0,0) rotate(0)}22%{transform:translate(calc(34px*var(--d)),-38px) rotate(200deg)}42%{transform:translate(calc(66px*var(--d)),0) rotate(360deg)}58%{transform:translate(calc(88px*var(--d)),-16px) rotate(480deg)}74%{transform:translate(calc(104px*var(--d)),0) rotate(600deg)}100%{transform:translate(calc(130px*var(--d)),0) rotate(720deg);opacity:0}}
+@keyframes bpop{from{transform:scale(.2);opacity:0}to{transform:scale(1);opacity:1}}@keyframes bfade{to{opacity:0}}
+.bprop.cam{animation:bpop .5s cubic-bezier(.3,1.6,.5,1) both,bfade .4s 3.3s forwards}
+.bprop.book{animation:bpop .4s both,bbob 1s .4s ease-in-out 5,bfade .3s 5.3s forwards}@keyframes bbob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+.bprop.munch{animation:bmunch .6s ease-in-out 6,bfade .3s 3.5s forwards}@keyframes bmunch{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-8px) scale(.85)}}
+.bprop.note{animation:bnote 2.4s ease-out forwards}@keyframes bnote{0%{opacity:0;transform:translate(0,0)}15%{opacity:1}100%{opacity:0;transform:translate(var(--dx,20px),-80px) rotate(25deg)}}
+.bprop.zzz{animation:bzzz 4.8s ease-out forwards}@keyframes bzzz{0%{opacity:0;transform:translate(0,0) scale(.6)}20%{opacity:1}100%{opacity:0;transform:translate(20px,-60px) scale(1.4)}}
+.bsay{position:fixed;z-index:47;pointer-events:none;width:160px;text-align:center;padding:5px 9px;border-radius:14px;background:#fff;color:#3b2f45;font:600 13px/1.3 system-ui,sans-serif;box-shadow:0 3px 10px rgba(0,0,0,.2);animation:bpop .3s both}
+.bflash{position:fixed;z-index:48;pointer-events:none;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;background:radial-gradient(circle,#fff 30%,rgba(255,255,255,0) 70%);animation:bflash .9s ease-out forwards}@keyframes bflash{0%{transform:scale(.3);opacity:1}100%{transform:scale(5);opacity:0}}
+#bear.a-kick #bearBody{transform-origin:50px 100px;animation:bkick 2s ease}@keyframes bkick{0%{transform:rotate(0)}25%{transform:rotate(-12deg) translateX(-3px)}40%{transform:rotate(10deg) translateX(4px) translateY(-6px)}60%,100%{transform:rotate(0)}}
+#bear.a-music #bearBody{animation:bdance .7s ease-in-out 6}

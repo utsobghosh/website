@@ -220,7 +220,7 @@ const ASSET_FILES = {
    "Bridge" block at the end of app.js). So they are loaded here, one after the other and in this order, AFTER that.
    A missing file is reported in the console and skipped. */
 window.__assetsReady.then(function(){
- ["notes-list.js","notes.js","photos-pdf.js","pdf-edit.js","docx-pdf.js"].reduce(function(p,f){return p.then(function(){return new Promise(function(done){
-  var s=document.createElement("script");s.src=f+"?v=4";s.onload=done;s.onerror=function(){console.error("Could not load "+f);done()};document.body.appendChild(s)})})},Promise.resolve())});
+ ["notes-list.js","drive-notes.js","notes.js","photos-pdf.js","pdf-edit.js","docx-pdf.js","kawaii-extras.js"].reduce(function(p,f){return p.then(function(){return new Promise(function(done){
+  var s=document.createElement("script");s.src=f+"?v="+Date.now();s.onload=function(){(f==="drive-notes.js"&&window.__driveReady?window.__driveReady:Promise.resolve()).then(done)};s.onerror=function(){console.error("Could not load "+f);done()};document.body.appendChild(s)})})},Promise.resolve())});
 </script>
 </body></html>

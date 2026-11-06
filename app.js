@@ -101,6 +101,11 @@ var BEAR_SVG='<svg viewBox="0 0 100 110">' +
   '<g class="of" id="ofShades"><rect x="28" y="28" width="19" height="13" rx="5.5" fill="#1b1b22"/><rect x="53" y="28" width="19" height="13" rx="5.5" fill="#1b1b22"/><rect x="46" y="32" width="8" height="3" fill="#1b1b22"/><path d="M31 31L36 31M56 31L61 31" stroke="rgba(255,255,255,.55)" stroke-width="2" stroke-linecap="round"/></g>' +
   '<g class="of" id="ofCap"><path d="M26 28Q26 8 50 8Q74 8 74 28Z" style="fill:var(--accent);stroke:rgba(0,0,0,.25)"/><path d="M62 27Q86 24 92 33Q76 37 62 33Z" style="fill:var(--accent);stroke:rgba(0,0,0,.25)"/><circle cx="50" cy="8" r="2.6" fill="rgba(0,0,0,.25)"/></g>' +
   '<g class="of" id="ofCrown"><path d="M36 15L38 1L45 9L50 -2L55 9L62 1L64 15Z" fill="#ffc93c" stroke="#d9a21a"/><circle cx="50" cy="8" r="1.8" fill="#ff6b6b"/><circle cx="41" cy="11" r="1.4" fill="#4db8ff"/><circle cx="59" cy="11" r="1.4" fill="#4db8ff"/></g>' +
+  '<g class="of" id="ofBow"><path d="M70 14L56 6V22Z" fill="#ff6fa8" stroke="rgba(0,0,0,.25)"/><path d="M70 14L84 6V22Z" fill="#ff6fa8" stroke="rgba(0,0,0,.25)"/><circle cx="70" cy="14" r="4.5" fill="#ff9cc6" stroke="rgba(0,0,0,.25)"/></g>' +
+  '<g class="of" id="ofFlowers"><path d="M30 16Q50 2 70 16" fill="none" stroke="#6fbf73" stroke-width="3" stroke-linecap="round"/><circle cx="34" cy="13" r="5" fill="#ff9cc6"/><circle cx="34" cy="13" r="2" fill="#ffd966"/><circle cx="50" cy="8" r="5.5" fill="#ffffff" stroke="rgba(0,0,0,.15)"/><circle cx="50" cy="8" r="2.2" fill="#ffd966"/><circle cx="66" cy="13" r="5" fill="#ffb86b"/><circle cx="66" cy="13" r="2" fill="#fff3c4"/></g>' +
+  '<g class="of" id="ofScarf"><path d="M27 66Q50 78 73 66L75 74Q50 88 25 74Z" fill="#ff7a90" stroke="rgba(0,0,0,.25)"/><path d="M62 76L67 96L77 92L72 74Z" fill="#ff9aaa" stroke="rgba(0,0,0,.25)"/></g>' +
+  '<g class="of" id="ofGlasses"><circle cx="38" cy="35" r="9" fill="rgba(255,255,255,.2)" stroke="#5a3d7a" stroke-width="2"/><circle cx="62" cy="35" r="9" fill="rgba(255,255,255,.2)" stroke="#5a3d7a" stroke-width="2"/><path d="M47 35H53M29 33L22 30M71 33L78 30" stroke="#5a3d7a" stroke-width="2" stroke-linecap="round"/></g>' +
+  '<g class="of" id="ofPhones"><path d="M18 40Q18 4 50 4Q82 4 82 40" fill="none" stroke="#ff86bd" stroke-width="5" stroke-linecap="round"/><rect x="11" y="32" width="11" height="17" rx="5.5" fill="#ff86bd" stroke="rgba(0,0,0,.25)"/><rect x="78" y="32" width="11" height="17" rx="5.5" fill="#ff86bd" stroke="rgba(0,0,0,.25)"/></g>' +
   '<g class="of" id="ofSleep"><path d="M27 26Q30 4 58 -2Q78 -6 90 8Q72 6 73 26Z" fill="#6c7dff" stroke="rgba(0,0,0,.25)"/><rect x="25" y="23" width="50" height="8" rx="4" fill="#fff" stroke="rgba(0,0,0,.15)"/><circle cx="90" cy="9" r="5.5" fill="#fff" stroke="rgba(0,0,0,.15)"/></g>' +
   '</g></g></g></svg>';
 function vis(id){return!$(id).classList.contains("hidden")}
@@ -137,7 +142,8 @@ function runGuide(){
 
 // Pointing is only a side task: the bear plays around, and every so often walks to the next button for a few seconds.
 function pickSpot(){var sp=[[10,innerHeight-BH-10],[innerWidth-BW-10,innerHeight-BH-10],[innerWidth-BW-10,innerHeight*.45],[10,innerHeight*.5],[innerWidth*.5-BW/2,innerHeight-BH-10],[innerWidth-BW-10,innerHeight*.25]],c=sp[Math.floor(Math.random()*sp.length)];wx=c[0];wy=c[1]}
-function startHintCycle(delay){
+function startHintCycle(delay){return;   /* pointing at buttons is OFF (remove this "return;" to turn it back on) */
+
  clearTimeout(hintTimer);
  hintTimer=setTimeout(function(){
   var t=bearTarget();
@@ -145,11 +151,26 @@ function startHintCycle(delay){
   hintOn=true;guide(0);
   hintTimer=setTimeout(function(){hintOn=false;guide(0);startHintCycle(12000)},5500)},delay)}
 function bearStep(){hintOn=false;if(bear){guide(250);startHintCycle(3500)}}
-var DUR={jump:800,wiggle:850,spin:950,wave:1900,dance:2500,cheer:2500,shake:550};
-function act(name){if(busyAct||!bear)return;busyAct=true;bear.classList.add("a-"+name);setTimeout(function(){bear.classList.remove("a-"+name);busyAct=false},DUR[name])}
+var DUR={jump:800,wiggle:850,spin:950,wave:1900,dance:2500,cheer:2500,shake:550,flip:900,bounce:900,sway:2300,heart:2100,shy:1400,kick:3600,photo:3800,talk:3200,read:5600,snack:3900,music:4300,sleep:5000};
+function hearts(){var r=bear.getBoundingClientRect();for(var i=0;i<6;i++)(function(i){setTimeout(function(){var t=document.createElement("span");t.className="petstar";t.textContent=["💖","💗","💕"][i%3];t.style.cssText="left:"+(r.left+16+Math.random()*(BW-32))+"px;top:"+(r.top+4)+"px;--dx:"+(Math.random()*40-20)+"px";document.body.appendChild(t);setTimeout(t.remove.bind(t),1800)},i*220)})(i)}
+var PHRASES=["Hi Utsob! 👋","Study hard! 📚","You can do it! 💪","Drink some water 💧","I'm hungry… 🍙","Let's go! ✨","Good job! 🌟","Don't fall asleep 😴","Exam soon… 😳","Take a little break ☕"];
+function bprop(txt,x,y,cls,ms,extra){var p=document.createElement("span");p.className="bprop "+cls;p.textContent=txt;p.style.cssText="left:"+x+"px;top:"+y+"px;"+(extra||"");document.body.appendChild(p);setTimeout(p.remove.bind(p),ms)}
+function bsay(txt,ms){var r=bear.getBoundingClientRect(),b=document.createElement("div");b.className="bsay";b.textContent=txt;b.style.left=Math.max(8,Math.min(innerWidth-168,r.left+BW/2-80))+"px";b.style.top=Math.max(6,r.top-36)+"px";document.body.appendChild(b);setTimeout(b.remove.bind(b),ms)}
+function extras(n){   // extra props / effects for the new bear moves
+ if(!bear)return;var r=bear.getBoundingClientRect();if(r.right<20||r.left>innerWidth-20)return;
+ var d=r.left>innerWidth/2?-1:1,fx=r.left+BW/2,fy=r.top+BH-26,pick=function(a){return a[Math.floor(Math.random()*a.length)]};
+ if(n==="heart")hearts();
+ else if(n==="kick")setTimeout(function(){bprop("⚽",fx+d*22,fy,"ball",3200,"--d:"+d)},700);
+ else if(n==="photo"){bprop("📸",fx+d*26,r.top+44,"cam",3700);setTimeout(function(){var f=document.createElement("div");f.className="bflash";f.style.cssText="left:"+(fx+d*26)+"px;top:"+(r.top+56)+"px";document.body.appendChild(f);setTimeout(f.remove.bind(f),1000)},1800)}
+ else if(n==="talk"){bear.classList.add("happy");bsay(pick(PHRASES),2800);setTimeout(function(){if(!cheering)bear.classList.remove("happy")},2800)}
+ else if(n==="read")bprop("📖",fx-12,r.top+56,"book",5600);
+ else if(n==="snack"){bear.classList.add("happy");bprop(pick(["🍙","🧋","🍓","🍪","🍡"]),fx-10,r.top+54,"munch",3800);setTimeout(function(){if(!cheering)bear.classList.remove("happy")},3800)}
+ else if(n==="music"){for(var i=0;i<6;i++)(function(i){setTimeout(function(){bprop(pick(["🎵","🎶"]),fx-10+Math.random()*24,r.top+4,"note",2600,"--dx:"+(Math.random()*50-25)+"px")},i*650)})(i)}
+ else if(n==="sleep"){bear.classList.add("petting");bprop("💤",fx+12,r.top+2,"zzz",4800);setTimeout(function(){bear.classList.remove("petting")},4900)}}
+function act(name){if(busyAct||!bear)return;extras(name);busyAct=true;bear.classList.add("a-"+name);setTimeout(function(){bear.classList.remove("a-"+name);busyAct=false},DUR[name])}
 function randomAct(){if(!bear||bear.style.display==="none"||cheering||dragging)return;
- var pointing=bear.classList.contains("pointL")||bear.classList.contains("pointR"),list=pointing?["jump","wiggle"]:["jump","wiggle","spin","wave","dance"];
- act(list[Math.floor(Math.random()*list.length)])}
+ var pointing=bear.classList.contains("pointL")||bear.classList.contains("pointR"),list=pointing?["jump","wiggle"]:["jump","wiggle","spin","wave","dance","flip","bounce","sway","heart","shy","kick","photo","read","snack","music","sleep"];
+ var nx;do{nx=list[Math.floor(Math.random()*list.length)]}while(nx===window.__lastAct&&list.length>1);window.__lastAct=nx;act(nx)}
 function bearReact(kind){
  if(!bear)return;busyAct=false;
  if(kind==="cheer"){cheering=true;bear.classList.add("happy");act("cheer");guide(0);
@@ -166,15 +187,21 @@ var SKINS=[
  {fur:"#7f9cf5",fur2:"#6a86df",muz:"#dfe7ff",ear:"#b8c8ff",nose:"#2a3466",cls:""},                 // blueberry
  {fur:"#7fd1b0",fur2:"#68bb9a",muz:"#e1f7ee",ear:"#b5ead6",nose:"#245443",cls:""},                 // mint
  {fur:"#f7f4f2",fur2:"#e6e0dc",muz:"#ffffff",ear:"#f2b6c0",nose:"#e48a98",cls:"sk-cat"},           // white cat
- {fur:"#e9e0f5",fur2:"#d6c8ea",muz:"#ffffff",ear:"#f0b9d0",nose:"#b85c7e",cls:"sk-bunny"}          // bunny
+ {fur:"#e9e0f5",fur2:"#d6c8ea",muz:"#ffffff",ear:"#f0b9d0",nose:"#b85c7e",cls:"sk-bunny"},          // bunny
+ {fur:"#ff9fb7",fur2:"#f27d9b",muz:"#ffe3ea",ear:"#ffc2d1",nose:"#b83a5c",cls:""},                 // strawberry
+ {fur:"#ffd66b",fur2:"#f2bf45",muz:"#fff1c4",ear:"#ffe39a",nose:"#8a5a14",cls:""},                 // sunny
+ {fur:"#cdb4f6",fur2:"#b79be6",muz:"#f1e9ff",ear:"#e0cffa",nose:"#5b3f8f",cls:""},                 // lavender
+ {fur:"#4b3f72",fur2:"#3a3059",muz:"#e8d8ff",ear:"#ff8fc7",nose:"#ff5fa8",cls:"sk-bunny"},         // midnight bunny
+ {fur:"#ffe4ec",fur2:"#f5c7d4",muz:"#ffffff",ear:"#ffb3c8",nose:"#ff7aa0",cls:"sk-cat"},           // pink kitty
+ {fur:"#3a3a45",fur2:"#2b2b34",muz:"#6b6b7a",ear:"#ff9bb8",nose:"#ff7aa0",cls:"sk-cat"}            // shadow cat
 ];
-var OUTFITS=["cap","shades","cape","crown",""],look={skin:0,outfit:""},petInt=null,gazeOn=false,gazeT=null;
+var OUTFITS=["cap","shades","cape","crown","bow","flowers","scarf","glasses","headphones",""],look={skin:0,outfit:""},petInt=null,gazeOn=false,gazeT=null;
 function isNight(){if(!NIGHT_MODE_ON)return false;var h=new Date().getHours();return NIGHT_FROM>NIGHT_TO?(h>=NIGHT_FROM||h<NIGHT_TO):(h>=NIGHT_FROM&&h<NIGHT_TO)}
 function applyLook(){
  if(!bear)return;var sk=SKINS[look.skin];
  ["fur","fur2","muz","ear","nose"].forEach(function(k){bear.style.setProperty("--"+k,sk[k])});
  SKINS.forEach(function(x){if(x.cls)bear.classList.remove(x.cls)});if(sk.cls)bear.classList.add(sk.cls);
- ["cap","shades","cape","crown","sleep"].forEach(function(o){bear.classList.remove("of-"+o)});
+ ["cap","shades","cape","crown","bow","flowers","scarf","glasses","headphones","sleep"].forEach(function(o){bear.classList.remove("of-"+o)});
  var of=isNight()?"sleep":look.outfit;if(of)bear.classList.add("of-"+of);
  try{localStorage.setItem("bearLook",JSON.stringify(look))}catch(e){}}
 function puff(){var r=bear.getBoundingClientRect();if(!calm)sparkleBurst(r.left+BW/2,r.top+BH/2,8,.7,false)}
@@ -205,7 +232,7 @@ if(BEAR_ON){
  bear=document.createElement("div");bear.id="bear";bear.setAttribute("aria-hidden","true");bear.innerHTML=BEAR_SVG;
  wx=innerWidth-BW-10;wy=innerHeight-BH-10;bear.style.top=wy+"px";document.body.appendChild(bear);
  // Pick the bear up and move it. Hold without moving = pet it (keep holding 2s and it changes look). A quick tap = a trick, and the tap still presses what is under the bear.
- var ALL_ACTS=["a-jump","a-wiggle","a-spin","a-wave","a-dance","a-cheer","a-shake"];
+ var ALL_ACTS=["a-jump","a-wiggle","a-spin","a-wave","a-dance","a-cheer","a-shake","a-flip","a-bounce","a-sway","a-heart","a-shy","a-kick","a-photo","a-talk","a-read","a-snack","a-music","a-sleep"];
  function startHold(){
   dragging=true;cheering=false;hintOn=false;busyAct=false;clearTimeout(hintTimer);clearGlow();
   ALL_ACTS.forEach(function(c){bear.classList.remove(c)});bear.classList.remove("moving","pointL","pointR");bear.classList.add("held","happy");
@@ -243,7 +270,7 @@ if(BEAR_ON){
    else act(["jump","wiggle","spin","wave"][Math.floor(Math.random()*4)])}
  bear.addEventListener("pointerup",endDrag);bear.addEventListener("pointercancel",endDrag);
 
- (function loop(){setTimeout(function(){randomAct();loop()},4000+Math.random()*5000)})();
+ (function loop(){setTimeout(function(){randomAct();loop()},7000+Math.random()*6000)})();   // a new move every ~2-4 s (was 4-9 s)
  window.addEventListener("resize",function(){guide(200)});window.addEventListener("scroll",function(){guide(250)},{passive:true});
  ["sid","sname","cid"].forEach(function(id){$(id).addEventListener("input",bearStep)});
  ["pointerdown","keydown"].forEach(function(ev){document.addEventListener(ev,function(){if(hintOn){hintOn=false;guide(0);startHintCycle(9000)}})});
