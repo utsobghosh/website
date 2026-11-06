@@ -37,5 +37,11 @@ $("ppBack").onclick=function(){show(["s1"])};
 $("ppHelp").innerHTML+=guideSteps()+'<div class="frow">'+(IAB&&!IOS?'<button type="button" class="p" id="ppChrome">🌐 Open in Chrome</button><button type="button" class="s" id="ppOther">🌍 Other browser</button>':'')+'<button type="button" class="s" id="ppCopy">📋 Copy link</button></div>';
 $("ppCopy").onclick=function(){copyLink(this)};if($("ppChrome"))$("ppChrome").onclick=function(){location.href=chromeUrl()};if($("ppOther"))$("ppOther").onclick=function(){location.href=browserUrl()};
 if(IAB&&!IOS)$("ppHelp").open=true;
+// paste: Ctrl+V on this page adds the copied picture(s); the button does the same
+window.addEventListener("paste",async function(e){var sp=$("sp");if(!sp||sp.classList.contains("hidden"))return;var cd=e.clipboardData;if(!cd)return;var fs=[];
+ if(cd.files&&cd.files.length)fs=Array.prototype.slice.call(cd.files);else if(cd.items)Array.prototype.forEach.call(cd.items,function(it){if(it.kind==="file"){var f=it.getAsFile();if(f)fs.push(f)}});
+ fs=fs.filter(isImgFile);if(!fs.length)return;e.preventDefault();var n=0;
+ fs=fs.map(function(f){if(f.name&&!/^image\.\w+$/i.test(f.name))return f;var ext=((f.type||"image/png").split("/")[1]||"png").replace("jpeg","jpg");return new File([f],"Pasted image "+(Date.now()%100000)+"-"+(++n)+"."+ext,{type:f.type||"image/png"})});
+ await ppAddFiles(fs)});
 window.ppAddFiles=ppAddFiles;   // app.js drop handler calls this
 });

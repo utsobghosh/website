@@ -1,5 +1,16 @@
 <!DOCTYPE html>
 <html lang="en"><head>
+<meta charset="UTF-8">
+<title>Utsob's Little Corner</title>
+<meta name="description" content="Notes, cover pages and printing for our batch.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Utsob's Little Corner">
+<meta property="og:title" content="Utsob's Little Corner">
+<meta property="og:description" content="Notes, cover pages and printing for our batch.">
+<meta property="og:url" content="https://utsobghosh.github.io/">
+<meta property="og:image" content="https://utsobghosh.github.io/website-preview-Image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:image" content="https://utsobghosh.github.io/website-preview-Image.png">
 <!--
   ============================================================
    EASY SETTINGS
@@ -132,8 +143,7 @@ const ASSET_FILES = {
 /* The admin PIN is set in the Google script (Code.gs), at the top: ADMIN_PIN */
 </script>
 <!-- ================= DO NOT EDIT BELOW THIS LINE ================= -->
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Utsob's Little Corner</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/docx-preview@0.3.3/dist/docx-preview.min.js"></script>
 <link rel="stylesheet" href="style.css?v=1"></head><body>
@@ -213,6 +223,6 @@ const ASSET_FILES = {
    A missing file is reported in the console and skipped. */
 window.__assetsReady.then(function(){
  ["notes-list.js","notes.js","photos-pdf.js","pdf-edit.js","docx-pdf.js"].reduce(function(p,f){return p.then(function(){return new Promise(function(done){
-  var s=document.createElement("script");s.src=f+"?v=2";s.onload=done;s.onerror=function(){console.error("Could not load "+f);done()};document.body.appendChild(s)})})},Promise.resolve())});
+  var s=document.createElement("script");s.src=f+"?v=4";s.onload=done;s.onerror=function(){console.error("Could not load "+f);done()};document.body.appendChild(s)})})},Promise.resolve())});
 </script>
 </body></html>

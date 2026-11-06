@@ -3,21 +3,21 @@
 // ONE view with collapsible files:
 //   Every page is a tile in one flat grid. Tap a file's coloured chip (above the grid) to COLLAPSE it into one thin bar
 //   (then ◀ ▶ move the whole file) or to EXPAND it again (then ◀ ▶ move single pages). Collapsed and expanded files can be mixed.
-//   ◀ ▶ always swap with the very next item: a page jumps over a collapsed file as a whole, a collapsed file jumps over one page.
+//   Moving: every page / folded file has "⤵ Move": type a page number and it is put right AFTER that page (take page 3, type 7 -> 1 2 4 5 6 7 3 8). Adding new pages: ＋ on a page, or the top button "＋ Add pages at a position…". No ◀ ▶ swap buttons (dragging still works).
 (function(){
-var PE=[],SRC=[],peDrag=-1,peUid=0,peFlash=[],peImgN=0,peAt=0,peName="file",peView=-1,peTok=0,PE_MAX=1000,peObs=null,H=[],peW=105,peRank={},peCol=0;
+var PE=[],SRC=[],peDrag=-1,peUid=0,peFlash=[],peImgN=0,peAt=0,peName="file",peView=-1,peTok=0,PE_MAX=1000,peObs=null,peRel=null,H=[],peW=105,peRank={},peCol=0;
 var COLORS=["#8a4dff","#e67e22","#16a085","#d63384","#2980b9","#b8960b","#27ae60","#c0392b"],PHOTO_COL="#7f8c8d";
 var st=document.createElement("style");
 st.textContent=".pevt{display:flex;gap:6px;margin:10px 0 4px}.pevt button{flex:1;margin:0;min-height:38px}"+
 ".peleg{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0;position:sticky;top:0;z-index:5;background:var(--panel,#fff);padding:6px 0;border-bottom:1px solid #8a4dff44;touch-action:none}.peleg .lh{flex:1 1 100%;font-size:11px;color:#777;margin:0}"+
-".peleg button{color:#fff;border:0;border-radius:9px;padding:3px 9px;font-size:12px;line-height:1.2;max-width:48%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0;min-height:30px;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}.peleg button.off{opacity:.55}.peleg button.dg{opacity:.85;z-index:9;box-shadow:0 4px 12px rgba(0,0,0,.45);position:relative}.peleg button.tg{outline:3px dashed #222;outline-offset:1px}"+
+".peleg button{color:#fff;border:0;border-radius:9px;padding:3px 9px;font-size:12px;line-height:1.2;max-width:48%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0;min-height:30px;cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}.peleg button.off{opacity:.55}.peleg button.dg{opacity:.85;z-index:9;box-shadow:0 4px 12px rgba(0,0,0,.45);position:relative}.peleg button.tg{outline:3px dashed #222;outline-offset:1px}.peleg button.cb{box-shadow:-6px 0 0 0 #ff2d87}.peleg button.ca{box-shadow:6px 0 0 0 #ff2d87}"+
 ".peg{display:grid;grid-template-columns:repeat(auto-fill,minmax(105px,1fr));gap:8px;margin:10px 0;align-items:start}"+
 ".pet{position:relative;border:1px solid #ccc;border-top:5px solid #8a4dff;border-radius:10px;padding:5px;text-align:center;background:#fff;color:#222}"+
 ".pet canvas{width:100%;height:auto;display:block;border-radius:4px;cursor:zoom-in;min-height:60px;border:1px solid #eee}"+
 ".pet.rm canvas{opacity:.25;filter:grayscale(1)}.pet.rm{border-top-color:#c0392b!important}"+
 ".pn{color:#fff;border-radius:10px;font-size:14px;font-weight:700;padding:2px 9px;cursor:pointer;box-shadow:0 1px 3px rgba(0,0,0,.4)}.pet .pn{position:absolute;top:-3px;left:-3px;z-index:1}"+
 ".pet .pcap{font-size:11px;color:#555;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}"+
-".pet .pb{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}.pet .pb button{flex:1 1 28%;margin:0;padding:4px 0;min-height:36px}.pet .pb button.m{flex:1 1 44%;font-size:16px}"+
+".pet .pb{display:flex;flex-wrap:wrap;gap:4px;margin-top:5px}.pet .pb button{flex:1 1 28%;margin:0;padding:4px 0;min-height:36px}.pet .pb button.m{flex:1 1 100%;font-size:13px;white-space:nowrap}"+
 ".peb{grid-column:1/-1;display:flex;align-items:center;gap:5px;border:1px solid #ccc;border-left:7px solid #8a4dff;border-radius:10px;padding:4px 6px;background:#fff;color:#222;cursor:grab}.peb.rm{opacity:.45}"+
 ".peb .bi{flex:1;min-width:0;line-height:1.2}.peb .bi b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14px}.peb .bi small{color:#666;font-size:11px}"+
 ".peb button{flex:none;width:36px;min-height:36px;margin:0;padding:0}"+
@@ -30,6 +30,7 @@ st.textContent=".pevt{display:flex;gap:6px;margin:10px 0 4px}.pevt button{flex:1
 ".peg.pen .pet canvas,.peg.pen .pcap{display:none}.peg.pen .pn{position:static;background:none!important;box-shadow:none;padding:0;font-size:clamp(11px,calc(var(--pew,40px)*.5),30px);line-height:1}"+
 ".peg.pen .po{position:static;background:#fff;color:#c05a00;font-size:9px;padding:0 3px;margin-top:1px;border-radius:6px;line-height:1.3}.peg.pen .po:not(.mv){display:none}"+
 ".drag{opacity:.35}.over{outline:3px dashed #8a4dff}"+
+".pet.over-a,.pet.over-b,.peb.over-a,.peb.over-b{transition:transform .15s}.pet.over-b{transform:translateX(18px);box-shadow:-9px 0 0 0 #ff2d87,-9px 0 16px 2px rgba(255,45,135,.6)}.pet.over-a{transform:translateX(-18px);box-shadow:9px 0 0 0 #ff2d87,9px 0 16px 2px rgba(255,45,135,.6)}.peb.over-b{transform:translateY(14px);box-shadow:0 -9px 0 0 #ff2d87,0 -9px 16px 2px rgba(255,45,135,.6)}.peb.over-a{transform:translateY(-14px);box-shadow:0 9px 0 0 #ff2d87,0 9px 16px 2px rgba(255,45,135,.6)}.tgarea{outline:3px dashed #ff2d87!important;outline-offset:-2px}.pehint{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:10000;background:#ff2d87;color:#fff;font-weight:700;font-size:15px;padding:8px 16px;border-radius:99px;box-shadow:0 4px 14px rgba(0,0,0,.45);pointer-events:none;max-width:92vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}"+
 "@keyframes peflash{0%{box-shadow:0 0 0 4px #8a4dff;background:#e0d2ff}100%{box-shadow:0 0 0 0 rgba(138,77,255,0)}}.flash{animation:peflash 1.5s ease-out}"+
 ".peov{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px}"+
 ".peov .st{overflow:auto;max-width:100%;max-height:78vh}.peov .st canvas,.peov .st img{max-width:100%;max-height:76vh;background:#fff;display:block;margin:auto}"+
@@ -39,7 +40,7 @@ document.head.appendChild(st);
 function isPdf(f){return /pdf/i.test(f.type||"")||/\.pdf$/i.test(f.name||"")}
 function kept(){return PE.filter(function(x){return !x.rm}).length}
 function busy(t){$("peBusy").textContent=t}
-function curRes(){return PE.length>300?140:220}   // many pages: smaller thumbnails so phones do not run out of memory
+function curRes(){return PE.length>300?120:(PE.length>100?160:200)}   // many pages: smaller thumbnails so phones do not run out of memory
 function colOf(it){return it.img?PHOTO_COL:SRC[it.s].c}
 function short(n,m){n=n||"PDF";m=m||16;return n.length>m?n.slice(0,m-1)+"…":n}
 function fname(it){return it.img?(it.img.name||"Photo"):(SRC[it.s].name||"PDF")}
@@ -58,16 +59,24 @@ async function peDraw(it,cv,w){
  var pg=await SRC[it.s].doc.getPage(it.i+1),rot=((pg.rotate||0)+(it.rot||0))%360,v0=pg.getViewport({scale:1,rotation:rot}),v=pg.getViewport({scale:w/v0.width,rotation:rot});
  cv.width=Math.round(v.width);cv.height=Math.round(v.height);
  var x=cv.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,cv.width,cv.height);
- await pg.render({canvasContext:x,viewport:v}).promise}
+ await pg.render({canvasContext:x,viewport:v}).promise;try{pg.cleanup()}catch(e){}}
+var peQ=[],peRun=0,PE_PAR=1,PE_GAP=150;   // SLOW LOADING ON PURPOSE: one page at a time, with a pause (PE_GAP = milliseconds) after each, so the page never freezes. Bigger PE_GAP = slower but smoother
+function peSlot(){return new Promise(function(r){if(peRun<PE_PAR){peRun++;r()}else peQ.push(r)})}
+function peFree(){var n=peQ.shift();if(n)n();else peRun--}
 function peRedraw(it,w){it.want=w;if(it.job)return it.job;   // one drawing job per page, always ends at the latest size/rotation
- it.job=(async function(){while(it.w!==it.want||(it.dv||0)!==(it.ver||0)){var t=it.want,v=it.ver||0;try{await peDraw(it,it.el,t)}catch(e){}it.w=t;it.dv=v}it.job=null})();return it.job}
-function peWatch(g){   // thumbnails are drawn only when they scroll into view (fast even with 300 pages)
- if(peObs)peObs.disconnect();
+ it.job=(async function(){while(it.w!==it.want||(it.dv||0)!==(it.ver||0)){var t=it.want,v=it.ver||0,far=false;await peSlot();
+  try{var r=it.el.getBoundingClientRect();far=r.bottom<-1500||r.top>window.innerHeight+1500;   // scrolled far away while waiting: skip it, it is drawn when it comes back
+   if(!far){await peDraw(it,it.el,t);it.el.style.aspectRatio=""}}catch(e){}finally{setTimeout(peFree,PE_GAP)}
+  if(far){it.job=null;return}it.w=t;it.dv=v}it.job=null})();return it.job}
+function peWatch(g){   // thumbnails are drawn only near the screen, and given back (memory) when they are far away
+ if(peObs)peObs.disconnect();if(peRel)peRel.disconnect();
  var need=function(it){return !it.job&&(it.w===undefined||(it.dv||0)!==(it.ver||0))};
  var cs=Array.prototype.filter.call(g.querySelectorAll("canvas"),function(c){return c.__it});
  if(!window.IntersectionObserver){cs.forEach(function(c){if(need(c.__it))peRedraw(c.__it,curRes())});return}
- peObs=new IntersectionObserver(function(es){es.forEach(function(e){if(!e.isIntersecting)return;var it=e.target.__it;peObs.unobserve(e.target);if(need(it))peRedraw(it,curRes())})},{rootMargin:"400px"});
- cs.forEach(function(c){peObs.observe(c)})}
+ peObs=new IntersectionObserver(function(es){es.forEach(function(e){if(!e.isIntersecting)return;var it=e.target.__it;if(need(it))peRedraw(it,curRes())})},{rootMargin:"150px"});
+ peRel=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting)return;var it=e.target.__it,c=it.el;if(!it||it.job||it.w===undefined||!c||!c.width||!c.height)return;
+  c.style.aspectRatio=c.width+"/"+c.height;c.width=0;c.height=0;it.w=undefined})},{rootMargin:"1600px"});
+ cs.forEach(function(c){peObs.observe(c);peRel.observe(c)})}
 function peRotate(k){peSnap();var it=PE[k];it.rot=((it.rot||0)+90)%360;it.ver=(it.ver||0)+1;peFlash=[it.u];peRender()}
 function peCanvas(it,k){if(!it.el){it.el=document.createElement("canvas");it.el.__it=it}it.el.onclick=function(){if(peW<92)return;peOpenView(k)};return it.el}
 
@@ -92,16 +101,30 @@ function peGoTo(start,n,v){   // move PE[start..start+n-1] so its first kept pag
  PE.splice.apply(PE,[at,0].concat(sl));peFlash=[first.u];peRender();peNote("↔ "+(n>1?"📄 "+fname(first):peOrig(first))+" moved to place "+posOf(PE.indexOf(first)))}
 function pePos(start,n){var sl=PE.slice(start,start+n),keptIn=sl.filter(function(x){return !x.rm}).length,allRm=!keptIn,tot=allRm?PE.length:kept()-keptIn+1,cur=allRm?start+1:posOf(start);
  var v=prompt("Move this "+(n>1?"file":"page")+" to which position? (1 to "+tot+")",cur);if(v===null)return;v=Math.round(+v);if(!(v>=1))return;peGoTo(start,n,Math.min(v,tot))}
+function peMoveAfter(start,n){   // "take page 3 and put it between 7 and 8": type 7 -> goes right after page 7 (numbers as they are now). 0 = very start
+ var tot=kept(),v=prompt("Move this "+(n>1?"file":"page")+" to AFTER which page?\nType that page's number (7 = between page 7 and page 8). 0 = very start. (1 to "+tot+")","");if(v===null||String(v).trim()==="")return;
+ v=Math.round(+v);if(!(v>=0))return;v=Math.min(v,tot);
+ var tg=null,c=0;if(v>0)for(var i=0;i<PE.length;i++)if(!PE[i].rm&&++c===v){tg=PE[i];break}
+ var ti=tg?PE.indexOf(tg):-1;if(tg&&ti>=start&&ti<start+n){peNote("It is already there");return}
+ peSnap();var first=PE[start],sl=PE.splice(start,n),at=tg?PE.indexOf(tg)+1:0;
+ PE.splice.apply(PE,[at,0].concat(sl));peFlash=[first.u];peRender();peNote("↔ "+(n>1?"📄 "+fname(first):peOrig(first))+" moved to place "+posOf(PE.indexOf(first))+(v?" (after page "+v+")":" (very start)"))}
+function peHint(m){var h=$("peHint");if(!h){h=document.createElement("div");h.id="peHint";h.className="pehint";document.body.appendChild(h)}h.style.display=m?"":"none";h.textContent=m}
 function peDnD(d,ui){d.setAttribute("data-un",ui);d.draggable=false}
 (function(){   // drag a page tile or a file bar onto another one to move it there. Mouse: just drag. Finger: press and HOLD a moment, then drag (a quick swipe still scrolls the page)
  var d=null,tm=null,just=0;
  function units(){return Array.prototype.slice.call($("peGrid").querySelectorAll("[data-un]"))}
- function hit(x,y,skip){var us=units(),r,best=null,bd=1e9;for(var i=0;i<us.length;i++){if(us[i]===skip)continue;r=us[i].getBoundingClientRect();if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom)return us[i];
-  var dx=Math.max(r.left-x,0,x-r.right),dy=Math.max(r.top-y,0,y-r.bottom),dd=Math.hypot(dx,dy);if(dd<bd){bd=dd;best=us[i]}}
-  return bd<=14?best:null}   // dropped in the small gap between two tiles: take the nearest one
+ function hit(x,y,skip){var rs=d.rs||[],px=x+window.scrollX,py=y+window.scrollY,best=null,bd=1e9;   // uses the positions measured when the drag started (no layout work on every move = no lag with hundreds of pages)
+ for(var i=0;i<rs.length;i++){var q=rs[i];if(q.el===skip)continue;if(px>=q.l&&px<=q.r&&py>=q.t&&py<=q.b)return q.el;
+  var dx=Math.max(q.l-px,0,px-q.r),dy=Math.max(q.t-py,0,py-q.b),dd=Math.hypot(dx,dy);if(dd<bd){bd=dd;best=q.el}}
+ return bd<=14?best:null}   // dropped in the small gap between two tiles: take the nearest one
  function place(){if(!d||!d.on)return;d.el.style.transform="translate("+(d.cx-d.x+(window.scrollX-d.sx))+"px,"+(d.cy-d.y+(window.scrollY-d.sy))+"px)";
-  var t=hit(d.cx,d.cy,d.el);if(d.t&&d.t!==t)d.t.classList.remove("over");if(t)t.classList.add("over");d.t=t}
- function start(){d.on=true;d.el.classList.add("dg2");try{d.el.setPointerCapture(d.id)}catch(x){}if(navigator.vibrate)try{navigator.vibrate(15)}catch(x){};
+  var pk=d.cx+","+d.cy+","+window.scrollX+","+window.scrollY;if(pk===d.pk)return;d.pk=pk;   // nothing moved since the last check: do nothing
+  var t=hit(d.cx,d.cy,d.el);if(d.t&&d.t!==t)d.t.classList.remove("over-a","over-b");
+  if(t){var after=+t.getAttribute("data-un")>+d.el.getAttribute("data-un");t.classList.toggle("over-a",after);t.classList.toggle("over-b",!after);   // a pink line on the side where the page will land (after = right/below, before = left/above)
+   var u=d.U[+t.getAttribute("data-un")],lab=u?(u.stack?"file “"+short(fname(u.it),18)+"”":(u.it.rm?"this removed page":"page "+posOf(u.start))):"";hint((after?"Will land AFTER ":"Will land BEFORE ")+lab)}else hint("");
+  d.t=t}
+  function hint(m){var h=$("peHint");if(!h){h=document.createElement("div");h.id="peHint";h.className="pehint";document.body.appendChild(h)}h.style.display=m?"":"none";h.textContent=m}
+ function start(){d.rs=units().map(function(el){var r=el.getBoundingClientRect();return{el:el,l:r.left+window.scrollX,r:r.right+window.scrollX,t:r.top+window.scrollY,b:r.bottom+window.scrollY}});d.U=peUnits();d.pk="";d.on=true;d.el.classList.add("dg2");try{d.el.setPointerCapture(d.id)}catch(x){}if(navigator.vibrate)try{navigator.vibrate(15)}catch(x){};
   tm=setInterval(function(){if(!d)return;if(d.cy<90)window.scrollBy(0,-14);else if(d.cy>window.innerHeight-90)window.scrollBy(0,14);place()},30)}
  function stop(){clearTimeout(d&&d.timer);clearInterval(tm);tm=null}
  document.addEventListener("pointerdown",function(e){if(d)return;var el=e.target.closest&&e.target.closest("#peGrid [data-un]");if(!el||e.target.closest("button")||(e.target.closest(".pn")&&!$("peGrid").classList.contains("pen")))return;   // in number-only mode the number fills the tile, so it must be draggable tooif(e.pointerType==="mouse"&&e.button!==0)return;
@@ -112,7 +135,7 @@ function peDnD(d,ui){d.setAttribute("data-un",ui);d.draggable=false}
   place();e.preventDefault()},{passive:false});
  document.addEventListener("touchmove",function(e){if(d&&d.on)e.preventDefault()},{passive:false});
  function end(e,cancel){if(!d||e.pointerId!==d.id)return;var o=d;stop();d=null;if(!o.on)return;
-  o.el.classList.remove("dg2");o.el.style.transform="";try{o.el.releasePointerCapture(o.id)}catch(x){}if(o.t)o.t.classList.remove("over");just=Date.now();
+  o.el.classList.remove("dg2");o.el.style.transform="";try{o.el.releasePointerCapture(o.id)}catch(x){}if(o.t)o.t.classList.remove("over-a","over-b");hint("");just=Date.now();
   if(!cancel&&o.t)peMoveUnit(+o.el.getAttribute("data-un"),+o.t.getAttribute("data-un"))}
  document.addEventListener("pointerup",function(e){end(e,false)});document.addEventListener("pointercancel",function(e){end(e,true)});
  document.addEventListener("click",function(e){if(Date.now()-just<400){e.stopPropagation();e.preventDefault()}},true);
@@ -127,7 +150,7 @@ function peTile(u,ui,N){var it=u.it,k=u.start;
  d.appendChild(peCanvas(it,k));
  var cap=document.createElement("div");cap.className="pcap";cap.textContent=(it.img?"📷 "+short(fname(it),14):short(fname(it),14)+" · p."+it.o);cap.title=fname(it)+(it.img?"":" · original page "+it.o);d.appendChild(cap);
  var r=document.createElement("div");r.className="pb";
- r.innerHTML='<button type="button" class="s m" data-ul="'+ui+'" title="Swap with the previous item"'+(ui===0?" disabled":"")+'>◀</button><button type="button" class="s m" data-ur="'+ui+'" title="Swap with the next item"'+(ui===N-1?" disabled":"")+'>▶</button><button type="button" class="s" data-ro="'+k+'" title="Rotate 90°">↻</button><button type="button" class="s" data-a="'+k+'" title="Add pages after this one">＋</button><button type="button" class="s danger" data-r="'+k+'" title="'+(it.rm?"Put this page back":"Remove this page")+'">'+(it.rm?"↩":"✕")+'</button>';
+ r.innerHTML='<button type="button" class="s m" data-mv="'+k+'" title="Move this page: type the page number it should go after">⤵ Move</button><button type="button" class="s" data-ro="'+k+'" title="Rotate 90°">↻</button><button type="button" class="s" data-a="'+k+'" title="Add new pages after this one">＋</button><button type="button" class="s danger" data-r="'+k+'" title="'+(it.rm?"Put this page back":"Remove this page")+'">'+(it.rm?"↩":"✕")+'</button>';
  d.appendChild(r);return d}
 
 // ----- a collapsed file = ONE thin bar. ◀ ▶ move the whole file -----
@@ -135,7 +158,7 @@ function peBar(u,ui,N,parts){var it=u.it,all=PE.slice(u.start,u.end+1),rm=all.ev
  os=all.map(function(x){return x.o}),lo=Math.min.apply(null,os),hi=Math.max.apply(null,os),kc=all.filter(function(x){return !x.rm}).length,p1=posOf(u.start);
  var d=document.createElement("div");d.className="peb"+(rm?" rm":"");d.style.borderLeftColor=c;d.setAttribute("data-u","g"+it.u);peDnD(d,ui);
  d.innerHTML='<button type="button" class="s" data-bo="'+ui+'" title="Show the pages of this file">▸</button><div class="bi"><b></b><small></small></div><span class="pn" title="Place in the new PDF. Tap to type a position"></span>'+
-  '<button type="button" class="s" data-ul="'+ui+'" title="Move this whole file earlier"'+(ui===0?" disabled":"")+'>◀</button><button type="button" class="s" data-ur="'+ui+'" title="Move this whole file later"'+(ui===N-1?" disabled":"")+'>▶</button><button type="button" class="s" data-ba="'+ui+'" title="Add pages after this file">＋</button><button type="button" class="s danger" data-bx="'+ui+'" title="'+(rm?"Put this file back":"Remove this whole file")+'">'+(rm?"↩":"✕")+'</button>';
+  '<button type="button" class="s" data-bm="'+ui+'" title="Move this whole file: type the page number it should go after">⤵</button><button type="button" class="s" data-ba="'+ui+'" title="Add pages after this file">＋</button><button type="button" class="s danger" data-bx="'+ui+'" title="'+(rm?"Put this file back":"Remove this whole file")+'">'+(rm?"↩":"✕")+'</button>';
  d.querySelector("b").textContent="📄 "+fname(it);
  d.querySelector("small").textContent=all.length+" page"+(all.length>1?"s":"")+" · original p."+(lo===hi?lo:lo+"-"+hi)+(parts>1?" · part":"")+(rm?" · removed":"");
  var n=d.querySelector(".pn");n.style.background=rm?"#c0392b":c;n.textContent=rm?"✕":"→"+p1+(kc>1?"–"+(p1+kc-1):"");n.onclick=function(e){e.stopPropagation();pePos(u.start,u.n)};
@@ -152,19 +175,27 @@ function peMoveEnt(i,j){var E=peEnts(),a=E[i],b=E[j];if(!a||!b||i===j)return;
  peFlash=[first.u];peRender();var nm=function(e){return e.img?"📷"+e.items[0].o:fname(e.items[0])};
  peNote("↔ "+nm(a)+" moved "+(Math.abs(i-j)===1?"(swapped with "+nm(b)+")":"to file place "+(j+1)))}
 function peLegend(){var E=peEnts(),h='<p class="lh">Drag a file to swap it with another · tap it to fold / unfold its pages</p>';
- E.forEach(function(e,i){if(e.img){h+='<button type="button" data-ei="'+i+'" style="background:'+PHOTO_COL+'" title="Drag to move this photo">'+(i+1)+' 📷'+e.items[0].o+'</button>';return}
-  var s=SRC[e.s];h+='<button type="button" data-ei="'+i+'" data-lg="'+e.s+'" class="'+(s.col?"off":"")+'" style="background:'+s.c+'" title="Drag to swap files. Tap to '+(s.col?"unfold":"fold")+' its pages">'+(i+1)+' '+(s.col?"▸":"▾")+' '+short(s.name,14).replace(/[<>&]/g,"")+' ('+e.items.length+')</button>'});
+ E.forEach(function(e,i){if(e.img){h+='<button type="button" data-ei="'+i+'" data-ck="i'+e.items[0].u+'" style="background:'+PHOTO_COL+'" title="Drag to move this photo">'+(i+1)+' 📷'+e.items[0].o+'</button>';return}
+  var s=SRC[e.s];h+='<button type="button" data-ei="'+i+'" data-ck="s'+e.s+'" data-lg="'+e.s+'" class="'+(s.col?"off":"")+'" style="background:'+s.c+'" title="Drag to swap files. Tap to '+(s.col?"unfold":"fold")+' its pages">'+(i+1)+' '+(s.col?"▸":"▾")+' '+short(s.name,14).replace(/[<>&]/g,"")+' ('+e.items.length+')</button>'});
  return h}
 (function(){   // pointer drag (works with finger and mouse)
  var d=null;
+ function clearMk(){Array.prototype.forEach.call($("peGrid").querySelectorAll(".tgarea,.over-a,.over-b"),function(el){el.classList.remove("tgarea","over-a","over-b")});Array.prototype.forEach.call($("peLeg").querySelectorAll(".tg,.ca,.cb"),function(el){el.classList.remove("tg","ca","cb")})}
+ function mark(t){clearMk();if(!t){peHint("");return}   // the AREA of the file you hover is outlined in the grid, with a pink line where your file will land
+  var E=peEnts(),ti=+t.getAttribute("data-ei"),di=+d.b.getAttribute("data-ei"),e=E[ti];if(!e)return;
+  var ids={};e.items.forEach(function(x){ids["t"+x.u]=1;ids["g"+x.u]=1});
+  var els=Array.prototype.filter.call($("peGrid").querySelectorAll("[data-u]"),function(el){return ids[el.getAttribute("data-u")]}),after=ti>di;
+  t.classList.add("tg",after?"ca":"cb");   // the chip too: dashed outline + pink line on the side where yours lands
+  els.forEach(function(el){el.classList.add("tgarea")});if(els.length)els[after?els.length-1:0].classList.add(after?"over-a":"over-b");
+  peHint("Will land "+(after?"AFTER ":"BEFORE ")+(e.img?"photo "+(ti+1):"file “"+short(SRC[e.s].name,18)+"”"))}
  function hit(x,y,skip){var bs=$("peLeg").querySelectorAll("[data-ei]"),r;for(var i=0;i<bs.length;i++){if(bs[i]===skip)continue;r=bs[i].getBoundingClientRect();if(x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom)return bs[i]}return null}
  document.addEventListener("pointerdown",function(e){var b=e.target.closest&&e.target.closest("#peLeg [data-ei]");if(!b)return;d={b:b,x:e.clientX,y:e.clientY,mv:false,id:e.pointerId,t:null};try{b.setPointerCapture(e.pointerId)}catch(x){}});
  document.addEventListener("pointermove",function(e){if(!d||e.pointerId!==d.id)return;var dx=e.clientX-d.x,dy=e.clientY-d.y;
   if(!d.mv){if(Math.hypot(dx,dy)<8)return;d.mv=true;d.b.classList.add("dg")}
   d.b.style.transform="translate("+dx+"px,"+dy+"px)";var t=hit(e.clientX,e.clientY,d.b);
-  if(d.t&&d.t!==t)d.t.classList.remove("tg");if(t)t.classList.add("tg");d.t=t;e.preventDefault()},{passive:false});
+  if(t!==d.t)mark(t);d.t=t;e.preventDefault()},{passive:false});
  function end(e,cancel){if(!d||e.pointerId!==d.id)return;var o=d;d=null;try{o.b.releasePointerCapture(e.pointerId)}catch(x){}
-  if(o.t)o.t.classList.remove("tg");o.b.classList.remove("dg");o.b.style.transform="";
+  clearMk();peHint("");o.b.classList.remove("dg");o.b.style.transform="";
   if(cancel)return;
   if(!o.mv){var lg=o.b.getAttribute("data-lg");if(lg!==null){SRC[+lg].col=!SRC[+lg].col;peRender()}return}
   if(o.t)peMoveEnt(+o.b.getAttribute("data-ei"),+o.t.getAttribute("data-ei"))}
@@ -173,17 +204,19 @@ function peLegend(){var E=peEnts(),h='<p class="lh">Drag a file to swap it with 
 function peRender(){
  var old={},fl=peFlash;peFlash=[];Array.prototype.forEach.call(document.querySelectorAll("#peGrid [data-u]"),function(e){old[e.getAttribute("data-u")]=e.getBoundingClientRect()});
  $("pePick").classList.toggle("hidden",!!PE.length);$("peBody").classList.toggle("hidden",!PE.length);$("peOk").classList.add("hidden");
+ var oc={};Array.prototype.forEach.call($("peLeg").querySelectorAll("[data-ck]"),function(b){oc[b.getAttribute("data-ck")]=b.getBoundingClientRect()});
  $("peLeg").innerHTML=peLegend();
+ Array.prototype.forEach.call($("peLeg").querySelectorAll("[data-ck]"),function(b){var o=oc[b.getAttribute("data-ck")];if(!o||!b.animate)return;var n=b.getBoundingClientRect(),dx=o.left-n.left,dy=o.top-n.top;if(dx||dy)b.animate([{transform:"translate("+dx+"px,"+dy+"px)"},{transform:"none"}],{duration:320,easing:"ease"})});   // the file chips slide to their new place too
  peRank={};PE.slice().sort(function(a,b){return a.og-b.og}).forEach(function(it,i){peRank[it.u]=i+1});
  $("peUn").disabled=!H.length;
  var g=$("peGrid");g.innerHTML="";g.className="peg"+(peW<92?" pes":"")+(peW<56?" pen":"");g.style.setProperty("--pew",peW+"px");$("peZ").value=peW;
  var U=peUnits(),parts={};U.forEach(function(u){if(u.stack)parts[u.it.s]=(parts[u.it.s]||0)+1});
  U.forEach(function(u,ui){g.appendChild(u.stack?peBar(u,ui,U.length,parts[u.it.s]):peTile(u,ui,U.length))});
  var k2=kept(),rm=PE.length-k2,nf=SRC.length+PE.filter(function(x){return x.img}).length;
- $("peInfo").textContent=!PE.length?"":k2+" page"+(k2===1?"":"s")+" will be in your PDF"+(rm?" ("+rm+" removed)":"")+". Top bar: drag a file chip onto another to swap whole files, tap a chip to fold/unfold its pages. Drag any page (on a phone: press and hold, then drag) onto another page to put it there. ◀ ▶ swap with the next item, also across files. Tap a number to type a position. Orange “was N” = the page was moved from place N (↩ Undo (or Ctrl+Z) or ⟲ Original order brings it back). ↻ rotates, ✕ removes, ＋ adds pages after it.";
+ $("peInfo").textContent=!PE.length?"":k2+" page"+(k2===1?"":"s")+" will be in your PDF"+(rm?" ("+rm+" removed)":"")+". Top bar: drag a file chip onto another to swap whole files, tap a chip to fold/unfold its pages. Drag any page (on a phone: press and hold, then drag) onto another page to put it there. ⤵ Move: type the page number to put it after (page 3 → type 7 puts it between 7 and 8). ＋ adds new pages after a page, or use the top button to add at a position. Tap a number to type its final position instead. Orange “was N” = the page was moved from place N (↩ Undo (or Ctrl+Z) or ⟲ Original order brings it back). ↻ rotates, ✕ removes.";
  $("peDl").disabled=$("pePrint").disabled=!k2;
- Array.prototype.forEach.call(g.querySelectorAll("[data-u]"),function(e){var u=e.getAttribute("data-u"),o=old[u];   // slide every tile from its old place to the new one, and flash the ones that were moved
-  if(o){var n=e.getBoundingClientRect(),dx=o.left-n.left,dy=o.top-n.top;if((dx||dy)&&e.animate)e.animate([{transform:"translate("+dx+"px,"+dy+"px)"},{transform:"none"}],{duration:350,easing:"ease"})}
+ var an=0;Array.prototype.forEach.call(g.querySelectorAll("[data-u]"),function(e){var u=e.getAttribute("data-u"),o=old[u];   // slide every tile from its old place to the new one, and flash the ones that were moved
+  if(o){var n=e.getBoundingClientRect(),dx=o.left-n.left,dy=o.top-n.top;if((dx||dy)&&e.animate&&n.bottom>-80&&n.top<window.innerHeight+80&&an++<50)e.animate([{transform:"translate("+dx+"px,"+dy+"px)"},{transform:"none"}],{duration:350,easing:"ease"})}   // only tiles you can see are animated (hundreds of animations = lag)
   if(fl.indexOf(+u.slice(1))>=0)e.classList.add("flash")});
  var fe=g.querySelector(".flash");if(fe&&fe.scrollIntoView)setTimeout(function(){fe.scrollIntoView({block:"nearest",behavior:"smooth"})},60);
  peWatch(g)}
@@ -201,7 +234,7 @@ async function peInsert(fs,at){
  var cut=false;if(PE.length+add.length>PE_MAX){add=add.slice(0,Math.max(0,PE_MAX-PE.length));cut=true}
  peSnap();var prev=at>0?PE[at-1].og:0,nxt=Infinity;PE.forEach(function(x){if(x.og>prev&&x.og<nxt)nxt=x.og});if(nxt===Infinity)nxt=prev+1;
  add.forEach(function(x,i){x.og=prev+(nxt-prev)*(i+1)/(add.length+1)});   // original place of a new page = right after the page it was inserted behind
- PE.splice.apply(PE,[at,0].concat(add));busy("");peRender();
+ PE.splice.apply(PE,[at,0].concat(add));busy("");peFlash=add.map(function(x){return x.u});peRender();if(add.length)peNote("＋ Added "+add.length+" page"+(add.length>1?"s":"")+" at place "+posOf(at));
  if(bad.length)say("errPe","Could not use: "+bad.join(", ")+". Only PDF files and photos work here (a PDF locked with a password cannot be opened).");
  else if(cut)say("errPe","Only "+PE_MAX+" pages fit. Extra pages were not added.")}
 function peReset(){H=[];PE.forEach(function(x){if(x.url)URL.revokeObjectURL(x.url)});PE=[];SRC=[];peImgN=0;peCol=0}
@@ -245,7 +278,9 @@ async function peBuild(){
  return new File([await out.save()],peName+"-edited.pdf",{type:"application/pdf"})}
 
 // ----- buttons -----
-$("peGrid").insertAdjacentHTML("beforebegin",'<div class="pevt"><button type="button" class="s" id="peUn" disabled>↩ Undo</button><button type="button" class="s" id="peOg">⟲ Original order</button></div><div class="pevt"><button type="button" class="s" id="peCA">▸ Fold all files</button><button type="button" class="s" id="peEA">▾ Unfold all files</button></div><div class="pesz"><span>🔍</span><input type="range" id="peZ" min="24" max="200" value="105" aria-label="Page size"><button type="button" class="s" id="peFit">Fit all on screen</button></div><div class="peleg" id="peLeg"></div>');
+$("peGrid").insertAdjacentHTML("beforebegin",'<div class="pevt"><button type="button" class="p" id="peAtPos">＋ Add pages at a position…</button></div><div class="pevt"><button type="button" class="s" id="peUn" disabled>↩ Undo</button><button type="button" class="s" id="peOg">⟲ Original order</button></div><div class="pevt"><button type="button" class="s" id="peCA">▸ Fold all files</button><button type="button" class="s" id="peEA">▾ Unfold all files</button></div><div class="pesz"><span>🔍</span><input type="range" id="peZ" min="24" max="200" value="105" aria-label="Page size"><button type="button" class="s" id="peFit">Fit all on screen</button></div><div class="peleg" id="peLeg"></div>');
+function peIdxOfPos(v){var c=0;for(var i=0;i<PE.length;i++)if(!PE[i].rm&&++c===v)return i;return PE.length}   // place v of the new PDF -> index in the list
+$("peAtPos").onclick=function(){var tot=kept()+1,v=prompt("New pages will become page number…  (1 = at the very start, "+tot+" = at the end)",tot);if(v===null)return;v=Math.round(+v);if(!(v>=1))return;peAt=peIdxOfPos(Math.min(v,tot));$("peIns").click()};
 $("peUn").onclick=peUndo;$("peOg").onclick=peOriginal;
 $("peZ").oninput=function(){peW=+this.value;var g=$("peGrid");g.style.setProperty("--pew",peW+"px");var was=g.classList.contains("pen");g.classList.toggle("pes",peW<92);g.classList.toggle("pen",peW<56);if(was&&peW>=56)peWatch(g)};   // number-only tiles have no thumbnail, so draw them when they come back
 $("peFit").onclick=function(){var g=$("peGrid"),W=g.clientWidth||320,U=peUnits(),t=U.filter(function(u){return !u.stack}).length,b=U.length-t,Hh=Math.max(240,window.innerHeight-200),pick=24;
@@ -259,8 +294,8 @@ $("peFile").onchange=function(){var fs=Array.prototype.slice.call(this.files);th
 $("peIns").onchange=function(){var fs=Array.prototype.slice.call(this.files);this.value="";peInsert(fs,peAt)};
 $("peGrid").addEventListener("click",function(e){var t=e.target.closest("button");if(!t)return;
  var g=function(n){var v=t.getAttribute(n);return v===null?null:+v};
- if(g("data-ul")!==null)peMoveUnit(g("data-ul"),g("data-ul")-1);
- else if(g("data-ur")!==null)peMoveUnit(g("data-ur"),g("data-ur")+1);
+ if(g("data-mv")!==null)peMoveAfter(g("data-mv"),1)
+ else if(g("data-bm")!==null){var u4=peUnits()[g("data-bm")];if(u4)peMoveAfter(u4.start,u4.n)}
  else if(g("data-bo")!==null){var u=peUnits()[g("data-bo")];if(u){SRC[u.it.s].col=false;peFlash=[u.it.u];peRender()}}
  else if(g("data-bx")!==null){var u2=peUnits()[g("data-bx")];if(u2){peSnap();var all=PE.slice(u2.start,u2.end+1),to=!all.every(function(x){return x.rm});all.forEach(function(x){x.rm=to});peRender()}}
  else if(g("data-ba")!==null){var u3=peUnits()[g("data-ba")];if(u3){peAt=u3.end+1;$("peIns").click()}}
@@ -291,4 +326,14 @@ var _s=show;show=function(ids){_s(ids);$("se").classList.toggle("hidden",ids.ind
 window.peDrop=async function(fs){
  if(!PE.length){var f=fs.filter(function(x){return isPdf(x)||isImgFile(x)});if(f.length)return peOpenFile(f);say("errPe","Drop a PDF file first.");return}
  await peInsert(fs,PE.length)};
+// paste (Ctrl+V / long-press > Paste): on the Edit a PDF page, an image or PDF/photo file from the clipboard is added like a dropped file
+//   (first paste opens it, later pastes add pages at the end). Works for screenshots (Win+Shift+S), copied pictures and files copied in File Explorer.
+window.addEventListener("paste",async function(e){
+ var se=$("se");if(!se||se.classList.contains("hidden"))return;
+ var cd=e.clipboardData;if(!cd)return;var fs=[];
+ if(cd.files&&cd.files.length)fs=Array.prototype.slice.call(cd.files);
+ else if(cd.items)Array.prototype.forEach.call(cd.items,function(it){if(it.kind==="file"){var f=it.getAsFile();if(f)fs.push(f)}});
+ fs=fs.filter(function(x){return isPdf(x)||isImgFile(x)});if(!fs.length)return;
+ e.preventDefault();var n=0;fs=fs.map(function(f){if(f.name&&!/^image\.\w+$/i.test(f.name))return f;n++;var ext=((f.type||"image/png").split("/")[1]||"png").replace("jpeg","jpg");return new File([f],"Pasted image "+(Date.now()%100000)+"-"+n+"."+ext,{type:f.type||"image/png"})});
+ await window.peDrop(fs)});
 })();
