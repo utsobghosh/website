@@ -144,7 +144,8 @@ const ASSET_FILES = {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/docx-preview@0.3.3/dist/docx-preview.min.js"></script>
-<link rel="stylesheet" href="style.css?v=1"></head><body>
+<link rel="stylesheet" href="style.css?v=1"><script>/* paint the saved theme immediately (no colour flash on load) */try{var v=JSON.parse(localStorage.getItem("themeVars")||"null");if(v&&v._d===(matchMedia("(prefers-color-scheme: dark)").matches?1:0))for(var n in v)if(n[0]==="-")document.documentElement.style.setProperty(n,v[n])}catch(e){}</script>
+</head><body>
 <div id="warn" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="warnT">
  <div class="mbox"><div class="micon">⚠️</div><h3 id="warnT"></h3><p id="warnMsg"></p>
   <button class="p wide" id="warnYes"></button>
