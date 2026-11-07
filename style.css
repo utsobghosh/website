@@ -264,3 +264,9 @@ img,canvas,video,svg{max-width:100%}
  h1{font-size:18px}.sub{margin-bottom:8px}
  .card{padding:10px;margin-bottom:8px}
 }
+
+/* ---- lighter effects (same on every device): same look, cheaper to draw ---- */
+.card,.modal,.imgview{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+body::before,body::after{will-change:transform}
+.big,.nbtn{animation-timing-function:steps(10,end)!important}
+.kprop{filter:none!important;text-shadow:0 2px 3px rgba(0,0,0,.25)}
