@@ -150,11 +150,11 @@ function viewer(){if(vOv)return vOv;vOv=document.createElement("div");vOv.classN
  /* pinch: while two fingers are down the page is moved/scaled with a GPU transform (smooth, follows your fingers: zoom + two-finger drag); real size is applied once when you lift */
  function pzDraw(){var p=pz;if(!p)return;p.raf=0;p.i.style.transform="translate("+(p.cx-p.h.left-p.s*(p.mx-p.h.left))+"px,"+(p.cy-p.h.top-p.s*(p.my-p.h.top))+"px) scale("+p.s+")"}
  function pzEnd(e){var p=pz;if(!p||(e.touches&&e.touches.length>=2))return;pz=null;if(p.raf)cancelAnimationFrame(p.raf);var i=p.i,fx=(p.mx-p.h.left)/p.h.width,fy=(p.my-p.h.top)/p.h.height;
-  i.style.transform="";i.style.willChange="";vb.style.overflow="";
+  i.style.transform="";i.style.willChange="";vb.style.overflow="";vb.__pin=0;if(vb.__sc)vb.__sc();
   vZ=Math.max(.3,Math.min(3,p.z*p.s));i.style.setProperty("--z",vZ);var n=i.getBoundingClientRect();
   vb.scrollLeft+=n.left+fx*n.width-p.cx;vb.scrollTop+=n.top+fy*n.height-p.cy}
  vb.addEventListener("touchstart",function(e){if(e.touches.length!==2||pz)return;var i=$("nvI");if(!i)return;var t=e.touches,mx=(t[0].clientX+t[1].clientX)/2,my=(t[0].clientY+t[1].clientY)/2;
-  pz={i:i,d:dist(t),z:vZ,s:1,mx:mx,my:my,cx:mx,cy:my,h:i.getBoundingClientRect(),raf:0};vb.style.overflow="hidden";i.style.transformOrigin="0 0";i.style.willChange="transform"},{passive:true});   // overflow hidden = the browser can't scroll by itself while you pinch
+  pz={i:i,d:dist(t),z:vZ,s:1,mx:mx,my:my,cx:mx,cy:my,h:i.getBoundingClientRect(),raf:0};vb.__pin=1;document.querySelectorAll("#nvI .nvp").forEach(function(d){if(d.__task){try{d.__task.cancel()}catch(x){}}});vb.style.overflow="hidden";i.style.transformOrigin="0 0";i.style.willChange="transform"},{passive:true});   // overflow hidden = the browser can't scroll by itself while you pinch
  vb.addEventListener("touchmove",function(e){if(!pz||e.touches.length!==2)return;e.preventDefault();var t=e.touches;
   pz.s=Math.max(.3/pz.z,Math.min(3/pz.z,dist(t)/pz.d));pz.cx=(t[0].clientX+t[1].clientX)/2;pz.cy=(t[0].clientY+t[1].clientY)/2;if(!pz.raf)pz.raf=requestAnimationFrame(pzDraw)},{passive:false});
  vb.addEventListener("touchend",pzEnd);vb.addEventListener("touchcancel",pzEnd);
@@ -167,22 +167,22 @@ function viewer(){if(vOv)return vOv;vOv=document.createElement("div");vOv.classN
  return vOv}
 var vIO=null,vDoc=null;
 var stP=document.createElement("style");stP.textContent=".nvth{filter:none}.nvth.on{animation:none}.nvbe{animation:none}.nvbe.hop{animation:nvbh .6s ease}.nvb{overflow-anchor:none}.nvp{margin:0 0 .5%}";document.head.appendChild(stP);   /* lighter: no always-running animations / shadows */
-function undraw(d){d.__want=0;if(d.__task){try{d.__task.cancel()}catch(e){}d.__task=null}var c=d.querySelector("canvas");if(c){c.width=c.height=0}d.textContent="";d.__done=0}   /* frees the page picture (memory) when it is far from the screen */
-async function drawPg(doc,d,cw,my){var pg=await doc.getPage(+d.getAttribute("data-n"));if(my!==vTok||!d.__want)return;
- var v0=pg.getViewport({scale:1}),v=pg.getViewport({scale:Math.min(cw*Math.min(window.devicePixelRatio||1,2)*1.4,1500)/v0.width}),c=document.createElement("canvas");
+function undraw(d){d.__want=0;if(d.__task){try{d.__task.cancel()}catch(e){}d.__task=null}var c=d.querySelector("canvas");if(c){c.width=c.height=0}d.textContent="";d.__done=0;d.__lo=0;d.__links=0}   /* frees the page picture (memory) when it is far from the screen */
+async function drawPg(doc,d,cw,my,hi){var pg=await doc.getPage(+d.getAttribute("data-n"));if(my!==vTok||!d.__want)return;
+ var v0=pg.getViewport({scale:1}),v=pg.getViewport({scale:Math.min(cw*Math.min(window.devicePixelRatio||1,2)*(hi?1.4:.6),1500)/v0.width}),c=document.createElement("canvas");   // hi=false: quick small picture while scrolling; hi=true: sharp picture once scrolling stops
  c.width=Math.round(v.width);c.height=Math.round(v.height);var x=c.getContext("2d",{alpha:false});x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);
  var t=pg.render({canvasContext:x,viewport:v});d.__task=t;
  try{await t.promise}catch(er){c.width=c.height=0;return}
  d.__task=null;if(my!==vTok||!d.__want){c.width=c.height=0;return}
- d.appendChild(c);d.__done=1;
- try{var an=await pg.getAnnotations();if(my!==vTok||!d.__want)return;   // clickable links of the PDF: laid over the picture
+ var old=d.querySelector("canvas");d.appendChild(c);if(old){old.width=old.height=0;old.remove()}d.__done=1;d.__lo=hi?0:1;
+ if(!d.__links){d.__links=1;try{var an=await pg.getAnnotations();if(my!==vTok||!d.__want)return;   // clickable links of the PDF: laid over the picture
   an.forEach(function(a){if(a.subtype!=="Link"||!a.rect)return;
    var r=v0.convertToViewportRectangle(a.rect),l=document.createElement("a");l.className="nvl";
    l.style.cssText="left:"+Math.min(r[0],r[2])/v0.width*100+"%;top:"+Math.min(r[1],r[3])/v0.height*100+"%;width:"+Math.abs(r[2]-r[0])/v0.width*100+"%;height:"+Math.abs(r[3]-r[1])/v0.height*100+"%";
    if(a.url&&/^(https?:|mailto:)/i.test(a.url)){l.href=a.url;l.target="_blank";l.rel="noopener noreferrer"}
    else if(a.dest){l.href="#";l.onclick=function(e){e.preventDefault();goDest(doc,a.dest,d.parentNode)}}
    else return;
-   d.appendChild(l)})}catch(er){}
+   d.appendChild(l)})}catch(er){}}
  try{pg.cleanup()}catch(er){}}
 async function goDest(doc,dest,host){try{if(typeof dest==="string")dest=await doc.getDestination(dest);if(!dest)return;
  var i=(dest[0]&&typeof dest[0]==="object")?await doc.getPageIndex(dest[0]):dest[0],t=host.children[i];if(t)t.scrollIntoView({block:"start"})}catch(e){}}
@@ -193,7 +193,7 @@ function setupNav(b,host,N){var nav=$("nvNav"),pg=$("nvPg"),tr=$("nvTr"),th=$("n
  function upd(){raf=0;var max=b.scrollHeight-b.clientHeight;tr.style.top=b.offsetTop+"px";tr.style.height=b.clientHeight+"px";
   th.style.display=max>0?"":"none";th.style.top=Math.round((max>0?b.scrollTop/max:0)*Math.max(0,b.clientHeight-TH))+"px";pg.textContent=pageNow()+" / "+N}
  function poke(){if(!th.classList.contains("on"))th.classList.add("on");clearTimeout(hideT);hideT=setTimeout(function(){if(!drag)th.classList.remove("on")},1400)}
- b.onscroll=function(){if(!raf)raf=requestAnimationFrame(upd);poke()};
+ b.onscroll=function(){if(!raf)raf=requestAnimationFrame(upd);poke();if(b.__sc)b.__sc()};
  if(vRO)vRO.disconnect();vRO=new ResizeObserver(function(){if(!raf)raf=requestAnimationFrame(upd)});vRO.observe(host);vRO.observe(b);
  th.onpointerdown=function(e){drag=true;th.setPointerCapture(e.pointerId);th.classList.add("on");pg.classList.add("nvbig");e.preventDefault()};
  th.onpointermove=function(e){if(!drag)return;var r=tr.getBoundingClientRect(),f=(e.clientY-r.top-TH/2)/Math.max(1,r.height-TH);f=Math.max(0,Math.min(1,f));b.scrollTop=f*(b.scrollHeight-b.clientHeight)};
@@ -223,15 +223,18 @@ async function openV(path,name){budSeen={};clearTimeout(budT);
   var p1=await doc.getPage(1),v1=p1.getViewport({scale:1}),cw=b.clientWidth||360;
   b.innerHTML='<div class="nvi" id="nvI"></div>';var host=$("nvI");vZ=Math.min(1,900/cw);host.style.setProperty("--z",vZ);
   if(vIO)vIO.disconnect();if(vDoc&&vDoc!==doc){try{vDoc.destroy()}catch(er){}}vDoc=doc;
-  var want=[],busy=false,tm=0,lastTop=b.scrollTop,dir=1;
-  function pump(){tm=0;if(busy||my!==vTok)return;var br=b.getBoundingClientRect(),cy=br.top+br.height/2,best=null,bd=1e9;if(b.scrollTop!==lastTop){dir=b.scrollTop>lastTop?1:-1;lastTop=b.scrollTop}
-   want.forEach(function(e){if(e.__done||e.__rend)return;var r=e.getBoundingClientRect(),dd=r.top+r.height/2-cy,dd=(dd*dir>=0?dd*dir:-dd*dir*1.8);if(dd<bd){bd=dd;best=e}});
+  var want=[],busy=false,tm=0,lastTop=b.scrollTop,dir=1,lastSc=0;
+  function pump(){clearTimeout(tm);tm=0;if(busy||my!==vTok||b.__pin)return;var br=b.getBoundingClientRect(),cy=br.top+br.height/2,idle=Date.now()-lastSc>=130,best=null,bd=1e9,miss=false;
+   if(b.scrollTop!==lastTop){dir=b.scrollTop>lastTop?1:-1;lastTop=b.scrollTop}
+   want.forEach(function(e){if(e.__rend)return;var m=!e.__done;if(!m&&!(idle&&e.__lo))return;if(miss&&!m)return;   // 1) pages with no picture yet, 2) when scrolling has stopped: make quick pictures sharp
+    var r=e.getBoundingClientRect(),dd=r.top+r.height/2-cy;dd=(dd*dir>=0?dd*dir:-dd*dir*1.8);   // on screen first, then ahead in scroll direction, then behind
+    if(m&&!miss){miss=true;bd=1e9}if(dd<bd){bd=dd;best=e}});
    if(!best)return;busy=true;best.__rend=1;
-   drawPg(doc,best,cw,my).catch(function(){}).then(function(){best.__rend=0;busy=false;if(my===vTok)pump()})}
-  function kick(){clearTimeout(tm);tm=setTimeout(pump,60)}   // draws only when scrolling slows down
+   drawPg(doc,best,cw,my,idle).catch(function(){}).then(function(){best.__rend=0;busy=false;if(my===vTok)pump()})}
+  b.__sc=function(){lastSc=Date.now();clearTimeout(tm);tm=setTimeout(pump,150)};   // scrolling stopped -> sharpen
   var io=vIO=new IntersectionObserver(function(es){es.forEach(function(e){var d=e.target;
    if(e.isIntersecting){if(!d.__want){d.__want=1;want.push(d)}}
-   else if(d.__want){want=want.filter(function(x){return x!==d});undraw(d)}});kick()},{root:b,rootMargin:"100% 0px"});
+   else if(d.__want){want=want.filter(function(x){return x!==d});undraw(d)}});pump()},{root:b,rootMargin:"200% 0px"});
   for(var i=1;i<=doc.numPages;i++){var d=document.createElement("div");d.className="nvp";d.setAttribute("data-n",i);d.style.aspectRatio=v1.width+" / "+v1.height;host.appendChild(d);io.observe(d)}
   (async function(){var ch=host.children;   // every page gets its REAL size (page 1 may differ); pages above the screen keep your place
    for(var i=2;i<=doc.numPages;i++){if(my!==vTok)return;
