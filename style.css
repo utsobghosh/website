@@ -242,3 +242,25 @@ a.lnkbtn{display:inline-block;text-decoration:none;color:var(--text);padding:10p
 
 /* topic list in the PDF viewer is hidden; delete this line to show it again */
 .nvinfo{display:none !important}
+
+/* ---- mobile friendly (added last so it wins) ---- */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+button,.opt,.dz,.nsylb,.ncat{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+img,canvas,video,svg{max-width:100%}
+.wrap{padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right))}
+@media (max-width:640px){
+ .wrap{padding:12px max(10px,env(safe-area-inset-left)) calc(48px + env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-right))}
+ .card{padding:12px;border-radius:16px}
+ h1{font-size:20px}
+ button.p,button.s,.opt{min-height:44px}
+ .frow{gap:6px}.frow>button{flex:1 1 140px}
+ .nsylrow{gap:6px}.nsylb{min-height:40px}
+ .ncat{min-height:44px}
+ .nchips button,.ntabs button{min-height:38px}
+ .nvh{flex-wrap:wrap}
+}
+@media (orientation:landscape) and (max-height:500px){
+ .wrap{padding-top:8px;padding-bottom:32px}
+ h1{font-size:18px}.sub{margin-bottom:8px}
+ .card{padding:10px;margin-bottom:8px}
+}

@@ -143,16 +143,16 @@ window.NOTES_INFO=[
  ]},
  {keys:["dsa"],tab:"cx",title:"Time complexity",note:"Worst case. BST: average and worst. n = items, k = range, V = vertices, E = edges.",table:[
   ["Linear search","O(n)"],
-  ["Binary search","O(log n)"],
+  ["Binary search","O(log₂ n)"],
   ["Bubble / insertion / selection sort","O(n²)"],
   ["Counting sort","O(n + k)"],
-  ["Heap sort","O(n log n)"],
+  ["Heap sort","O(n log₂ n)"],
   ["Stack, queue","O(1)"],
   ["Linked list search","O(n)"],
-  ["Heap insert / delete","O(log n)"],
-  ["BST search / insert / delete","Average: O(log n), Worst: O(n)"],
-  ["BST sort","Average: O(n log n), Worst: O(n²)"],
-  ["Huffman","O(n log n)"],
+  ["Heap insert / delete","O(log₂ n)"],
+  ["BST search / insert / delete","Average: O(log₂ n), Worst: O(n)"],
+  ["BST sort (inorder traversal)","Average: O(n log₂ n), Worst: O(n²)"],
+  ["Huffman","O(n log₂ n)"],
   ["BFS, DFS","O(V + E)"]
  ]}
 ];
