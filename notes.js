@@ -141,10 +141,10 @@ function viewer(){if(vOv)return vOv;vOv=document.createElement("div");vOv.classN
  vOv.insertAdjacentHTML("beforeend",'<div class="nvbud"><span class="nvbe" id="nvBe">🧸</span><span class="nvbm" id="nvBm"></span></div>');
  vOv.querySelector("#nvBe").onclick=function(){budSay((window.bearPick&&window.bearPick("study"))||BUD_MSG[Math.floor(Math.random()*BUD_MSG.length)],1)};
  document.body.appendChild(vOv);
- $("nvX").onclick=function(){try{if(document.fullscreenElement)document.exitFullscreen().catch(function(){})}catch(x){}$("nvNav").style.display="none";$("nvInfo").className="nvinfo hidden";vTok++;document.documentElement.style.overflow="";vOv.classList.add("hidden");$("nvB").innerHTML=""};
+ $("nvX").onclick=function(){try{if(document.fullscreenElement)document.exitFullscreen().catch(function(){})}catch(x){}$("nvNav").style.display="none";$("nvInfo").className="nvinfo hidden";vTok++;if(vIO)vIO.disconnect();document.documentElement.style.overflow="";vOv.classList.add("hidden");$("nvB").innerHTML=""};
  var vb=$("nvB"),pz=null;budWatch(vb);
- function zoomTo(z,mx,my){var i=$("nvI");if(!i)return;var fx=(vb.scrollLeft+mx)/vb.scrollWidth,fy=(vb.scrollTop+my)/vb.scrollHeight;
-  vZ=Math.max(.3,Math.min(3,z));i.style.setProperty("--z",vZ);vb.scrollLeft=fx*vb.scrollWidth-mx;vb.scrollTop=fy*vb.scrollHeight-my}
+ function zoomTo(z,mx,my){var i=$("nvI");if(!i)return;var br=vb.getBoundingClientRect(),cx=br.left+mx,cy=br.top+my,h=i.getBoundingClientRect(),fx=(cx-h.left)/h.width,fy=(cy-h.top)/h.height;   // the point under your fingers stays under your fingers
+  vZ=Math.max(.3,Math.min(3,z));i.style.setProperty("--z",vZ);var n=i.getBoundingClientRect();vb.scrollLeft+=n.left+fx*n.width-cx;vb.scrollTop+=n.top+fy*n.height-cy}
  function zoom(f){zoomTo(vZ*f,vb.clientWidth/2,vb.clientHeight/2)}   // keeps the middle of the screen in place
  function dist(t){return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY)}
  vb.addEventListener("touchstart",function(e){pz=e.touches.length===2?{d:dist(e.touches),z:vZ}:null},{passive:true});
@@ -158,17 +158,25 @@ function viewer(){if(vOv)return vOv;vOv=document.createElement("div");vOv.classN
  $("nvM").onclick=function(){zoom(1/1.25)};$("nvP").onclick=function(){zoom(1.25)};
  document.addEventListener("keydown",function(e){if(e.key==="Escape"&&!vOv.classList.contains("hidden"))$("nvX").click()});
  return vOv}
-async function drawPg(doc,d,cw,my){var pg=await doc.getPage(+d.getAttribute("data-n")),v0=pg.getViewport({scale:1}),v=pg.getViewport({scale:Math.min(2.5*cw,1800)/v0.width}),c=document.createElement("canvas");
- c.width=Math.round(v.width);c.height=Math.round(v.height);var x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);
- await pg.render({canvasContext:x,viewport:v}).promise;if(my!==vTok)return;d.appendChild(c);
- try{var an=await pg.getAnnotations();if(my!==vTok)return;   // clickable links of the PDF: laid over the picture
+var vIO=null,vDoc=null;
+var stP=document.createElement("style");stP.textContent=".nvth{filter:none}.nvth.on{animation:none}.nvbe{animation:none}.nvbe.hop{animation:nvbh .6s ease}.nvb{overflow-anchor:none}.nvp{margin:0 0 .5%}";document.head.appendChild(stP);   /* lighter: no always-running animations / shadows */
+function undraw(d){d.__want=0;if(d.__task){try{d.__task.cancel()}catch(e){}d.__task=null}var c=d.querySelector("canvas");if(c){c.width=c.height=0}d.textContent="";d.__done=0}   /* frees the page picture (memory) when it is far from the screen */
+async function drawPg(doc,d,cw,my){var pg=await doc.getPage(+d.getAttribute("data-n"));if(my!==vTok||!d.__want)return;
+ var v0=pg.getViewport({scale:1}),v=pg.getViewport({scale:Math.min(cw*Math.min(window.devicePixelRatio||1,2)*1.4,1500)/v0.width}),c=document.createElement("canvas");
+ c.width=Math.round(v.width);c.height=Math.round(v.height);var x=c.getContext("2d",{alpha:false});x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);
+ var t=pg.render({canvasContext:x,viewport:v});d.__task=t;
+ try{await t.promise}catch(er){c.width=c.height=0;return}
+ d.__task=null;if(my!==vTok||!d.__want){c.width=c.height=0;return}
+ d.appendChild(c);d.__done=1;
+ try{var an=await pg.getAnnotations();if(my!==vTok||!d.__want)return;   // clickable links of the PDF: laid over the picture
   an.forEach(function(a){if(a.subtype!=="Link"||!a.rect)return;
    var r=v0.convertToViewportRectangle(a.rect),l=document.createElement("a");l.className="nvl";
    l.style.cssText="left:"+Math.min(r[0],r[2])/v0.width*100+"%;top:"+Math.min(r[1],r[3])/v0.height*100+"%;width:"+Math.abs(r[2]-r[0])/v0.width*100+"%;height:"+Math.abs(r[3]-r[1])/v0.height*100+"%";
    if(a.url&&/^(https?:|mailto:)/i.test(a.url)){l.href=a.url;l.target="_blank";l.rel="noopener noreferrer"}
    else if(a.dest){l.href="#";l.onclick=function(e){e.preventDefault();goDest(doc,a.dest,d.parentNode)}}
    else return;
-   d.appendChild(l)})}catch(e){}}
+   d.appendChild(l)})}catch(er){}
+ try{pg.cleanup()}catch(er){}}
 async function goDest(doc,dest,host){try{if(typeof dest==="string")dest=await doc.getDestination(dest);if(!dest)return;
  var i=(dest[0]&&typeof dest[0]==="object")?await doc.getPageIndex(dest[0]):dest[0],t=host.children[i];if(t)t.scrollIntoView({block:"start"})}catch(e){}}
 /* page counter + draggable scroll bar (like a phone PDF viewer): "3 / 120" badge at the bottom (tap it to jump to a page) and a purple handle on the right edge (drag it to scroll fast) */
@@ -177,7 +185,7 @@ function setupNav(b,host,N){var nav=$("nvNav"),pg=$("nvPg"),tr=$("nvTr"),th=$("n
  function pageNow(){var h=host.children,lim=b.getBoundingClientRect().top+b.clientHeight*.35,lo=0,hi=h.length-1;while(lo<hi){var m=(lo+hi+1)>>1;if(h[m].getBoundingClientRect().top<=lim)lo=m;else hi=m-1}return lo+1}
  function upd(){raf=0;var max=b.scrollHeight-b.clientHeight;tr.style.top=b.offsetTop+"px";tr.style.height=b.clientHeight+"px";
   th.style.display=max>0?"":"none";th.style.top=Math.round((max>0?b.scrollTop/max:0)*Math.max(0,b.clientHeight-TH))+"px";pg.textContent=pageNow()+" / "+N}
- function poke(){th.classList.add("on");clearTimeout(hideT);hideT=setTimeout(function(){if(!drag)th.classList.remove("on")},1400)}
+ function poke(){if(!th.classList.contains("on"))th.classList.add("on");clearTimeout(hideT);hideT=setTimeout(function(){if(!drag)th.classList.remove("on")},1400)}
  b.onscroll=function(){if(!raf)raf=requestAnimationFrame(upd);poke()};
  if(vRO)vRO.disconnect();vRO=new ResizeObserver(function(){if(!raf)raf=requestAnimationFrame(upd)});vRO.observe(host);vRO.observe(b);
  th.onpointerdown=function(e){drag=true;th.setPointerCapture(e.pointerId);th.classList.add("on");pg.classList.add("nvbig");e.preventDefault()};
@@ -207,8 +215,24 @@ async function openV(path,name){budSeen={};clearTimeout(budT);
   var doc=await openPdf(buf);if(my!==vTok)return;
   var p1=await doc.getPage(1),v1=p1.getViewport({scale:1}),cw=b.clientWidth||360;
   b.innerHTML='<div class="nvi" id="nvI"></div>';var host=$("nvI");vZ=Math.min(1,900/cw);host.style.setProperty("--z",vZ);
-  var io=new IntersectionObserver(function(es){es.forEach(function(e){if(!e.isIntersecting)return;io.unobserve(e.target);drawPg(doc,e.target,cw,my).catch(function(){})})},{root:b,rootMargin:"900px 0px"});
-  for(var i=1;i<=doc.numPages;i++){var d=document.createElement("div");d.className="nvp";d.setAttribute("data-n",i);d.style.aspectRatio=v1.width+" / "+v1.height;host.appendChild(d);io.observe(d)}setupNav(b,host,doc.numPages)}
+  if(vIO)vIO.disconnect();if(vDoc&&vDoc!==doc){try{vDoc.destroy()}catch(er){}}vDoc=doc;
+  var want=[],busy=false,tm=0,lastTop=b.scrollTop,dir=1;
+  function pump(){tm=0;if(busy||my!==vTok)return;var br=b.getBoundingClientRect(),cy=br.top+br.height/2,best=null,bd=1e9;if(b.scrollTop!==lastTop){dir=b.scrollTop>lastTop?1:-1;lastTop=b.scrollTop}
+   want.forEach(function(e){if(e.__done||e.__rend)return;var r=e.getBoundingClientRect(),dd=r.top+r.height/2-cy,dd=(dd*dir>=0?dd*dir:-dd*dir*1.8);if(dd<bd){bd=dd;best=e}});
+   if(!best)return;busy=true;best.__rend=1;
+   drawPg(doc,best,cw,my).catch(function(){}).then(function(){best.__rend=0;busy=false;if(my===vTok)pump()})}
+  function kick(){clearTimeout(tm);tm=setTimeout(pump,60)}   // draws only when scrolling slows down
+  var io=vIO=new IntersectionObserver(function(es){es.forEach(function(e){var d=e.target;
+   if(e.isIntersecting){if(!d.__want){d.__want=1;want.push(d)}}
+   else if(d.__want){want=want.filter(function(x){return x!==d});undraw(d)}});kick()},{root:b,rootMargin:"100% 0px"});
+  for(var i=1;i<=doc.numPages;i++){var d=document.createElement("div");d.className="nvp";d.setAttribute("data-n",i);d.style.aspectRatio=v1.width+" / "+v1.height;host.appendChild(d);io.observe(d)}
+  (async function(){var ch=host.children;   // every page gets its REAL size (page 1 may differ); pages above the screen keep your place
+   for(var i=2;i<=doc.numPages;i++){if(my!==vTok)return;
+    try{var pg=await doc.getPage(i),vp=pg.getViewport({scale:1}),el=ch[i-1];if(!el)continue;var ar=vp.width+" / "+vp.height;
+     if(el.style.aspectRatio!==ar){var r0=el.getBoundingClientRect(),up=r0.bottom<=b.getBoundingClientRect().top;el.style.aspectRatio=ar;if(up)b.scrollTop+=el.getBoundingClientRect().height-r0.height}
+     pg.cleanup()}catch(er){}
+    if(i%8===0)await new Promise(function(r){setTimeout(r,0)})}})();
+  setupNav(b,host,doc.numPages)}
  catch(e){console.error("notes viewer:",e);if(my===vTok)b.innerHTML='<p class="nvm">Could not show this file here ('+esc((e&&e.message)||e)+'). <a href="'+esc(url)+'" target="_blank" rel="noopener">Open it directly</a></p>'}}
 document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a.nchip,a.nf");if(!a||e.ctrlKey||e.metaKey||e.shiftKey)return;
  var p=a.getAttribute("data-p");if(p&&/\.(pdf|jpe?g|png|webp|gif)$/i.test(p)){e.preventDefault();openV(p,a.getAttribute("data-n")||"")}});
