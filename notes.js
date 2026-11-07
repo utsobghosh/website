@@ -147,10 +147,17 @@ function viewer(){if(vOv)return vOv;vOv=document.createElement("div");vOv.classN
   vZ=Math.max(.3,Math.min(3,z));i.style.setProperty("--z",vZ);var n=i.getBoundingClientRect();vb.scrollLeft+=n.left+fx*n.width-cx;vb.scrollTop+=n.top+fy*n.height-cy}
  function zoom(f){zoomTo(vZ*f,vb.clientWidth/2,vb.clientHeight/2)}   // keeps the middle of the screen in place
  function dist(t){return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY)}
- vb.addEventListener("touchstart",function(e){pz=e.touches.length===2?{d:dist(e.touches),z:vZ}:null},{passive:true});
- vb.addEventListener("touchmove",function(e){if(!pz||e.touches.length!==2)return;e.preventDefault();var r=vb.getBoundingClientRect(),t=e.touches;
-  zoomTo(pz.z*dist(t)/pz.d,(t[0].clientX+t[1].clientX)/2-r.left,(t[0].clientY+t[1].clientY)/2-r.top)},{passive:false});
- vb.addEventListener("touchend",function(e){if(e.touches.length<2)pz=null});
+ /* pinch: while two fingers are down the page is moved/scaled with a GPU transform (smooth, follows your fingers: zoom + two-finger drag); real size is applied once when you lift */
+ function pzDraw(){var p=pz;if(!p)return;p.raf=0;p.i.style.transform="translate("+(p.cx-p.h.left-p.s*(p.mx-p.h.left))+"px,"+(p.cy-p.h.top-p.s*(p.my-p.h.top))+"px) scale("+p.s+")"}
+ function pzEnd(e){var p=pz;if(!p||(e.touches&&e.touches.length>=2))return;pz=null;if(p.raf)cancelAnimationFrame(p.raf);var i=p.i,fx=(p.mx-p.h.left)/p.h.width,fy=(p.my-p.h.top)/p.h.height;
+  i.style.transform="";i.style.willChange="";vb.style.overflow="";
+  vZ=Math.max(.3,Math.min(3,p.z*p.s));i.style.setProperty("--z",vZ);var n=i.getBoundingClientRect();
+  vb.scrollLeft+=n.left+fx*n.width-p.cx;vb.scrollTop+=n.top+fy*n.height-p.cy}
+ vb.addEventListener("touchstart",function(e){if(e.touches.length!==2||pz)return;var i=$("nvI");if(!i)return;var t=e.touches,mx=(t[0].clientX+t[1].clientX)/2,my=(t[0].clientY+t[1].clientY)/2;
+  pz={i:i,d:dist(t),z:vZ,s:1,mx:mx,my:my,cx:mx,cy:my,h:i.getBoundingClientRect(),raf:0};vb.style.overflow="hidden";i.style.transformOrigin="0 0";i.style.willChange="transform"},{passive:true});   // overflow hidden = the browser can't scroll by itself while you pinch
+ vb.addEventListener("touchmove",function(e){if(!pz||e.touches.length!==2)return;e.preventDefault();var t=e.touches;
+  pz.s=Math.max(.3/pz.z,Math.min(3/pz.z,dist(t)/pz.d));pz.cx=(t[0].clientX+t[1].clientX)/2;pz.cy=(t[0].clientY+t[1].clientY)/2;if(!pz.raf)pz.raf=requestAnimationFrame(pzDraw)},{passive:false});
+ vb.addEventListener("touchend",pzEnd);vb.addEventListener("touchcancel",pzEnd);
  vb.addEventListener("wheel",function(e){if(!e.ctrlKey)return;e.preventDefault();var r=vb.getBoundingClientRect();zoomTo(vZ*Math.exp(-e.deltaY/300),e.clientX-r.left,e.clientY-r.top)},{passive:false});
  function fsLab(){$("nvF").textContent=document.fullscreenElement?"🗗 Exit full screen":"⛶ Full screen"}
  $("nvF").onclick=function(){try{if(document.fullscreenElement)document.exitFullscreen();else goFS()}catch(x){}};
