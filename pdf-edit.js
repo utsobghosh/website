@@ -270,12 +270,19 @@ async function peOpenView(k){
 
 // ----- make the new PDF -----
 async function peBuild(){
- await needPdfLib();var out=await PDFLib.PDFDocument.create(),cache={};
+ await needPdfLib();var out=await PDFLib.PDFDocument.create(),cache={},last={};
+ PE.forEach(function(x,k){if(!x.rm&&!x.img)last[x.s]=k});
+ await peSlot();   // picture drawing pauses while the PDF is made (less memory, no crash)
+ try{
  for(var k=0;k<PE.length;k++){var it=PE[k];if(it.rm)continue;
   if(it.img){var p=await photoJpeg(it.img),land=p.w>p.h*1.05,PW=land?841.89:595.28,PH=land?595.28:841.89,M=18,sc=Math.min((PW-2*M)/p.w,(PH-2*M)/p.h),dw=p.w*sc,dh=p.h*sc,im=await out.embedJpg(p.bytes),pg=out.addPage([PW,PH]);
    pg.drawImage(im,{x:(PW-dw)/2,y:(PH-dh)/2,width:dw,height:dh});if(it.rot)pg.setRotation(PDFLib.degrees(it.rot))}
-  else{var lib=cache[it.s]||(cache[it.s]=await PDFLib.PDFDocument.load(SRC[it.s].buf,{ignoreEncryption:true})),cp=await out.copyPages(lib,[it.i]);if(it.rot)cp[0].setRotation(PDFLib.degrees((cp[0].getRotation().angle+it.rot)%360));out.addPage(cp[0])}}
- return new File([await out.save()],peName+"-edited.pdf",{type:"application/pdf"})}
+  else{var lib=cache[it.s]||(cache[it.s]=await PDFLib.PDFDocument.load(SRC[it.s].buf,{ignoreEncryption:true})),cp=await out.copyPages(lib,[it.i]);if(it.rot)cp[0].setRotation(PDFLib.degrees((cp[0].getRotation().angle+it.rot)%360));out.addPage(cp[0]);
+   if(last[it.s]===k)delete cache[it.s]}   // that file is finished: give its memory back now
+  if(k%8===7)await new Promise(function(r){setTimeout(r,0)})}   // let the phone breathe
+ var bytes=await out.save();out=null;cache=null;
+ return new File([bytes],peName+"-edited.pdf",{type:"application/pdf"})}
+ finally{peFree()}}
 
 // ----- buttons -----
 $("peGrid").insertAdjacentHTML("beforebegin",'<div class="pevt"><button type="button" class="p" id="peAtPos">＋ Add pages at a position…</button></div><div class="pevt"><button type="button" class="s" id="peUn" disabled>↩ Undo</button><button type="button" class="s" id="peOg">⟲ Original order</button></div><div class="pevt"><button type="button" class="s" id="peCA">▸ Fold all files</button><button type="button" class="s" id="peEA">▾ Unfold all files</button></div><div class="pesz"><span>🔍</span><input type="range" id="peZ" min="24" max="200" value="105" aria-label="Page size"><button type="button" class="s" id="peFit">Fit all on screen</button></div><div class="peleg" id="peLeg"></div>');

@@ -3,13 +3,16 @@
 var IMAGES={},THUMBS={},TEMPLATE_DOCX="",ASSET_ERRORS=[];
 window.__assetsReady=(function(){
  function mimeOf(f){return /\.png$/i.test(f)?"image/png":/\.webp$/i.test(f)?"image/webp":/\.docx$/i.test(f)?"application/vnd.openxmlformats-officedocument.wordprocessingml.document":"image/jpeg"}
- function dataUrl(file){return fetch(file).then(function(r){if(!r.ok)throw new Error(r.status);return r.blob()}).then(function(b){return new Promise(function(res,rej){var f=new FileReader();f.onload=function(){res(String(f.result))};f.onerror=function(){rej(new Error("read"))};f.readAsDataURL(new Blob([b],{type:mimeOf(file)}))})})}
+ function getBlob(file,n){var c=window.AbortController?new AbortController():null,t=setTimeout(function(){if(c)c.abort()},15000);   // a stuck download is stopped after 15 s and tried once more
+  return fetch(file,c?{signal:c.signal}:{}).then(function(r){if(!r.ok)throw new Error(r.status);return r.blob()}).then(function(b){clearTimeout(t);return b},function(e){clearTimeout(t);if(n>0)return getBlob(file,n-1);throw e})}
+ function runQ(fs,n){var i=0;function w(){if(i>=fs.length)return Promise.resolve();return fs[i++]().then(w)}var ws=[];for(var k=0;k<n;k++)ws.push(w());return Promise.all(ws)}   // 4 downloads at a time: lighter for weak phones
+ function dataUrl(file){return getBlob(file,1).then(function(b){return new Promise(function(res,rej){var f=new FileReader();f.onload=function(){res(String(f.result))};f.onerror=function(){rej(new Error("read"))};f.readAsDataURL(new Blob([b],{type:mimeOf(file)}))})})}
  var v=(typeof ASSET_VERSION!=="undefined"&&ASSET_VERSION)?"?v="+encodeURIComponent(ASSET_VERSION):"",jobs=[],F=ASSET_FILES||{};
- function job(file,put){jobs.push(dataUrl(file+v).then(put).catch(function(){ASSET_ERRORS.push(file)}))}
+ function job(file,put){jobs.push(function(){return dataUrl(file+v).then(put).catch(function(){ASSET_ERRORS.push(file)})})}
  if(F.template)job(F.template,function(d){TEMPLATE_DOCX=d.split(",")[1]});
  Object.keys(F.images||{}).forEach(function(k){job(F.images[k],function(d){IMAGES[k]=d})});
  Object.keys(F.thumbs||{}).forEach(function(k){job(F.thumbs[k],function(d){THUMBS[k]=d})});
- return Promise.all(jobs).then(function(){
+ return Promise.race([runQ(jobs,4),new Promise(function(r){setTimeout(r,25000)})]).then(function(){   // the page always starts (after 25 s at the latest)
   if(!ASSET_ERRORS.length)return;
   var d=document.createElement("div");d.style.cssText="position:fixed;left:8px;right:8px;top:8px;z-index:99999;background:#fff3cd;color:#5b4400;border:2px solid #f5a524;border-radius:12px;padding:10px 12px;font:600 14px system-ui,sans-serif";
   d.textContent="⚠️ Some pictures or files could not load ("+ASSET_ERRORS.join(", ")+"). If you opened this page from your computer, open the website link instead.";
@@ -510,8 +513,9 @@ function optCell(t){var u=linkOf(t),pm=/\((\d+) pages?\)/.exec(baseOpt(t));retur
 var H2C="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js";   // turns the first page of a Word file into a small picture for Print status
 var pdfDoc=null,pdfPg=1,upUrl=null,PDFJS="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/";
 // ----- small pictures so a file can be recognised without reading its name -----
-function thumbSrc(o){return(typeof THUMBS!=="undefined"&&THUMBS[o.id])||(o.tabs&&typeof IMAGES!=="undefined"&&IMAGES[o.tabs[0].key])||""}
-function fillThumbs(){var im=document.querySelectorAll("img.thumb[data-t]");for(var i=0;i<im.length;i++){var o=null;for(var k=0;k<OPTIONS.length;k++)if(OPTIONS[k].id===im[i].getAttribute("data-t"))o=OPTIONS[k];var u=o?thumbSrc(o):"";if(u){im[i].src=u;im[i].hidden=false}}}
+function thumbSrc(o){var F=(typeof ASSET_FILES!=="undefined"&&ASSET_FILES)||{},v=(typeof ASSET_VERSION!=="undefined"&&ASSET_VERSION)?"?v="+encodeURIComponent(ASSET_VERSION):"";
+ return(typeof THUMBS!=="undefined"&&THUMBS[o.id])||(o.tabs&&typeof IMAGES!=="undefined"&&IMAGES[o.tabs[0].key])||(F.thumbs&&F.thumbs[o.id]&&F.thumbs[o.id]+v)||(o.tabs&&F.images&&F.images[o.tabs[0].key]&&F.images[o.tabs[0].key]+v)||""}   // if the downloaded copy is missing (opened from a computer folder, slow phone...), the picture file is simply used as a normal <img>
+function fillThumbs(){var im=document.querySelectorAll("img.thumb[data-t]");for(var i=0;i<im.length;i++){var o=null;for(var k=0;k<OPTIONS.length;k++)if(OPTIONS[k].id===im[i].getAttribute("data-t"))o=OPTIONS[k];var u=o?thumbSrc(o):"";if(u){im[i].onerror=function(){this.hidden=true};im[i].src=u;im[i].hidden=false}}}
 if(document.readyState==="complete")fillThumbs();else window.addEventListener("load",fillThumbs);
 function driveIdOf(t){var m=/\/d\/([\w-]+)/.exec(linkOf(t));return m?m[1]:""}
 function thumbOf(t){var m=baseOpt(t).split("|")[2];m=m&&m.trim();return /^[\w-]{10,}$/.test(m||"")?m:driveIdOf(t)}   // Drive id of the small preview picture; if there is none (PowerPoint, old Word...) Google Drive makes the picture of the original file
