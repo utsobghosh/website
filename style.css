@@ -36,7 +36,7 @@ input{border-radius:12px;border-width:2px}input:focus{border-color:var(--accent)
 .confetti{position:fixed;top:-30px;font-size:24px;pointer-events:none;z-index:50;animation:fall 2.2s ease-in forwards}
 @keyframes fall{to{transform:translateY(105vh) rotate(540deg)}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.floaties{display:none}}
-.spark{position:fixed;pointer-events:none;z-index:60;transform:translate(-50%,-50%) scale(0);text-shadow:0 0 8px currentColor,0 0 16px currentColor;animation:burst 1.6s ease-out forwards}
+.spark{position:fixed;pointer-events:none;z-index:60;transform:translate(-50%,-50%) scale(0);text-shadow:0 0 7px currentColor;animation:burst 1.6s ease-out forwards}
 @keyframes burst{0%{transform:translate(-50%,-50%) scale(0);opacity:1}30%{transform:translate(calc(-50% + var(--dx)*.5),calc(-50% + var(--dy)*.5)) scale(1.3)}100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(0) rotate(180deg);opacity:0}}
 .ring{position:fixed;pointer-events:none;z-index:59;width:20px;height:20px;border:3px solid var(--accent);border-radius:50%;transform:translate(-50%,-50%) scale(0);animation:ring 1.1s ease-out forwards}
 @keyframes ring{to{transform:translate(-50%,-50%) scale(16);opacity:0}}

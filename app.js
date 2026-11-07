@@ -42,13 +42,15 @@ function flashBad(el){if(typeof bearReact==="function")bearReact("sad");el.class
 function say(id,msg,el){var m=$(id);m.textContent=msg||"";m.classList.toggle("hidden",!msg);if(msg)flashBad(el||m)}
 
 // ----- Sparkle effects -----
+var sparkLive=0;   // sparks alive: while dragging, skip new ones when too many are on screen (less lag)
 function sparkleBurst(x,y,n,spread,ring){
+ if(!ring&&sparkLive>=28)return;
  var cols=sparkCols();
  if(ring){var r=document.createElement("span");r.className="ring";r.style.left=x+"px";r.style.top=y+"px";document.body.appendChild(r);setTimeout(r.remove.bind(r),1400)}
  for(var i=0;i<n;i++){var s=document.createElement("span"),a=Math.random()*6.283,d=(60+Math.random()*140)*spread;
   s.className="spark";s.textContent=i%3?"✦":"✧";
   s.style.cssText="left:"+x+"px;top:"+y+"px;--dx:"+Math.cos(a)*d+"px;--dy:"+Math.sin(a)*d+"px;font-size:"+(16+Math.random()*18)+"px;color:"+cols[i%cols.length]+";animation-delay:"+Math.random()*.15+"s";
-  document.body.appendChild(s);setTimeout(s.remove.bind(s),2200)}}
+  document.body.appendChild(s);sparkLive++;setTimeout(function(el){sparkLive--;el.remove()},2200,s)}}
 function celebrate(){
  if(calm)return;
  var b=$("banner").getBoundingClientRect(),x=b.width?b.left+b.width/2:innerWidth/2,y=b.width?b.top+b.height/2:innerHeight/3;
@@ -240,6 +242,7 @@ if(BEAR_ON){
   $("armL").style.transform="rotate(150deg)";$("armR").style.transform="rotate(-150deg)";
   var r=bear.getBoundingClientRect();if(!calm)sparkleBurst(r.left+BW/2,r.top+BH/2,12,1,true)}
  function drop(){
+  if(lastX!==null){bear.style.left=lastX+"px";bear.style.top=lastY+"px"}
   dragging=false;bear.classList.remove("held","happy");
   var r=bear.getBoundingClientRect();wx=r.left;wy=r.top;lastX=wx;lastY=wy;holdUntil=Date.now()+30000;
   $("armL").style.transform="rotate(0deg)";$("armR").style.transform="rotate(0deg)";
@@ -255,8 +258,8 @@ if(BEAR_ON){
   if(!drag||e.pointerId!==drag.id)return;
   if(!drag.moved){if(Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy)<7)return;drag.moved=true;clearTimeout(drag.petT);clearTimeout(drag.lookT);if(drag.pet)endPet();startHold()}
   var x=Math.max(2,Math.min(innerWidth-BW-2,e.clientX-drag.ox)),y=Math.max(2,Math.min(innerHeight-BH-2,e.clientY-drag.oy));
-  bear.style.left=x+"px";bear.style.top=y+"px";lastX=x;lastY=y;
-  var now=Date.now();if(now-trailT>70&&!calm){trailT=now;sparkleBurst(x+BW/2,y+BH/2,3,.9,false)}});
+  lastX=x;lastY=y;if(!drag.raf){var dd=drag;dd.raf=requestAnimationFrame(function(){dd.raf=0;bear.style.left=lastX+"px";bear.style.top=lastY+"px"})}   // move once per frame, not on every touch event
+  var now=Date.now();if(now-trailT>110&&!calm){trailT=now;sparkleBurst(x+BW/2,y+BH/2,2,.9,false)}});
  function endDrag(e){
   if(!drag||e.pointerId!==drag.id)return;var d=drag;drag=null;clearTimeout(d.petT);clearTimeout(d.lookT);
   try{bear.releasePointerCapture(e.pointerId)}catch(err){}
