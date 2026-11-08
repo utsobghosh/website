@@ -8,9 +8,9 @@
    Items: plain text  "Some topic"   OR   a heading with items under it  {t:"Heading",sub:["item 1","item 2",{t:"Sub-heading",sub:["..."]}]}
    (sub can nest as deep as needed; each level has its own colour). Upload notes.js and this file to the website after editing.
    QUIZ (the bear's study quiz): the bear already makes questions by itself from the headings (asks what is under a heading) and from tables (asks the value).
-   To add your own questions to a block: quiz:[["Question?","Answer"],["Question 2?","Answer 2"]]  (the bear asks from the subject that is open). */
+   To add your own questions to a block: quiz:[["Question?","Answer"],["Question 2?","Answer 2",["wrong 1","wrong 2","wrong 3"]]]  (the 3rd item is optional: your own wrong options; without it they are borrowed from the same subject). */
 window.NOTES_INFO=[
- {keys:["law"],title:"Law topics",quiz:[["Copyright protects what?","Original creative works (writing, art, music, software)"],["Patent protects what?","Inventions (new, useful, and not obvious)"]],items:[
+ {keys:["law"],title:"Law topics",quiz:[["Copyright protects what?","Original creative works (writing, art, music, software)",["Inventions and machines","Brand names and logos","Secret business formulas"]],["Patent protects what?","Inventions (new, useful, and not obvious)",["Books, songs and paintings","Brand names and logos","Business secrets kept hidden"]],["Which IP right protects brand names and logos?","Trademark",["Patent","Copyright","Trade secret"]],["Which IP right protects a secret recipe kept hidden by the company?","Trade secret",["Copyright","Patent","Trademark"]],["ACM Code of Ethics: a project could seriously harm the public. What should you do?","Avoid harm and report the risk to the right people",["Hide it to protect the company","Finish it quickly","Ignore it if the client pays"]],["ACM Code of Ethics: being honest and trustworthy means you should not ...","Make false or misleading claims",["Work in a team","Use open-source tools","Ask for feedback"]],["What does the Right to Information Act give citizens?","The right to ask public offices for information",["The right to read anyone's private emails","The right to free internet","The right to copy any book"]]],items:[
   {t:"Exam questions",sub:[
    "ACM Code of Ethics থেকে ১টা প্রশ্ন",
    "Pornography Control Act থেকে ১টা প্রশ্ন",

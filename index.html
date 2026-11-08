@@ -215,13 +215,21 @@ const ASSET_FILES = {
  <h2 class="h2">Already processed</h2><div class="card" style="overflow-x:auto"><table><thead><tr><th>Time</th><th>ID</th><th>Name</th><th>Option</th><th>Copies</th><th>Price</th><th>Status</th><th></th></tr></thead><tbody id="rows2"></tbody></table><p class="note" id="none2"></p></div>
 </div>
 </div>
+<script>
+/* Speed-up: everything below starts NOW, while app.js is still downloading the pictures (they used to be waited for one after the other).
+   1) the extra scripts are PRELOADED in parallel (same ?v= stamp as the loader below, so they are still fresh on every visit)
+   2) drive-notes.js starts its Google Drive request right away, so the Notes button no longer waits for Drive after the pictures. */
+window.__V=Date.now();
+["notes-list.js","drive-notes.js","notes.js","notes-info.js","photos-pdf.js","pdf-edit.js","docx-pdf.js","kawaii-extras.js"].forEach(function(f){var l=document.createElement("link");l.rel="preload";l.as="script";l.href=f+"?v="+window.__V;document.head.appendChild(l)});
+var __d=document.createElement("script");__d.src="drive-notes.js?v="+window.__V;document.head.appendChild(__d);
+</script>
 <script src="app.js?v=2"></script>
 <script>
 /* app.js builds the page only after the pictures have loaded, and these extra scripts need what it builds (see the
    "Bridge" block at the end of app.js). So they are loaded here, one after the other and in this order, AFTER that.
    A missing file is reported in the console and skipped. */
 window.__assetsReady.then(function(){
- ["notes-list.js","drive-notes.js","notes.js","photos-pdf.js","pdf-edit.js","docx-pdf.js","kawaii-extras.js"].reduce(function(p,f){return p.then(function(){return new Promise(function(done){
-  var s=document.createElement("script");s.src=f+"?v="+Date.now();s.onload=function(){(f==="drive-notes.js"&&window.__driveReady?window.__driveReady:Promise.resolve()).then(done)};s.onerror=function(){console.error("Could not load "+f);done()};document.body.appendChild(s)})})},Promise.resolve())});
+ ["notes-list.js","notes.js","photos-pdf.js","pdf-edit.js","docx-pdf.js","kawaii-extras.js"].reduce(function(p,f){return p.then(function(){return new Promise(function(done){
+  var s=document.createElement("script");s.src=f+"?v="+window.__V;s.onload=function(){(f==="notes-list.js"&&window.__driveMerge?window.__driveMerge():Promise.resolve()).then(done)};s.onerror=function(){console.error("Could not load "+f);done()};document.body.appendChild(s)})})},Promise.resolve())});
 </script>
 </body></html>

@@ -218,7 +218,7 @@ function initTest(){var ad=$("admin");if(!ad||$("kTest"))return;
 /* ===== LUCK: how often the bear picks each move (every 22 s, 40% of the time it does something) =====
    FUN moves (interactive / story moves) = more tickets. Everything else = few tickets. To make a move fun, add it to FUN_MOVES.
    Chance of a move = its tickets / all tickets. */
-var FUN_MOVES={photo:4,detective:4,painter:4,hide:4,quiz:4};   // fun moves: tickets EACH (add a new fun move here, e.g. dance:4)
+var FUN_MOVES={photo:7,detective:4,painter:4,hide:4,quiz:4};   // fun moves: tickets EACH (add a new fun move here, e.g. dance:4)
 var NORMAL_TICKETS=1;                                    // every other move (bubbles, balloon, petals ...)
 function luckList(){var a=[];Object.keys(FUN_MOVES).forEach(function(k){for(var i=0;i<FUN_MOVES[k];i++)a.push(k)});
  Object.keys(NEWACT).concat(Object.keys(NEWACT2)).forEach(function(k){if(FUN_MOVES[k]===undefined)for(var i=0;i<NORMAL_TICKETS;i++)a.push(k)});return a}
@@ -313,7 +313,7 @@ function initWalk(bear){
 /* ---------- 7) three more bear moves: detective 🔍, painter 🎨, hide and seek 🙈 ----------
    Small and short: they use a little corner of the screen for a few seconds, then give it back.
    NEWACT2 = name: how long the move lasts (ms). Remove a name to drop that move. The lists below are the lines the bear says. */
-var NEWACT2={detective:7600,painter:5400,hide:12000,quiz:36000};
+var NEWACT2={detective:7600,painter:5400,hide:12000,quiz:50000};
 var DETECT_TEXT=["Hmm, where is it? 🔍","Detective bear on the case! 🕵️","Searching for clues… 🔎","I smell some notes nearby… 👃","Don't worry, I'll find it! 🧸","Let me investigate… 🧐"],
  FOUND_TEXT=["Found it! 🔍","Aha! Got you! 🕵️","Case solved! 📁","Elementary, my dear student! 🎩","This is the one! ✨","Clue found! 🧩","Gotcha, note! 📚","Mystery solved! 🔎✨","Look what I found! 🎉","Is this what you were looking for? 👀","Found it! Great detective work! 🏅"],
  PAINT_TEXT=["Let me paint something! 🎨","Art time! 🖌️","Watch this… 🎨","Painting a surprise! ✨","Bear artist at work! 🧑‍🎨"],
@@ -402,7 +402,7 @@ async function kHide(){var K=window.__bearK,bear=K.bear,BW=K.BW,BH=K.BH,body=$("
    Fixed questions come from notes-info.js: (1) every heading that has 2+ items under it ("What belongs under ...?"), (2) every table row ("Binary search: time complexity?"),
    (3) your own quiz:[["Question","Answer"]] lists. Viewer open = that note's topics, Notes screen open = that subject's topics, otherwise any subject. */
 var QUIZ_TEXT=["Quiz time! 🧠","Pop quiz! 📝","Let's test you! 🎓","Quick question! ❓","Brain check! 🧠","Think fast! ⚡"],RIGHT_TEXT=["Correct! 🎉","Smart cookie! 🍪","Yes! Nice one! ✨","You got it! 💪","Bear is proud! 🧸"],WRONG_TEXT=["Oops, not quite! 😅","Close! Check the green one 👀","Next time! 💖","Good try! 🌱","Now you know! 📖"],kQSeen={};
-(function(){var st=document.createElement("style");st.textContent=".kquiz{position:fixed;z-index:10001;box-sizing:border-box;background:var(--panel,#fff);border:2px solid var(--accent2,#8a4dff);border-radius:14px;padding:8px 10px;box-shadow:0 5px 20px rgba(0,0,0,.28);font-size:12.5px;line-height:1.35;max-height:70vh;overflow:auto;transition:opacity .45s}.kqs{font-size:10.5px;font-weight:700;color:var(--accent2,#8a4dff);margin:-2px -4px 4px;padding:4px;border-radius:8px;background:color-mix(in srgb,var(--accent2,#8a4dff) 10%,transparent);cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}.kqs:active{cursor:grabbing}.kqq{font-weight:700;font-size:13px}.kqo{display:flex;flex-direction:column;gap:4px;margin-top:6px}.kqb{display:block;width:100%;text-align:left;font:inherit;font-size:12px;padding:5px 8px;border:1.5px solid var(--line,#ccc);border-radius:9px;background:transparent;color:inherit;cursor:pointer}.kqb b{color:var(--accent2,#8a4dff);margin-right:4px}.kqb:active{transform:scale(.98)}.kqb.off{pointer-events:none}.kqb.off:not(.ok):not(.bad){opacity:.55}.kqb.ok{background:#c8f7d4;border-color:#2fb35a;color:#12351d}.kqb.bad{background:#ffd3d3;border-color:#e05252;color:#4a1414}.kqa{margin-top:6px;padding:6px 8px;border-radius:9px;background:color-mix(in srgb,var(--accent2,#8a4dff) 14%,transparent)}.kqh{font-size:10.5px;opacity:.7;margin-top:5px;text-align:right}@media(max-width:600px){.kquiz{font-size:12px;padding:7px 9px}.kqq{font-size:12.5px}.kqb{font-size:11.5px;padding:4px 7px}}";document.head.appendChild(st)})();
+(function(){var st=document.createElement("style");st.textContent=".kquiz{position:fixed;z-index:10001;box-sizing:border-box;background:var(--panel,#fff);border:2px solid var(--accent2,#8a4dff);border-radius:14px;padding:8px 10px;box-shadow:0 5px 20px rgba(0,0,0,.28);font-size:12.5px;line-height:1.35;max-height:70vh;overflow:auto;transition:opacity .45s}.kqs{display:flex;align-items:center;gap:6px;font-size:10.5px;font-weight:700;color:var(--accent2,#8a4dff);margin:-2px -4px 4px;padding:4px;border-radius:8px;background:color-mix(in srgb,var(--accent2,#8a4dff) 10%,transparent);cursor:grab;touch-action:none;user-select:none;-webkit-user-select:none}.kqs:active{cursor:grabbing}.kql{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.kqt{font-variant-numeric:tabular-nums;padding:1px 6px;border-radius:8px;background:rgba(128,128,128,.18);color:inherit;white-space:nowrap}.kqt.low{background:#ffd3d3;color:#a01919}.kqx{border:0;background:transparent;color:inherit;font-size:14px;line-height:1;padding:2px 4px;cursor:pointer;opacity:.7}.kqx:hover{opacity:1}.kqbar{height:3px;border-radius:2px;background:rgba(128,128,128,.25);margin:-1px 0 6px;overflow:hidden}.kqbar i{display:block;height:100%;width:100%;background:var(--accent2,#8a4dff);transition:width .12s linear}.kqbar.low i{background:#e05252}.kqmin{position:fixed;z-index:10001;left:14px;bottom:14px;width:44px;height:44px;padding:0;border-radius:50%;border:2px solid var(--accent2,#8a4dff);background:var(--panel,#fff);box-shadow:0 4px 14px rgba(0,0,0,.3);font-size:22px;line-height:1;cursor:pointer}.kqmin b{position:absolute;top:-5px;right:-5px;font-size:10px;line-height:1;background:#e05252;color:#fff;border-radius:9px;padding:2px 5px}.kqq{font-weight:700;font-size:13px}.kqo{display:flex;flex-direction:column;gap:4px;margin-top:6px}.kqb{display:block;width:100%;text-align:left;font:inherit;font-size:12px;padding:5px 8px;border:1.5px solid var(--line,#ccc);border-radius:9px;background:transparent;color:inherit;cursor:pointer}.kqb b{color:var(--accent2,#8a4dff);margin-right:4px}.kqb:active{transform:scale(.98)}.kqb.off{pointer-events:none}.kqb.off:not(.ok):not(.bad){opacity:.55}.kqb.ok{background:#c8f7d4;border-color:#2fb35a;color:#12351d}.kqb.bad{background:#ffd3d3;border-color:#e05252;color:#4a1414}.kqa{margin-top:6px;padding:6px 8px;border-radius:9px;background:color-mix(in srgb,var(--accent2,#8a4dff) 14%,transparent)}.kqh{font-size:10.5px;opacity:.7;margin-top:5px;text-align:right}@media(max-width:600px){.kquiz{font-size:12px;padding:7px 9px}.kqq{font-size:12.5px}.kqb{font-size:11.5px;padding:4px 7px}}";document.head.appendChild(st)})();
 function kesc(t){return String(t).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
 function kShuf(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t}return a}
 function kSubj(e){return String((e&&e.keys&&e.keys[0])||(e&&e.title)||"").toLowerCase()}   // subject of a topics block = its first key (dsa, oop, math ...)
@@ -413,14 +413,15 @@ function kQuizPool(blocks){var Q=[];
   if(t.t&&t.sub&&t.sub.length>1&&!/^(topics|subtopics|exam questions)\b/i.test(t.t)){var K=t.sub.map(nm).filter(Boolean).slice(0,8);Q.push({q:"What belongs under “"+t.t+"”?",a:K.map(function(x){return"• "+x}).join("\n"),s:s,k:sk,h:t.t,kids:K})}
   if(t.sub)walk(t.sub,s,sk)})}
  (blocks||[]).forEach(function(e){if(!e)return;var s=e.title||"Quiz",sk=kSubj(e);
-  (e.quiz||[]).forEach(function(x){if(x&&x[0]&&x[1])Q.push({q:x[0],a:x[1],s:s,k:sk,g:"cq"})});
+  (e.quiz||[]).forEach(function(x){if(x&&x[0]&&x[1])Q.push({q:x[0],a:x[1],s:s,k:sk,g:"cq",w:Array.isArray(x[2])?x[2]:null})});
   (e.table||[]).forEach(function(r){if(Array.isArray(r)&&r.length>1)Q.push({q:r[0]+": "+((e.head&&e.head[1])||"time complexity")+"?",a:r[1],s:s,k:sk,g:"tbl"})});
   walk(e.items,s,sk)});
  return Q}
 /* fixed question -> multiple choice: wrong options are borrowed ONLY from the same subject (never another one). Few wrong answers available = fewer options (min 2). None at all = null (tap-to-reveal card). */
 function kMcq(Q,pool){var good,bad=[];
  if(Q.kids){good=kpk(Q.kids);pool.forEach(function(x){if(x!==Q&&x.k===Q.k&&x.kids)x.kids.forEach(function(k){if(Q.kids.indexOf(k)<0&&bad.indexOf(k)<0)bad.push(k)})})}
- else{good=Q.a;pool.forEach(function(x){if(!x.kids&&x.k===Q.k&&x.g===Q.g&&x.a!==good&&bad.indexOf(x.a)<0)bad.push(x.a)})}
+ else{good=Q.a;if(Q.w&&Q.w.length)bad=Q.w.filter(function(x){return x!==good});else pool.forEach(function(x){if(!x.kids&&x.k===Q.k&&x.g===Q.g&&x.a!==good&&bad.indexOf(x.a)<0)bad.push(x.a)})}   // own wrong options if the question has them, else borrowed from the same subject
+ if(!Q.kids&&!(Q.w&&Q.w.length)){var num=/^\s*\d/.test(good),like=bad.filter(function(x){return/^\s*\d/.test(x)===num});if(like.length)bad=like}   // number answers get number-like wrong options (and text gets text), so the right one is not obvious by type
  if(bad.length<1)return null;
  var o=kShuf(kShuf(bad).slice(0,3).concat([good]));return{q:Q.kids?"Which one belongs under “"+Q.h+"”?":Q.q,o:o,c:o.indexOf(good),a:good}}
 /* the quiz box sits at the screen EDGE (right side, middle) and can be dragged anywhere by its top bar. Where you leave it is remembered (as a share of the free space, so it also works after rotating the phone). */
@@ -428,71 +429,106 @@ function kQPos(){try{var P=JSON.parse(localStorage.getItem("bearQuizPos")||"null
 function kQPlace(card){var M=6,P=kQPos(),w=card.offsetWidth,h=card.offsetHeight;
  card.style.bottom="auto";card.style.left=Math.round(M+Math.min(1,P.fx)*Math.max(0,innerWidth-w-2*M))+"px";card.style.top=Math.round(M+Math.min(1,P.fy)*Math.max(0,innerHeight-h-2*M))+"px"}
 function kQKeep(card){var r=card.getBoundingClientRect();if(r.bottom>innerHeight-4)card.style.top=Math.max(4,innerHeight-r.height-4)+"px"}   // the card grew (answer shown): keep it on screen
-function kQDrag(card,h){var sx=0,sy=0,ox=0,oy=0;h.addEventListener("pointerdown",function(e){var r=card.getBoundingClientRect();card.__drag=1;sx=e.clientX;sy=e.clientY;ox=r.left;oy=r.top;try{h.setPointerCapture(e.pointerId)}catch(x){}e.preventDefault()});
+function kQDrag(card,h){var sx=0,sy=0,ox=0,oy=0;h.addEventListener("pointerdown",function(e){if(e.target.closest&&e.target.closest(".kqx"))return;var r=card.getBoundingClientRect();card.__drag=1;sx=e.clientX;sy=e.clientY;ox=r.left;oy=r.top;try{h.setPointerCapture(e.pointerId)}catch(x){}e.preventDefault()});
  h.addEventListener("pointermove",function(e){if(!card.__drag)return;var w=card.offsetWidth,hh=card.offsetHeight;card.style.bottom="auto";
   card.style.left=Math.max(4,Math.min(innerWidth-w-4,ox+e.clientX-sx))+"px";card.style.top=Math.max(4,Math.min(innerHeight-hh-4,oy+e.clientY-sy))+"px"});
  function up(){if(!card.__drag)return;card.__drag=0;var M=6,w=card.offsetWidth,hh=card.offsetHeight,x=parseFloat(card.style.left)||0,y=parseFloat(card.style.top)||0,fw=Math.max(1,innerWidth-w-2*M),fh=Math.max(1,innerHeight-hh-2*M);
   try{localStorage.setItem("bearQuizPos",JSON.stringify({fx:Math.max(0,Math.min(1,(x-M)/fw)),fy:Math.max(0,Math.min(1,(y-M)/fh))}))}catch(e){}}
  h.addEventListener("pointerup",up);h.addEventListener("pointercancel",up)}
-/* --- Gemini makes the questions from the open topics (5 per call, kept for the session). If Gemini is slow / fails, the fixed questions above are used. --- */
+/* --- Questions: Gemini LIVE model (free) writes 6 multiple-choice questions per call from the open topics. The FIRST question is shown the moment it arrives, the other 5 are SAVED on this device
+   (localStorage), so the next quizzes need NO call at all. A call is only made when a quiz box is really about to be shown. If Gemini fails, premade questions are used and the card says "📚 premade"
+   (reason in the console and in the Question zone tab). --- */
+var KQ_TIME=30000,KQ_CLOSE=8000,KQ_N=6;   // 30 s to answer, answer stays 8 s, questions per Gemini call
+var kQWhy=[],kLiveBusy=false;
 function kTopicsTxt(blocks){function it(a,d){var p=new Array(d+1).join("  ");return(a||[]).map(function(t){if(t&&typeof t==="object")return p+(t.t||"")+((t.sub&&t.sub.length)?"\n"+it(t.sub,d+1):"");return p+"- "+t}).join("\n")}
  return(blocks||[]).map(function(e){return(e.title||"")+"\n"+(e.table?e.table.map(function(r){return Array.isArray(r)?r.join(": "):""}).join("\n"):it(e.items,0))}).join("\n\n").slice(0,3500)}
-function kGeminiText(prompt,ms){return new Promise(function(ok){var txt="",done=false,ws;   // same Gemini Live text-only connection as the bear messages
- function fin(){if(done)return;done=true;try{ws.close()}catch(e){}ok(txt)}
- try{ws=new WebSocket("wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key="+GEMINI_KEY)}catch(e){ok("");return}
- setTimeout(fin,ms);
- ws.onopen=function(){ws.send(JSON.stringify({setup:{model:GEMINI_MODEL,generationConfig:{responseModalities:["AUDIO"]},outputAudioTranscription:{}}}))};
- ws.onmessage=async function(ev){var d=ev.data;if(d instanceof Blob)d=await d.text();var m;try{m=JSON.parse(d)}catch(e){return}
-  if(m.setupComplete)ws.send(JSON.stringify({clientContent:{turns:[{role:"user",parts:[{text:prompt}]}],turnComplete:true}}));
-  var sc=m.serverContent;if(!sc)return;
-  if(sc.outputTranscription&&sc.outputTranscription.text)txt+=sc.outputTranscription.text;
-  if(sc.turnComplete)fin()};
- ws.onerror=ws.onclose=fin})}
-function kParseQuiz(raw,label){try{var i=raw.indexOf("["),j=raw.lastIndexOf("]");if(i<0||j<i)return[];var out=[];
- JSON.parse(raw.slice(i,j+1)).forEach(function(x){if(!x||typeof x.q!=="string"||x.q.length<5||!Array.isArray(x.o)||x.o.length!==4||!(x.c>=0&&x.c<4))return;
+function kParseQuiz(raw,label){var items=[];try{var i=raw.indexOf("["),j=raw.lastIndexOf("]");items=JSON.parse(raw.slice(i,j+1))}catch(e){items=[];(raw.match(/\{[^{}]*\}/g)||[]).forEach(function(o){try{items.push(JSON.parse(o))}catch(x){}})}   // unfinished reply: keep every complete question
+ var out=[];if(!Array.isArray(items))return out;
+ items.forEach(function(x){if(!x||typeof x.q!=="string"||x.q.length<5||!Array.isArray(x.o)||x.o.length!==4||!(x.c>=0&&x.c<4))return;
   var o=x.o.map(function(y){return String(y).trim()});if(o.some(function(y){return!y})||o.filter(function(y,n){return o.indexOf(y)===n}).length!==4)return;
-  var good=o[x.c|0],sh=kShuf(o.slice());out.push({q:x.q.trim(),o:sh,c:sh.indexOf(good),a:good,s:label,ai:1})});return out.slice(0,8)}catch(e){return[]}}
-async function kGeminiQuiz(blocks,label){
- try{await READY}catch(e){}
- if(!/^[\w-]{20,}$/.test(GEMINI_KEY||"")){try{GEMINI_KEY=(await(await fetch(KEY_URL)).text()).trim()}catch(e){}}   // the key is only fetched once per session by the bear messages; fetch it here if that was skipped
- if(!/^[\w-]{20,}$/.test(GEMINI_KEY||""))return[];
- var topics=kTopicsTxt(blocks);if(!topics.trim())return[];var recent=Object.keys(kQSeen).slice(-12);
- var prompt="You are a friendly teddy bear tutor in a student notes app. The student is studying: "+label+". Topics:\n"+topics+"\n\nWrite 5 different multiple-choice questions based ONLY on these topics (easy to medium). Each has exactly 4 short options (max 10 words each), exactly one correct, and the 3 wrong ones plausible but clearly wrong. Each question must make sense on its own, because the student sees it suddenly: name the topic or subject inside the question. Keep the language of the topics (English; Bengali is fine where a topic line is Bengali). Reply ONLY with raw JSON, no markdown: [{\"q\":\"question, max 20 words\",\"o\":[\"option\",\"option\",\"option\",\"option\"],\"c\":0}] where c is the index 0-3 of the correct option. "+(recent.length?"Do NOT ask these again: "+JSON.stringify(recent)+". ":"")+"Variety seed "+Math.random().toString(36).slice(2,8)+".";
- return kParseQuiz(await kGeminiText(prompt,14000),label)}
-function kAIStore(){try{return JSON.parse(sessionStorage.getItem("bearQuizAI")||"{}")}catch(e){return{}}}
-async function kQuiz(force){var K=window.__bearK,bear=K.bear,body=$("bearBody");if(kBusy)return;   // force: undefined = the subject that is open, "*" = any subject, "dsa" etc = that subject (Question zone tab)
+  var good=o[x.c|0],sh=kShuf(o.slice());out.push({q:x.q.trim(),o:sh,c:sh.indexOf(good),a:good,s:label,ai:1})});return out.slice(0,10)}
+function kBankGet(){try{return JSON.parse(localStorage.getItem("bearQuizBank")||"{}")}catch(e){return{}}}   // saved Gemini questions per subject, kept on this device
+function kBankAdd(sig,arr){if(!arr.length)return;var B=kBankGet();B[sig]=(B[sig]||[]).concat(arr).slice(-30);try{localStorage.setItem("bearQuizBank",JSON.stringify(B))}catch(e){}}
+/* ONE Live call. Resolves with the first complete question (or null after 20 s / on failure); the call keeps running in the background and saves the rest of the questions. */
+function kKeyOk(k){return/^[^\s<>"']{20,}$/.test(k||"")}   // any key without spaces / HTML (new Google keys contain a dot, the old check rejected them)
+async function kLiveQuiz(blocks,label,sig){kQWhy=[];
+ if(kLiveBusy){kQWhy.push("the previous Gemini call is still running");return null}
+ if(!kKeyOk(GEMINI_KEY)){try{GEMINI_KEY=(await(await fetch(KEY_URL)).text()).trim()}catch(e){kQWhy.push("key: "+((e&&e.message)||e))}}   // the key is only fetched once per session by the bear messages; fetch it here if that was skipped
+ if(!kKeyOk(GEMINI_KEY)){var kl=String(GEMINI_KEY||"").length;kQWhy.push("no usable Gemini key (got "+kl+" characters)");console.warn("Bear quiz: no usable Gemini key, got "+kl+" characters");return null}
+ var topics=kTopicsTxt(blocks);if(!topics.trim())return null;var recent=Object.keys(kQSeen).slice(-12);
+ var prompt="You are a friendly teddy bear tutor in a student notes app. The student is studying: "+label+". Topics:\n"+topics+"\n\nWrite "+KQ_N+" different multiple-choice questions based ONLY on these topics (easy to medium). Ask about the CONTENT of each topic (concepts, definitions, differences, types, steps, formulas), NEVER about the exam pattern, how many questions or how many marks come from a topic. If a topic line only says how many questions or marks come from a subject, ask a concept question about that subject itself, using your own knowledge of it. Each has exactly 4 short options (max 8 words each), exactly one correct, and the 3 wrong ones plausible but clearly wrong. Each question must make sense on its own, because the student sees it suddenly: name the topic or subject inside the question. Keep the language of the topics (English; Bengali is fine where a topic line is Bengali). Reply ONLY with raw JSON, no markdown: [{\"q\":\"question, max 18 words\",\"o\":[\"option\",\"option\",\"option\",\"option\"],\"c\":0}] where c is the index 0-3 of the correct option. "+(recent.length?"Do NOT ask these again: "+JSON.stringify(recent)+". ":"")+"Variety seed "+Math.random().toString(36).slice(2,8)+".";
+ kLiveBusy=true;
+ return new Promise(function(resolve){var txt="",finished=false,resolved=false,delivered=null,have={},got=[],ws,tFirst,tAll;
+  function give(v){if(resolved)return;resolved=true;resolve(v)}
+  function fin(why){if(finished)return;finished=true;clearTimeout(tFirst);clearTimeout(tAll);try{ws.close()}catch(e){}kLiveBusy=false;
+   kBankAdd(sig,got.filter(function(x){return x!==delivered}));   // everything except the question that is being shown now is saved for later
+   if(!got.length)kQWhy.push("live: "+(why||"no usable reply")+(txt?" ("+txt.slice(0,50)+")":""));
+   if(!delivered&&!resolved)console.warn("Bear quiz: Gemini gave no question, using premade →",kQWhy.join(" | "));give(null)}
+  function scan(){kParseQuiz(txt,label).forEach(function(x){if(!have[x.q]){have[x.q]=1;got.push(x)}});
+   if(!resolved&&got.length){delivered=got[0];clearTimeout(tFirst);give(delivered)}   // first question ready: show it NOW, keep collecting the rest
+   if(got.length>=KQ_N)fin("enough")}
+  try{ws=new WebSocket("wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContent?key="+GEMINI_KEY)}catch(e){fin(String(e));return}
+  tFirst=setTimeout(function(){if(!resolved){kQWhy.push("live: first question took over 20 s");give(null)}},20000);   // premade question now; the call still fills the bank
+  tAll=setTimeout(function(){fin("timeout 70 s")},70000);
+  ws.onopen=function(){ws.send(JSON.stringify({setup:{model:GEMINI_MODEL,generationConfig:{responseModalities:["AUDIO"]},outputAudioTranscription:{}}}))};
+  ws.onmessage=async function(ev){var d=ev.data;if(d instanceof Blob)d=await d.text();var m;try{m=JSON.parse(d)}catch(e){return}
+   if(m.error)kQWhy.push("live: "+JSON.stringify(m.error).slice(0,120));
+   if(m.setupComplete)ws.send(JSON.stringify({clientContent:{turns:[{role:"user",parts:[{text:prompt}]}],turnComplete:true}}));
+   var sc=m.serverContent;if(!sc)return;
+   if(sc.outputTranscription&&sc.outputTranscription.text){txt+=sc.outputTranscription.text;scan()}   // the sound is never played, only its text transcript is read
+   if(sc.turnComplete){scan();fin("turn ended")}};
+  ws.onerror=function(){fin("socket error")};ws.onclose=function(ev){fin("closed "+ev.code+" "+(ev.reason||""))}})}
+/* wait up to `total` ms; stops early when stop() is true; the clock is PAUSED while the box is dragged or minimised; a box left minimised for 3 minutes is dropped. true = ran out of time */
+async function kqWait(card,total,stop,onTick){var t=0;while(t<total&&!stop()&&!card.__gone){await kWait(100);
+  if(card.__drag||card.__min){if(card.__min&&++card.__idle>1800)card.__gone=true;continue}
+  t+=100;if(onTick)onTick(total-t)}return t>=total}
+function kInViewer(){try{var c=window.__notesCtx&&window.__notesCtx();return!!(c&&c.viewer)}catch(e){return false}}   // a PDF is open in the viewer
+async function kQuiz(force){var K=window.__bearK||{},bear=K.bear,body=$("bearBody");if(kBusy||document.hidden||kInViewer())return;   // tab in the background or PDF viewer open: nothing is shown, so NO Gemini call
+ var bearOn=!!(bear&&bear.style.display!=="none"),say=function(t,ms){if(bearOn&&K.bsay)K.bsay(t,ms)};   // in the PDF viewer the bear is not there: the box pops up alone   // force: undefined = the subject that is open, "*" = any subject, "dsa" etc = that subject (Question zone tab)
  var ctx=null;try{ctx=window.__notesCtx&&window.__notesCtx()}catch(e){}
  var blocks=typeof force==="string"?(force==="*"?kRandSubject():(window.NOTES_INFO||[]).filter(function(e){return kSubj(e)===force})):(ctx&&ctx.blocks&&ctx.blocks.length?ctx.blocks:kRandSubject());
- var fixed=kQuizPool(blocks);if(!fixed.length&&typeof force!=="string"){blocks=kRandSubject();fixed=kQuizPool(blocks)}if(!fixed.length)return false;   // no topics at all
- kBusy=true;window.__bearTalking=true;var card=document.createElement("div"),tapped=false,pick=-1,t;
- try{var label=blocks.slice(0,2).map(function(e){return e.title}).join(" + "),sig=blocks.map(function(e){return e.title}).join("|"),store=kAIStore(),list=store[sig]||[];
-  if(!list.length){K.bsay("Thinking of a question… 🤔",3500);list=await kGeminiQuiz(blocks,label);list=list.filter(function(x){return!kQSeen[x.q]})}
-  var Q=list.shift();store[sig]=list;try{sessionStorage.setItem("bearQuizAI",JSON.stringify(store))}catch(e){}
-  if(!Q){var fresh=fixed.filter(function(x){return!kQSeen[x.q]});if(!fresh.length){kQSeen={};fresh=fixed}Q=kpk(fresh)}   // Gemini failed / offline: fixed questions, no repeats until all were asked
+ var fixed=kQuizPool(blocks);if(!fixed.length&&typeof force!=="string"){blocks=kRandSubject();fixed=kQuizPool(blocks)}if(!fixed.length)return false;
+ kBusy=true;window.__bearTalking=true;var card=document.createElement("div"),dot=null,tapped=false,pick=-1,answered=false,t;
+ try{var label=blocks.slice(0,2).map(function(e){return e.title}).join(" + "),sig=blocks.map(function(e){return e.title}).join("|")+"#"+kTopicsTxt(blocks).length,B=kBankGet(),list=(B[sig]||[]).filter(function(x){return!kQSeen[x.q]}),Q=list.shift();   // saved Gemini questions first: no call at all
+  if(Q){B[sig]=list;try{localStorage.setItem("bearQuizBank",JSON.stringify(B))}catch(e){}}
+  else{say("Thinking of a question… 🤔",3500);Q=await kLiveQuiz(blocks,label,sig)}   // ONE call: shows the first question at once and saves the others
+  if(kInViewer()){if(Q&&Q.ai)kBankAdd(sig,[Q]);return}   // a PDF was opened while Gemini was answering: keep the question for later, show nothing
+  if(!Q){var fresh=fixed.filter(function(x){return!kQSeen[x.q]});if(!fresh.length){kQSeen={};fresh=fixed}Q=kpk(fresh)}   // Gemini failed / offline: premade questions, no repeats until all were asked
+  window.__kqLast={ai:!!Q.ai,why:Q.ai?"":(kQWhy.join(" | ")||"no answer")};
   kQSeen[Q.q]=1;if(!Q.o){var m=kMcq(Q,fixed);if(m)Q=Object.assign({},Q,m)}
   var mc=!!Q.o,W=Math.min(innerWidth<=600?235:260,innerWidth-16);
-  card.className="kquiz";card.style.width=W+"px";card.style.left="0px";card.style.top="0px";
-  card.innerHTML='<div class="kqs">⠿ 🧠 Quiz · '+kesc(Q.s)+(Q.ai?' · 🤖 AI':'')+'</div><div class="kqq">'+kesc(Q.q)+'</div>'+
+  card.className="kquiz";card.style.width=W+"px";card.style.left="0px";card.style.top="0px";card.__idle=0;
+  card.innerHTML='<div class="kqs"><span class="kql">⠿ 🧠 Quiz · '+kesc(Q.s)+(Q.ai?' · 🤖 AI':' · 📚 premade')+'</span><span class="kqt">⏱ '+KQ_TIME/1000+'s</span><button type="button" class="kqx" title="Minimise" aria-label="Minimise">✕</button></div><div class="kqbar"><i></i></div><div class="kqq">'+kesc(Q.q)+'</div>'+
    (mc?'<div class="kqo">'+Q.o.map(function(x,n){return'<button type="button" class="kqb" data-i="'+n+'"><b>'+"ABCD".charAt(n)+'</b>'+kesc(x)+'</button>'}).join("")+'</div>'
       :'<div class="kqa" style="display:none">✅ '+kesc(Q.a).replace(/\n/g,"<br>")+'</div>')+
    '<div class="kqh">'+(mc?'👆 Pick one':'👆 Tap to see the answer')+' · ✥ drag the top bar to move</div>';
+  var tm=card.querySelector(".kqt"),bar=card.querySelector(".kqbar"),hint=card.querySelector(".kqh");
+  function paint(rem){var sec=Math.ceil(rem/1000),low=sec<=10;tm.textContent="⏱ "+sec+"s";tm.classList.toggle("low",low);bar.classList.toggle("low",low);bar.firstChild.style.width=Math.max(0,rem/KQ_TIME*100)+"%"}
+  function minimise(){if(card.__min)return;card.__min=1;card.style.display="none";   // ✕ before answering: shrink to a small circle in the corner (clock paused), tap it to come back
+   dot=document.createElement("button");dot.type="button";dot.className="kqmin";dot.title="Open the quiz";dot.setAttribute("aria-label","Open the quiz");dot.innerHTML="🧠<b>1</b>";
+   dot.onclick=function(){card.__min=0;card.style.display="";if(dot){dot.remove();dot=null}kQKeep(card)};document.body.appendChild(dot)}
+  card.querySelector(".kqx").addEventListener("click",function(e){e.stopPropagation();if(answered)tapped=true;else minimise()});
   card.addEventListener("click",function(e){if(e.target.closest&&e.target.closest(".kqs"))return;var b=e.target.closest&&e.target.closest(".kqb");if(b&&mc&&pick<0)pick=+b.getAttribute("data-i");else tapped=true});
-  K.bsay(kpk(QUIZ_TEXT),1600);
-  if(body)body.animate([{transform:"rotate(-5deg)"},{transform:"rotate(5deg)"}].map(function(f){f.transformOrigin="50px 100px";return f}),{duration:350,iterations:4,direction:"alternate"});
+  say(kpk(QUIZ_TEXT),1600);
+  if(bearOn&&body)body.animate([{transform:"rotate(-5deg)"},{transform:"rotate(5deg)"}].map(function(f){f.transformOrigin="50px 100px";return f}),{duration:350,iterations:4,direction:"alternate"});
   await kWait(900);document.body.appendChild(card);kQPlace(card);kQDrag(card,card.querySelector(".kqs"));card.animate([{transform:"scale(.6)",opacity:0},{transform:"scale(1)",opacity:1}],{duration:260,easing:"ease-out"});
-  var late,ok=false,hint=card.querySelector(".kqh"),tag=Q.ai?" · 🤖 AI-made, check your notes":"";
-  if(mc){for(t=0;t<20000&&pick<0;t+=card.__drag?0:100)await kWait(100);   // about 20 s to choose
-   late=pick<0;ok=pick===Q.c;kqScore(ok);
+  var late,ok=false,tag=Q.ai?" · 🤖 AI-made, check your notes":"";
+  paint(KQ_TIME);
+  await kqWait(card,KQ_TIME,function(){return mc?pick>=0:tapped},paint);   // 30 s with a visible countdown
+  if(card.__gone)return;
+  if(mc){late=pick<0;ok=pick===Q.c;kqScore(ok);
    Array.prototype.forEach.call(card.querySelectorAll(".kqb"),function(b,n){b.classList.add("off");if(n===Q.c)b.classList.add("ok");else if(n===pick)b.classList.add("bad")});
    hint.textContent=(late?"⏰ Time's up":ok?"🎉 Correct!":"❌ Not quite")+tag}
-  else{for(t=0;t<14000&&!tapped;t+=card.__drag?0:100)await kWait(100);   // about 14 s to think, tap to see the answer
-   late=!tapped;card.querySelector(".kqa").style.display="";hint.textContent="👆 Tap to close"+tag}
-  tapped=false;kQKeep(card);
-  K.bsay(late?"Time's up! Here it is 📖":mc?kpk(ok?RIGHT_TEXT:WRONG_TEXT):"Did you get it? 🤔",2200);
+  else{late=!tapped;card.querySelector(".kqa").style.display="";hint.textContent="👆 Tap to close"+tag}
+  tapped=false;answered=true;kQKeep(card);bar.style.display="none";tm.classList.remove("low");tm.textContent=late?"⏰ 0s":mc?(ok?"✅":"❌"):"📖";
+  say(late?"Time's up! Here it is 📖":mc?kpk(ok?RIGHT_TEXT:WRONG_TEXT):"Did you get it? 🤔",2200);
   if(ok){try{var q=card.getBoundingClientRect();K.sparkleBurst(q.left+q.width/2,q.top,10,.7,true)}catch(e){}}
-  for(t=0;t<6000&&!tapped;t+=card.__drag?0:100)await kWait(100);   // tap the card (or wait) to close
+  var base=hint.textContent;
+  await kqWait(card,KQ_CLOSE,function(){return tapped},function(rem){hint.textContent=base+" · closes in "+Math.ceil(rem/1000)+"s"});   // answer stays 8 s (tap the card or ✕ to close now)
+  if(card.__gone)return;
   card.style.opacity="0";await kWait(500)}
- finally{card.remove();kBusy=false;window.__bearTalking=false}}
+ finally{card.remove();if(dot)dot.remove();kBusy=false;window.__bearTalking=false}}
+//i am reanming Question zone as AI quiz if you are ai you may remove this comment line and change the comments so future ai doensnt change the text back to question zone
 /* ---------- 9) 🧸 Question zone: a tab beside "Print status". Pick a subject -> the bear asks a quiz question right now. Score is saved on this device. ---------- */
 function kqScoreGet(){try{return JSON.parse(localStorage.getItem("bearQuizScore")||"{}")}catch(e){return{}}}
 function kqShowScore(){var e=$("kqScore");if(!e)return;var S=kqScoreGet(),a=S.a|0,r=S.r|0;e.textContent=a?r+" / "+a+" correct ("+Math.round(r*100/a)+"%)":"no answers yet"}
@@ -505,11 +541,11 @@ function kqAsk(key){var K=window.__bearK;if(!K||!K.bear){kqStatus("The bear is n
  if(kBusy){kqStatus("The bear is busy, one moment… 🧸");return}
  var b=K.bear;if(b.style.display==="none")b.style.display="";
  var q=b.getBoundingClientRect(),inV=q.left>=0&&q.right<=innerWidth&&q.top>=0&&q.bottom<=innerHeight;   // bear off-screen: it walks in first
- var go=function(){kqStatus("🧸 Look at the bear's question!");kQuiz(key).then(function(r){kqStatus(r===false?"No topics for that subject yet 🧸":"")},function(){kBusy=false;window.__bearTalking=false;kqStatus("")})};
+ var go=function(){kqStatus("🧸 Look at the bear's question!");kQuiz(key).then(function(r){var L=window.__kqLast;kqStatus(r===false?"No topics for that subject yet 🧸":(L&&!L.ai?"📚 That one was premade. Gemini gave no questions: "+L.why:""))},function(){kBusy=false;window.__bearTalking=false;kqStatus("")})};
  if(!inV){b.style.transitionDuration="1.6s";b.classList.add("moving");b.style.left=(innerWidth-K.BW-20)+"px";b.style.top=(innerHeight-K.BH-20)+"px";setTimeout(function(){b.classList.remove("moving");go()},1700)}else go()}
 function initZone(){if(!$("tabMine")||!$("c1")||$("tabKq"))return;
  var st=document.createElement("style");st.textContent=".kqsubs{display:flex;flex-wrap:wrap;gap:8px}.kqsubs button{padding:10px 16px;font-weight:700}";document.head.appendChild(st);
- $("tabMine").insertAdjacentHTML("afterend",'<button class="tab" id="tabKq">🧸 Question zone</button>');
+ $("tabMine").insertAdjacentHTML("afterend",'<button class="tab" id="tabKq">🧸 Ai quiz</button>');
  $("c1").insertAdjacentHTML("afterend",'<div class="card hidden" id="kq"><b>🧸 Bear question zone</b><div class="tiny" style="margin:2px 0 10px">Pick a subject and the bear asks you a quick multiple-choice question from my topics.</div><div id="kqSubs" class="kqsubs"></div><div id="kqMsg" class="note" style="margin:10px 0 0;min-height:1.2em"></div><div class="tiny" style="margin-top:8px">Your score: <b id="kqScore"></b> <button type="button" class="s" id="kqReset" style="margin-left:6px;padding:2px 8px">↺ Reset</button></div></div>');
  $("tabKq").onclick=function(){show(["kq"])};
  var _s=show;show=function(ids){_s(ids);var q=ids[0]==="kq";$("kq").classList.toggle("hidden",!q);$("tabKq").classList.toggle("on",q);if(q){$("tabNew").classList.remove("on");$("tabMine").classList.remove("on");kqRender()}};   // same trick as notes.js: wrap show() so this card hides / shows with the others
