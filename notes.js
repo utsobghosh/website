@@ -155,7 +155,7 @@ var stL=document.createElement("style");stL.textContent=".nsrch{width:100%;box-s
 var stO=document.createElement("style");stO.textContent=".nv .nvinfo.open{position:absolute!important;left:0;right:0;z-index:5;max-height:60vh!important;overflow:auto!important;flex:none!important;border:0!important;border-bottom:3px solid var(--accent2,#8a4dff)!important;box-shadow:0 14px 28px rgba(0,0,0,.55)}.nv:has(.nvinfo.open){grid-template-columns:minmax(0,1fr)!important}.nv:has(.nvinfo.open) .nvb{display:block!important;grid-column:1/-1!important;grid-row:3!important}.nvinfo.open .nvib{max-height:none!important}";document.head.appendChild(stO);   // Topics: opens as a drop-down OVER the file (never squeezes it into a left column)
 /* ===== study buddy: tiny bear at the bottom-left edge of the viewer. No timer. Cheers at 25% / 60% / the end, tap it for a cute message. ===== */
 var budSeen={},budT=0,BUD_MSG=["Study time! 📖","Drink some water 💧","You're doing great 🌸","One page at a time 🌷","Stretch a little 🧘","I'm proud of you 🧸"];
-var stB=document.createElement("style");stB.textContent=".nvbud{position:absolute;left:4px;bottom:4px;z-index:6;display:flex;align-items:center;gap:4px;pointer-events:none}.nvbe{pointer-events:auto;cursor:pointer;font-size:20px;line-height:1;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(43,37,64,.75);animation:nvbr 3.2s ease-in-out infinite;-webkit-tap-highlight-color:transparent}.nvbe.hop{animation:nvbh .6s ease}.nvbm{font-size:12px;line-height:1.3;max-width:58vw;padding:4px 9px;border-radius:12px;background:#fff;color:#3a2b5c;opacity:0;transform:translateX(-6px);transition:opacity .25s,transform .25s}.nvbm.on{opacity:1;transform:none}@keyframes nvbr{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}@keyframes nvbh{0%,100%{transform:translateY(0)}30%{transform:translateY(-9px)}60%{transform:translateY(0)}80%{transform:translateY(-3px)}}@media (min-width:700px){.nvbe{font-size:26px;width:38px;height:38px}.nvbm{font-size:14px}}";document.head.appendChild(stB);
+var stB=document.createElement("style");stB.textContent=".nvbud{position:absolute;left:4px;bottom:4px;z-index:6;display:flex;align-items:center;gap:4px;pointer-events:none}.nvbe{position:relative;pointer-events:auto;cursor:pointer;font-size:20px;line-height:1;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(43,37,64,.75);animation:nvbr 3.2s ease-in-out infinite;-webkit-tap-highlight-color:transparent}.nvbe.hop{animation:nvbh .6s ease}.nvbm{font-size:12px;line-height:1.3;max-width:58vw;padding:4px 9px;border-radius:12px;background:#fff;color:#3a2b5c;opacity:0;transform:translateX(-6px);transition:opacity .25s,transform .25s}.nvbm.on{opacity:1;transform:none}@keyframes nvbr{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}@keyframes nvbh{0%,100%{transform:translateY(0)}30%{transform:translateY(-9px)}60%{transform:translateY(0)}80%{transform:translateY(-3px)}}@media (min-width:700px){.nvbe{font-size:26px;width:38px;height:38px}.nvbm{font-size:14px}}";document.head.appendChild(stB);
 function budSay(t,hop){var m=$("nvBm"),e=$("nvBe");if(!m)return;m.textContent=t;m.classList.add("on");clearTimeout(budT);budT=setTimeout(function(){m.classList.remove("on")},3200);
  if(hop){e.classList.remove("hop");void e.offsetWidth;e.classList.add("hop")}}
 function budWatch(vb){var bq=0;vb.addEventListener("scroll",function(){if(bq)return;bq=setTimeout(function(){bq=0;bw()},300)},{passive:true});function bw(){var max=vb.scrollHeight-vb.clientHeight;if(max<300)return;var p=vb.scrollTop/max;
@@ -165,6 +165,7 @@ function viewer(){if(vOv)return vOv;vOv=document.createElement("div");vOv.classN
  vOv.querySelector("#nvInfo").onclick=function(){this.classList.toggle("open")};
  vOv.insertAdjacentHTML("beforeend",'<div class="nvbud"><span class="nvbe" id="nvBe">🧸</span><span class="nvbm" id="nvBm"></span></div>');
  vOv.querySelector("#nvBe").onclick=function(){budSay((window.bearPick&&window.bearPick("study"))||BUD_MSG[Math.floor(Math.random()*BUD_MSG.length)],1)};
+ vOv.querySelector("#nvBe").insertAdjacentHTML("afterend",'<span class="askb" id="nvAsk" role="button" title="Chat with the AI bear">💬 Ask AI</span>');vOv.querySelector("#nvAsk").onclick=function(e){e.stopPropagation();if(window.__askOpen)window.__askOpen()};   /* tiny ask badge on the viewer bear */
  document.body.appendChild(vOv);
  $("nvX").onclick=function(){try{if(document.fullscreenElement)document.exitFullscreen().catch(function(){})}catch(x){}$("nvNav").style.display="none";$("nvInfo").className="nvinfo hidden";vTok++;if(vIO)vIO.disconnect();document.documentElement.style.overflow="";vOv.classList.add("hidden");$("nvB").innerHTML=""};
  var vb=$("nvB"),pz=null;budWatch(vb);
@@ -265,7 +266,7 @@ async function openV(path,name){budSeen={};clearTimeout(budT);
   var p1=await doc.getPage(1),v1=p1.getViewport({scale:1}),cw=b.clientWidth||360;
   b.innerHTML='<div class="nvi" id="nvI"></div>';var host=$("nvI");vZ=Math.min(1,900/cw);host.style.setProperty("--z",vZ);
   if(vIO)vIO.disconnect();if(vDoc&&vDoc!==doc){try{vDoc.destroy()}catch(er){}}vDoc=doc;
-  var want=[],busy=false,tm=0,pl=0,lastTop=b.scrollTop,dir=1,lastSc=0,vel=0,sT=b.scrollTop,sTm=Date.now();
+  var want=[],busy=false,tm=0,pl=0,vq=0,lastTop=b.scrollTop,dir=1,lastSc=0,vel=0,sT=b.scrollTop,sTm=Date.now();
   function pump(){clearTimeout(tm);tm=0;if(busy||my!==vTok||b.__pin)return;var br=b.getBoundingClientRect(),cy=br.top+br.height/2,idle=Date.now()-lastSc>=130,best=null,bd=1e9,miss=false;if(!idle&&vel>1.1)return;   /* flinging fast: nothing is drawn, so the scroll stays smooth; pages show "loading" text and are drawn when it slows down */
    if(b.scrollTop!==lastTop){dir=b.scrollTop>lastTop?1:-1;lastTop=b.scrollTop}
    want.forEach(function(e){if(e.__rend)return;var m=!e.__done;if(!m&&!(idle&&e.__lo))return;if(miss&&!m)return;   // 1) pages with no picture yet, 2) when scrolling has stopped: make quick pictures sharp
@@ -273,7 +274,7 @@ async function openV(path,name){budSeen={};clearTimeout(budT);
     if(m&&!miss){miss=true;bd=1e9}if(dd<bd){bd=dd;best=e}});
    if(!best)return;busy=true;best.__rend=1;
    drawPg(doc,best,cw,my,idle).catch(function(){}).then(function(){best.__rend=0;busy=false;if(my===vTok)pump()})}
-  b.__sc=function(){var n=Date.now(),dt=n-sTm;if(dt>0)vel=vel*.6+Math.abs(b.scrollTop-sT)/dt*.4;sT=b.scrollTop;sTm=n;lastSc=n;clearTimeout(tm);tm=setTimeout(pump,150);if(!pl)pl=setTimeout(function(){pl=0;pump()},220);want.forEach(function(e){if(e.__rend&&e.__hiR&&e.__task){try{e.__task.cancel()}catch(x){}}})};   // scrolling stopped -> sharpen
+  b.__sc=function(){lastSc=Date.now();if(!vq)vq=requestAnimationFrame(function(){vq=0;var n=Date.now(),dt=n-sTm,y=b.scrollTop;if(dt>0)vel=vel*.6+Math.abs(y-sT)/dt*.4;sT=y;sTm=n});clearTimeout(tm);tm=setTimeout(pump,150);if(!pl)pl=setTimeout(function(){pl=0;pump()},220);want.forEach(function(e){if(e.__rend&&e.__hiR&&e.__task){try{e.__task.cancel()}catch(x){}}})};   // scrolling stopped -> sharpen
   var io=vIO=new IntersectionObserver(function(es){es.forEach(function(e){var d=e.target;
    if(e.isIntersecting){if(!d.__want){d.__want=1;want.push(d)}}
    else if(d.__want){want=want.filter(function(x){return x!==d});undraw(d)}});pump()},{root:b,rootMargin:"120% 0px"});
@@ -286,6 +287,7 @@ async function openV(path,name){budSeen={};clearTimeout(budT);
     if(i%4===0)await new Promise(function(r){setTimeout(r,25)})}})();
   setupNav(b,host,doc.numPages)}
  catch(e){console.error("notes viewer:",e);if(my===vTok)b.innerHTML='<p class="nvm">Could not show this file here ('+esc((e&&e.message)||e)+'). <a href="'+esc(url)+'" target="_blank" rel="noopener">Open it directly</a></p>'}}
+window.__nvOpen=function(){return!!vOv&&!vOv.classList.contains("hidden")};
 window.__testLoading=function(){var o=viewer(),b=$("nvB"),f=FILES.filter(function(x){return x.id})[0]||FILES[0],path=f?f.p:"";   /* admin test button: shows the loading screen only, it never finishes (press Close) */
  vTok++;o.classList.remove("hidden");document.documentElement.style.overflow="hidden";
  $("nvT").textContent="🧪 Loading screen test";$("nvD").style.visibility="hidden";$("nvO").href=path?encodeURI(path):"#";$("nvO").style.visibility=(f&&f.id)?"hidden":"";

@@ -61,7 +61,7 @@ function celebrate(){
  setTimeout(function(){sparkleBurst(innerWidth*.2,innerHeight*.3,22,1,false)},250);
  setTimeout(function(){sparkleBurst(innerWidth*.8,innerHeight*.35,22,1,false)},450);
  for(var i=0;i<28;i++){var c=document.createElement("span");c.className="confetti";c.textContent=CONFETTI_EMOJIS[i%CONFETTI_EMOJIS.length];c.style.left=Math.random()*100+"vw";c.style.animationDelay=Math.random()*.6+"s";c.style.fontSize=16+Math.random()*16+"px";document.body.appendChild(c);setTimeout(c.remove.bind(c),3200)}}
-if(TAP_SPARKLES&&!calm)document.addEventListener("pointerdown",function(e){sparkleBurst(e.clientX,e.pointerType==="touch"?e.clientY-52:e.clientY,10,1,false)});
+if(TAP_SPARKLES&&!calm)document.addEventListener("pointerdown",function(e){if(window.__nvOpen&&window.__nvOpen())return;sparkleBurst(e.clientX,e.pointerType==="touch"?e.clientY-52:e.clientY,10,1,false)});
 
 // ----- Small sparkle trail while sliding a finger (also while scrolling) or dragging the mouse -----
 var trailLast=null;
@@ -71,7 +71,7 @@ function trailSpark(x,y){
  t.style.cssText="left:"+(x+Math.random()*10-5)+"px;top:"+(y+Math.random()*10-5)+"px;font-size:"+(11+Math.random()*8)+"px;color:"+sparkCols()[Math.floor(Math.random()*4)]+";--tx:"+(Math.random()*24-12)+"px;--ty:"+(8+Math.random()*16)+"px";
  document.body.appendChild(t);setTimeout(t.remove.bind(t),1400)}
 function trailMove(x,y){
- if(dragging)return;                                     // the bear makes its own trail while you hold it
+ if(dragging||(window.__nvOpen&&window.__nvOpen()))return;   // no trail while the PDF viewer is open (it makes scrolling lag)
  if(trailLast&&Math.hypot(x-trailLast[0],y-trailLast[1])<12)return;
  trailLast=[x,y];trailSpark(x,y)}
 if(TRAIL_SPARKLES&&!calm){

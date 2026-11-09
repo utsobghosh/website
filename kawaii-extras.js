@@ -30,7 +30,8 @@ var BEAR_BASE="You are a cute kawaii teddy bear mascot in a student notes app. R
 var READY=Promise.resolve();
 function buildPrompt(){var old=[];Object.keys(HIST).forEach(function(k){old=old.concat(HIST[k]||[])});
  return BEAR_BASE+" Be creative: use fresh wording every time (variety seed "+Math.random().toString(36).slice(2,8)+")."+(old.length?" Do NOT reuse or closely copy any of these recent lines: "+JSON.stringify(old.slice(-30))+".":"")}
-var KEY_URL="https://script.google.com/macros/s/AKfycbw58vYmfHbFmfJe050xn9zipIJfnPx9kHlzkg6gyWxU8RPgq0NjDN49iFSk8ef_KHVUEQ/exec";   // Apps Script web app that returns the Gemini key (key is kept in Apps Script, not in GitHub)
+var KEY_URL="https://script.google.com/macros/s/AKfycbw58vYmfHbFmfJe050xn9zipIJfnPx9kHlzkg6gyWxU8RPgq0NjDN49iFSk8ef_KHVUEQ/exec";window.__gem=function(){return{k:GEMINI_KEY,m:GEMINI_MODEL,u:KEY_URL}};   // lets ask-bear.js use the same Gemini key/model
+   // Apps Script web app that returns the Gemini key (key is kept in Apps Script, not in GitHub)
 function loadMsgs(){
  try{if(sessionStorage.getItem("bearMsgs"))return loadMsgs0()}catch(e){}
  var p=fetch(KEY_URL).then(function(r){return r.text()}).then(function(k){GEMINI_KEY=k.trim()}).catch(function(){}).then(function(){loadMsgs0();return READY===p?undefined:READY});
@@ -439,7 +440,7 @@ function kQDrag(card,h){var sx=0,sy=0,ox=0,oy=0;h.addEventListener("pointerdown"
 /* --- Questions: Gemini LIVE model (free) writes 6 multiple-choice questions per call from the open topics. The FIRST question is shown the moment it arrives, the other 5 are SAVED on this device
    (localStorage), so the next quizzes need NO call at all. A call is only made when a quiz box is really about to be shown. If Gemini fails, premade questions are used and the card says "📚 premade"
    (reason in the console and in the Question zone tab). --- */
-var KQ_TIME=30000,KQ_CLOSE=8000,KQ_N=6;   // 30 s to answer, answer stays 8 s, questions per Gemini call
+var KQ_TIME=60000,KQ_CLOSE=8000,KQ_N=6;   // 60 s to answer (was 30 s, too short to read and think), answer stays 8 s, questions per Gemini call
 var kQWhy=[],kLiveBusy=false;
 function kTopicsTxt(blocks){function it(a,d){var p=new Array(d+1).join("  ");return(a||[]).map(function(t){if(t&&typeof t==="object")return p+(t.t||"")+((t.sub&&t.sub.length)?"\n"+it(t.sub,d+1):"");return p+"- "+t}).join("\n")}
  return(blocks||[]).map(function(e){return(e.title||"")+"\n"+(e.table?e.table.map(function(r){return Array.isArray(r)?r.join(": "):""}).join("\n"):it(e.items,0))}).join("\n\n").slice(0,3500)}
@@ -502,8 +503,8 @@ async function kQuiz(force){var K=window.__bearK||{},bear=K.bear,body=$("bearBod
   card.innerHTML='<div class="kqs"><span class="kql">⠿ 🧠 Quiz · '+kesc(Q.s)+(Q.ai?' · 🤖 AI':' · 📚 premade')+'</span><span class="kqt">⏱ '+KQ_TIME/1000+'s</span><button type="button" class="kqx" title="Minimise" aria-label="Minimise">✕</button></div><div class="kqbar"><i></i></div><div class="kqq">'+kesc(Q.q)+'</div>'+
    (mc?'<div class="kqo">'+Q.o.map(function(x,n){return'<button type="button" class="kqb" data-i="'+n+'"><b>'+"ABCD".charAt(n)+'</b>'+kesc(x)+'</button>'}).join("")+'</div>'
       :'<div class="kqa" style="display:none">✅ '+kesc(Q.a).replace(/\n/g,"<br>")+'</div>')+
-   '<div class="kqh">'+(mc?'👆 Pick one':'👆 Tap to see the answer')+' · ✥ drag the top bar to move</div>';
-  var tm=card.querySelector(".kqt"),bar=card.querySelector(".kqbar"),hint=card.querySelector(".kqh");
+   '<div class="kqh">'+(mc?'👆 Pick one':'👆 Tap to see the answer')+' · ✥ drag the top bar to move</div><div class="kqid"></div>';
+  var tm=card.querySelector(".kqt"),bar=card.querySelector(".kqbar"),hint=card.querySelector(".kqh");try{window.__askQuizRow&&window.__askQuizRow(card.querySelector(".kqid"))}catch(e){}   // ID row (ask-bear.js)
   function paint(rem){var sec=Math.ceil(rem/1000),low=sec<=10;tm.textContent="⏱ "+sec+"s";tm.classList.toggle("low",low);bar.classList.toggle("low",low);bar.firstChild.style.width=Math.max(0,rem/KQ_TIME*100)+"%"}
   function minimise(){if(card.__min)return;card.__min=1;card.style.display="none";   // ✕ before answering: shrink to a small circle in the corner (clock paused), tap it to come back
    dot=document.createElement("button");dot.type="button";dot.className="kqmin";dot.title="Open the quiz";dot.setAttribute("aria-label","Open the quiz");dot.innerHTML="🧠<b>1</b>";
@@ -522,6 +523,7 @@ async function kQuiz(force){var K=window.__bearK||{},bear=K.bear,body=$("bearBod
    hint.textContent=(late?"⏰ Time's up":ok?"🎉 Correct!":"❌ Not quite")+tag}
   else{late=!tapped;card.querySelector(".kqa").style.display="";hint.textContent="👆 Tap to close"+tag}
   tapped=false;answered=true;kQKeep(card);bar.style.display="none";tm.classList.remove("low");tm.textContent=late?"⏰ 0s":mc?(ok?"✅":"❌"):"📖";
+  try{window.__askQuizSave&&window.__askQuizSave({subj:Q.s||"",q:Q.q,o:Q.o||[],a:Q.a||(Q.o?Q.o[Q.c]:""),pick:(mc&&pick>=0&&Q.o)?Q.o[pick]:"",res:mc?(late?"timeout":ok?"right":"wrong"):"viewed",src:Q.ai?"AI":"premade"})}catch(e){}   // saved in the sheet ONLY when the student's ID is known (ask-bear.js)
   say(late?"Time's up! Here it is 📖":mc?kpk(ok?RIGHT_TEXT:WRONG_TEXT):"Did you get it? 🤔",2200);
   if(ok){try{var q=card.getBoundingClientRect();K.sparkleBurst(q.left+q.width/2,q.top,10,.7,true)}catch(e){}}
   var base=hint.textContent;
