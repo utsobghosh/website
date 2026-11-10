@@ -39,7 +39,7 @@ function rememberedId() { var v = ls("askId") || ""; return /^\d{8}$/.test(v) ? 
 function getId() { return S.guest ? "" : rememberedId(); }
 function setId(v) { ls("askId", v || null); S.guest = false; document.dispatchEvent(new CustomEvent("askid")); }
 function setGuest() { S.guest = true; document.dispatchEvent(new CustomEvent("askid")); }
-function nameOf(id) { try { return (typeof STUDENTS !== "undefined" && STUDENTS[id]) || ""; } catch (e) { return ""; } }
+function nameOf(id) { try { var c = typeof STUDENTS !== "undefined" && STUDENTS[id]; if (c) return c; } catch (e) {} return ls("askNm:" + id) || ""; }   // class list first, otherwise the name Apps Script found (kept on this phone)
 window.__askId = getId;
 
 // ---------- Apps Script ----------
@@ -47,7 +47,10 @@ function api(q) { return fetch(URL_ + "?" + Object.keys(q).map(function (k) { re
 function post(b) { return fetch(URL_, { method: "POST", body: JSON.stringify(b) }).then(function (r) { return r.json(); }); }
 
 // ---------- profile picture: class picture if it can be fetched, otherwise a cute placeholder ----------
-var phMem = {};
+var phMem = {}, profMem = {};
+function profApi(id) { return profMem[id] || (profMem[id] = api({ photo: id }).catch(function () { delete profMem[id]; return null; })); }   // ONE request gives picture + name
+function gotName(id, r) { if (r && r.name && !ls("askNm:" + id)) { ls("askNm:" + id, String(r.name).slice(0, 80)); document.dispatchEvent(new CustomEvent("askname", { detail: id })); } }
+function fetchName(id) { if (!id || nameOf(id) || !URL_) return; profApi(id).then(function (r) { gotName(id, r); }); }
 function photoFor(id) {
   if (phMem[id]) return phMem[id];
   var c = ls("askPh:" + id); if (c) return (phMem[id] = Promise.resolve(c));
@@ -55,7 +58,8 @@ function photoFor(id) {
   if (no || !URL_) return Promise.resolve("");
   return (phMem[id] = new Promise(function (res) {
     function viaScript() {
-      api({ photo: id }).then(function (r) {
+      profApi(id).then(function (r) {
+        gotName(id, r);
         if (r && r.ok && r.data) { if (r.data.length < 120000) ls("askPh:" + id, r.data); res(r.data); }
         else { try { sessionStorage.setItem("askNoPh:" + id, "1"); } catch (e) {} res(""); }
       }).catch(function () { res(""); });
@@ -73,6 +77,7 @@ function paintAvatar(el, id, size) {
   el.style.background = "linear-gradient(135deg,hsl(" + h + ",80%,80%),hsl(" + ((h + 50) % 360) + ",75%,70%))";
   el.textContent = nm ? nm.charAt(0).toUpperCase() : "🌸";   // ID but no picture: pastel circle with the first letter
   el.setAttribute("data-id", id);
+  fetchName(id);
   photoFor(id).then(function (u) {
     if (!u || el.getAttribute("data-id") !== id) return;
     var im = new Image(); im.alt = ""; im.onload = function () { if (el.getAttribute("data-id") === id) { el.textContent = ""; el.appendChild(im); } }; im.src = u;
@@ -153,7 +158,7 @@ function buildPrompt(hist, text, note, img, pageText) {
   if (hist.length) t += "\n\nConversation so far:\n" + hist.map(function (m) { return (m.role === "user" ? "Student: " : "Teddy: ") + String(m.text).slice(0, 1000); }).join("\n");
   return t + "\n\nStudent: " + text + "\nTeddy:";
 }
-function geminiOnce(g, key, prompt, shotP, voice) {
+function geminiOnce(g, key, prompt, shotP, voice, onText) {
   return new Promise(function (ok, bad) {
     var txt = "", done = false, ws, to, gotAudio = false;
     function fin(v, err) { if (done) return; done = true; clearTimeout(to); try { ws.close(); } catch (e) {} if (v) { if (voice && !gotAudio) speakTTS(v); ok(v); } else { console.warn("Ask AI failed:", err && err.message); bad(err || new Error("no reply")); } }
@@ -172,9 +177,9 @@ function geminiOnce(g, key, prompt, shotP, voice) {
         if (!done) ws.send(JSON.stringify({ clientContent: { turns: [{ role: "user", parts: parts }], turnComplete: true } }));
       }
       var sc = m.serverContent; if (!sc) return;
-      if (sc.outputTranscription && sc.outputTranscription.text) txt += sc.outputTranscription.text;
+      if (sc.outputTranscription && sc.outputTranscription.text) { txt += sc.outputTranscription.text; if (onText) try { onText(txt); } catch (e) {} }   // text appears while the voice is playing
       if (sc.modelTurn && sc.modelTurn.parts) sc.modelTurn.parts.forEach(function (p) {
-        if (p.text) txt += p.text;
+        if (p.text) { txt += p.text; if (onText) try { onText(txt); } catch (e) {} }
         if (voice && p.inlineData && /audio/.test(p.inlineData.mimeType || "") && playPcm(p.inlineData.data)) gotAudio = true;
       });
       if (sc.turnComplete) fin(txt.trim() || null, new Error("empty answer"));
@@ -183,7 +188,7 @@ function geminiOnce(g, key, prompt, shotP, voice) {
     ws.onclose = function (ev) { fin(txt.trim() || null, new Error("closed " + ev.code + (ev.reason ? " " + ev.reason.slice(0, 80) : ""))); };
   });
 }
-async function gemini(hist, text, note, shot) {
+async function gemini(hist, text, note, shot, onText) {
   var shotP = shot && shot.img, pageText = shot ? shot.text : "";
   if (window.__askMock) { var mr = await window.__askMock(hist, text, note, shot); if (S.sound) speakTTS(mr); return mr; }   // (test hook)
   var g = (window.__gem && window.__gem()) || {}, key = g.k;
@@ -194,7 +199,7 @@ async function gemini(hist, text, note, shot) {
   var tries = []; if (shotP) tries.push({ img: true, voice: S.sound }); tries.push({ img: false, voice: S.sound }); if (S.sound) tries.push({ img: false, voice: false });
   var last;
   for (var i = 0; i < tries.length; i++) {
-    try { return await geminiOnce(g, key, buildPrompt(hist, text, note, tries[i].img, pageText), tries[i].img ? shotP : null, tries[i].voice); }
+    try { return await geminiOnce(g, key, buildPrompt(hist, text, note, tries[i].img, pageText), tries[i].img ? shotP : null, tries[i].voice, onText); }
     catch (e) { last = e; if (/timeout/.test(e.message)) break; }
   }
   throw last || new Error("no reply");
@@ -293,13 +298,15 @@ function showProfile(parent, cls) {
   parent.appendChild(box);
   var inp = box.querySelector("#kpId"), note = box.querySelector("#kpN");
   function top() { var cur = getId(); paintAvatar(box.querySelector("#kpAv"), cur, 44); box.querySelector("#kpName").textContent = cur ? (nameOf(cur) || "ID " + cur) : "Guest"; box.querySelector("#kpSub").textContent = cur ? "ID " + cur + " · remembered on this device" : "Add your ID to save your chats and quiz answers"; }
-  function hint() { var v = inp.value.replace(/\D/g, ""); inp.value = v; note.textContent = /^\d{8}$/.test(v) ? (nameOf(v) ? "👋 Hi, " + nameOf(v) + "!" : "Not in the class list, but that is fine 🙂") : (v ? "The ID has 8 digits" : ""); }
+  function hint() { var v = inp.value.replace(/\D/g, ""); inp.value = v; if (/^\d{8}$/.test(v)) fetchName(v); note.textContent = /^\d{8}$/.test(v) ? (nameOf(v) ? "👋 Hi, " + nameOf(v) + "!" : "Not in the class list, but that is fine 🙂") : (v ? "The ID has 8 digits" : ""); }
   function save() { var v = inp.value.replace(/\D/g, ""); if (!v) { setId(""); box.remove(); return; } if (!/^\d{8}$/.test(v)) { note.textContent = "Please type your 8-digit ID"; return; } setId(v); box.remove(); }
   inp.addEventListener("input", hint); inp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); save(); } });
   box.querySelector("#kpSave").onclick = save; box.querySelector("#kpClear").onclick = function () { setId(""); box.remove(); };
   box.querySelector("#kpVoice").onchange = function () { ls("askVoice", this.value); previewVoice(this.value, box.querySelector("#kpPlay")); };
   box.querySelector("#kpPlay").onclick = function () { previewVoice(box.querySelector("#kpVoice").value, this); };
   box.querySelector("#kpHist").onclick = function () { box.remove(); window.__askOpen({ hist: true }); };
+  function onNm() { if (!box.isConnected) { document.removeEventListener("askname", onNm); return; } top(); hint(); }
+  document.addEventListener("askname", onNm);
   top(); hint(); setTimeout(function () { try { inp.focus(); inp.select(); } catch (e) {} }, 40);
 }
 document.addEventListener("pointerdown", function (e) { var t = e.target; var b = document.querySelector(".kpbox"); if (b && !(t.closest && (t.closest(".kpbox") || t.closest("#kProf") || t.closest("#akPf") || t.closest(".kqid")))) b.remove(); var mn = document.querySelector(".ak-mnu"); if (mn && !(t.closest && (t.closest(".ak-mnu") || t.closest(".mb")))) mn.remove(); });
@@ -312,6 +319,7 @@ function addProfileIcon() {
   b.innerHTML = '<span id="kProfAv"></span><span class="kpt"><b id="kProfName"></b><small id="kProfSub"></small></span>';
   b.onclick = function () { showProfile(host(), "fx"); }; document.body.appendChild(b); paintProf();
 }
+document.addEventListener("askname", function () { paintProf(); try { if (win) paintHeader(); } catch (e) {} });
 document.addEventListener("askid", function () {
   paintProf(); hist = null; newConv();   // another ID = another person: a fresh chat, and their own history
   if (win) { paintHeader(); if (winVisible()) { setView("chat"); var pp = $("akPop"); if (pp && S.setup) pp.classList.add("hidden"); render(true); } }
@@ -393,14 +401,14 @@ function setupCard(pop, done) {
     pop.onclick = null;
     pop.innerHTML = '<b>👋 Who is asking?</b><input class="su-id" inputmode="numeric" maxlength="8" placeholder="e.g. 25101003" value="' + esc(rem) + '" autocomplete="off"><div class="ak-n" id="suN"></div><div class="ak-row"><button type="button" id="suGo">Continue</button><button type="button" class="alt" id="suGuest">Continue as guest</button></div>';
     var inp = pop.querySelector(".su-id"), note = pop.querySelector("#suN");
-    function hint() { var v = inp.value.replace(/\D/g, ""); inp.value = v; note.textContent = /^\d{8}$/.test(v) ? (nameOf(v) ? "👋 Hi, " + nameOf(v) + "!" : "") : (v ? "e.g. 25101003" : ""); }
+    function hint() { var v = inp.value.replace(/\D/g, ""); inp.value = v; if (/^\d{8}$/.test(v)) fetchName(v); note.textContent = /^\d{8}$/.test(v) ? (nameOf(v) ? "👋 Hi, " + nameOf(v) + "!" : "") : (v ? "e.g. 25101003" : ""); }
     function go() { var v = inp.value.replace(/\D/g, ""); if (!/^\d{8}$/.test(v)) { note.textContent = v ? "e.g. 25101003" : "Type your ID, or tap Continue as guest"; return; } if (v !== rememberedId() || S.guest) setId(v); step2(); }
     inp.addEventListener("input", hint); inp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); go(); } }); hint();
     pop.querySelector("#suGo").onclick = go; pop.querySelector("#suGuest").onclick = function () { setGuest(); step2(); };
     setTimeout(function () { try { inp.focus({ preventScroll: true }); if (rem) inp.select(); } catch (e) {} }, 60);
   }
   function step2() {
-    pop.innerHTML = "<b>💬 Save this chat?</b>Your chat gets saved (in the class sheet if you have an ID, otherwise only on this phone). Please don't talk about anything personal, or tap “Don't save my chat”." +
+    pop.innerHTML = "<b>💬 Save this chat?</b>Your chat gets saved (if you have an ID, otherwise only on this phone). Please don't talk about anything personal, or tap “Don't save my chat”." +
       '<div class="ak-row"><button type="button" data-v="1">💾 Save my chat</button><button type="button" class="alt" data-v="0">🙈 Don\'t save my chat</button></div>';
     pop.onclick = function (e) { var b = e.target.closest && e.target.closest("button[data-v]"); if (!b) return; S.save = b.getAttribute("data-v"); S.setup = true; pop.onclick = null; pop.classList.add("hidden"); paintStat(); setInputOk(); if (done) done(); };
   }
@@ -447,10 +455,14 @@ function paintBar() {
 }
 function openBar() {
   buildBar(); if (!conv) newConv(); if (bar.parentNode !== host()) host().appendChild(bar); if (winVisible()) closeAsk();
-  bar.classList.remove("hidden"); barOpen = true; placeBar(); clearInterval(barTimer); barTimer = setInterval(placeBar, 700); paintBar();
+  bar.classList.remove("hidden"); barOpen = true; freezeBear(true); placeBar(); clearInterval(barTimer); barTimer = setInterval(placeBar, 700); paintBar();
   if (!S.setup) setupCard($("abPop"), function () { paintBar(); placeBar(); focusBar(); }); else focusBar();
 }
-function closeBar() { if (!bar) return; bar.classList.add("hidden"); barOpen = false; clearInterval(barTimer); }
+function closeBar() { if (!bar) return; bar.classList.add("hidden"); barOpen = false; clearInterval(barTimer); freezeBear(false); }
+function freezeBear(on) {   // while the ask bar is open the bear stands still (the bar is placed beside it, so a walking bear dragged the whole box around)
+  window.__askBarOpen = !!on; if (!on) return; var b = $("bear"); if (!b) return;
+  try { var r = b.getBoundingClientRect(); b.style.transitionDuration = "0s"; b.style.left = Math.round(r.left) + "px"; b.style.top = Math.round(r.top) + "px"; b.classList.remove("moving"); } catch (e) {}
+}
 function focusBar() { setTimeout(function () { try { $("abIn").focus({ preventScroll: true }); } catch (e) {} }, 60); }
 function showAns(html) { if (!barOpen) return; var a = $("abAns"); a.classList.remove("hidden"); $("abTxt").innerHTML = html; a.scrollTop = 0; placeBar(); }
 function barSend() { var t = $("abIn"), text = (t.value || "").trim(); if (!text || pending || !S.setup) return; t.value = ""; t.style.height = "auto"; sendText(text); }
@@ -507,7 +519,7 @@ function closeAsk() { closeProfile(); var mn = document.querySelector(".ak-mnu")
 // ---- "save this chat?" (change it later with the "change" link under the chat) ----
 function showSavePop() {
   var s = S.save, p = $("akPop");
-  p.innerHTML = (s !== null ? '<span class="ak-pc" id="akPc" title="Close">✕</span>' : "") + "<b>💬 Save this chat?</b>Your chat gets saved (in the class sheet if you have an ID, otherwise only on this phone). Please don't talk about anything personal, or tap “Don't save my chat”." +
+  p.innerHTML = (s !== null ? '<span class="ak-pc" id="akPc" title="Close">✕</span>' : "") + "<b>💬 Save this chat?</b>Your chat gets saved (if you have an ID, otherwise only on this phone). Please don't talk about anything personal, or tap “Don't save my chat”." +
     '<div class="ak-row"><button type="button" data-s="1" class="' + (s === "1" ? "sel" : "") + '">' + (s === "1" ? "✓ " : "💾 ") + 'Save my chat</button><button type="button" data-s="0" class="alt ' + (s === "0" ? "sel" : "") + '">' + (s === "0" ? "✓ " : "🙈 ") + "Don't save my chat</button></div>";
   p.classList.remove("hidden"); var c = $("akPc"); if (c) c.onclick = function () { p.classList.add("hidden"); };
 }
@@ -622,12 +634,18 @@ function busyUI(on) {
 }
 async function run(cv, um, note, h, shotP) {
   pending = true; lastRun = { cv: cv, um: um, note: note, h: h, shotP: shotP }; setInputOk(); busyUI(true);
+  function live(txt) {   // show the words as they arrive (same time as the voice), in the chat window and in the small bar
+    txt = String(txt || "").trim(); if (!txt || conv !== cv) return;
+    if (winVisible() && view === "chat") { var x = M(); if (x) { var b = $("akLive"); if (!b) { typing(false); x.insertAdjacentHTML("beforeend", '<div class="ak-b b" id="akLive"><div class="ak-x"></div></div>'); b = $("akLive"); } b.firstChild.innerHTML = fmt(txt); x.scrollTop = x.scrollHeight; } }
+    if (barOpen) showAns(fmt(txt));
+  }
+  function unlive() { var b = $("akLive"); if (b) b.remove(); }
   try {
-    var r = tidy(await gemini(h, um.text, note, shotP)), bm = { role: "bear", text: r, t: ts() };
-    cv.msgs.push(bm); persist(cv, [um, bm], note); busyUI(false);
+    var r = tidy(await gemini(h, um.text, note, shotP, live)), bm = { role: "bear", text: r, t: ts() };
+    unlive(); cv.msgs.push(bm); persist(cv, [um, bm], note); busyUI(false);
     if (conv === cv) { if (winVisible() && view === "chat") append(bm); if (barOpen) showAns(fmt(bm.text)); }
   } catch (e) {
-    busyUI(false); var msg = esc((e && e.message) || "error");
+    unlive(); busyUI(false); var msg = esc((e && e.message) || "error");
     if (conv === cv && winVisible() && view === "chat") { var x = M(); if (x) { x.insertAdjacentHTML("beforeend", '<div class="ak-st" id="akErr">🥲 No answer (' + msg + ') <button type="button" class="ak-retry" id="akRetry">Try again</button></div>'); x.scrollTop = x.scrollHeight; $("akRetry").onclick = function () { var er = $("akErr"); if (er) er.remove(); run(cv, um, note, h, shotP); }; } }
     if (barOpen) { showAns('🥲 No answer (' + msg + ') <button type="button" class="ak-retry" id="abRetry">Try again</button>'); $("abRetry").onclick = function () { run(cv, um, note, h, shotP); }; }
   } finally { pending = false; setInputOk(); }

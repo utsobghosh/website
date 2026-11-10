@@ -129,6 +129,7 @@ function runGuide(){
  var t=bearTarget();clearGlow();
  if(t==="hide"){bear.style.display="none";return}
  bear.style.display="";
+ if(window.__askBarOpen&&lastX!==null)return;   // AI bar is open: the bear stays where it is
  var x,y,tx=null,ty=null;
  if(t&&t.el){if(t.point?!hintOn:!cheering)t=null;else{var q=t.el.getBoundingClientRect();if(q.bottom<0||q.top>innerHeight)t=null}}   // off screen: never scroll the page
  else t=null;
@@ -281,7 +282,7 @@ if(BEAR_ON){
  window.addEventListener("resize",function(){guide(200)});window.addEventListener("scroll",function(){guide(250)},{passive:true});
  ["sid","sname","cid"].forEach(function(id){$(id).addEventListener("input",bearStep)});
  ["pointerdown","keydown"].forEach(function(ev){document.addEventListener(ev,function(){if(hintOn){hintOn=false;guide(0);startHintCycle(9000)}})});
- (function wloop(){setTimeout(function(){if(!hintOn&&!cheering&&!dragging&&!busyAct&&!window.__bearTalking&&!bear.classList.contains("moving")&&Date.now()>holdUntil&&bear.style.display!=="none"){pickSpot();guide(0)}wloop()},14000+Math.random()*8000)})();
+ (function wloop(){setTimeout(function(){if(!hintOn&&!cheering&&!dragging&&!busyAct&&!window.__bearTalking&&!window.__askBarOpen&&!bear.classList.contains("moving")&&Date.now()>holdUntil&&bear.style.display!=="none"){pickSpot();guide(0)}wloop()},14000+Math.random()*8000)})();
  new MutationObserver(bearStep).observe($("clist"),{childList:true});
  new MutationObserver(bearStep).observe($("banner"),{attributes:true,attributeFilter:["class"]});
 }
