@@ -220,10 +220,10 @@ function initTest(){var ad=$("admin");if(!ad||$("kTest"))return;
 /* ===== LUCK: how often the bear picks each move (every 22 s, 40% of the time it does something) =====
    FUN moves (interactive / story moves) = more tickets. Everything else = few tickets. To make a move fun, add it to FUN_MOVES.
    Chance of a move = its tickets / all tickets. */
-var FUN_MOVES={photo:7,detective:4,painter:4,hide:4,quiz:4};   // fun moves: tickets EACH (add a new fun move here, e.g. dance:4)
+var FUN_MOVES={photo:7,detective:4,painter:4,hide:4};   /* the quiz is NOT a random move any more (it only appears from the AI quiz tab / admin test) */   // fun moves: tickets EACH (add a new fun move here, e.g. dance:4)
 var NORMAL_TICKETS=1;                                    // every other move (bubbles, balloon, petals ...)
 function luckList(){var a=[];Object.keys(FUN_MOVES).forEach(function(k){for(var i=0;i<FUN_MOVES[k];i++)a.push(k)});
- Object.keys(NEWACT).concat(Object.keys(NEWACT2)).forEach(function(k){if(FUN_MOVES[k]===undefined)for(var i=0;i<NORMAL_TICKETS;i++)a.push(k)});return a}
+ Object.keys(NEWACT).concat(Object.keys(NEWACT2)).forEach(function(k){if(k!=="quiz"&&FUN_MOVES[k]===undefined)for(var i=0;i<NORMAL_TICKETS;i++)a.push(k)});return a}
 var NEWACT={bubbles:3800,balloon:4400,wish:4200,petals:4400,study:5200,magic:3400,sneeze:2300,umbrella:4800,fireworks:3400,kite:4400,snow:4400,boo:2600,coffee:4200,rainbow:3800,butterfly:4600,fishing:4400,rocket:3200,trophy:3600,plane:3600};
 function bearNew(n){
  var K=window.__bearK,bear=K.bear,BW=K.BW,bsay=K.bsay,r=bear.getBoundingClientRect(),fx=r.left+BW/2,d=r.left>innerWidth/2?-1:1,
