@@ -220,7 +220,7 @@ var EMO = ["🧸", "✨", "😊", "💜", "🌟", "🍀", "🌸"];
 function tidy(r) {   // every answer ends with an emoji; the very first answer of a visit also gets one tiny tip
   r = String(r).trim();
   if (!/[\u{1F300}-\u{1FAFF}\u2600-\u27BF\u2B50\u2764]\uFE0F?\s*$/u.test(r)) r += " " + EMO[Math.floor(Math.random() * EMO.length)];
-  if (!S.tip) { S.tip = true; r += "\n\n👀 Tip: I can see the page you are viewing, so you can ask me about it!"; }
+  if (!S.tip) { S.tip = true; r += "\n\n👀 Tip: screenshot of the page you viewing gets send to me! you can ask about them!"; }
   return r;
 }
 
