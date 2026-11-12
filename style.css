@@ -57,6 +57,8 @@ button.danger{border-color:var(--bad);color:var(--bad)}button.danger:hover{backg
 /* ---- Teddy bear helper ---- */
 #bear{position:fixed;left:-120px;top:calc(100vh - 110px);width:84px;height:92px;z-index:40;pointer-events:auto;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;transition:left 1.2s cubic-bezier(.45,.05,.25,1),top 1.2s cubic-bezier(.45,.05,.25,1)}
 #bear svg{width:100%;height:100%;overflow:visible;pointer-events:none}
+#bear .kprop{font-size:calc(22px*var(--bs,1))}   /* the little prop in the bear's hand follows the bear size */
+#bear .kask{top:calc(38px*var(--bs,1))}
 .armWrap{transition:transform .55s cubic-bezier(.3,1.6,.5,1)}
 #bear.pointL #armL .armPoke,#bear.pointR #armR .armPoke{animation:poke .7s ease-in-out infinite}
 @keyframes poke{50%{transform:translateY(7px)}}

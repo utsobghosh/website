@@ -81,7 +81,7 @@ if(TRAIL_SPARKLES&&!calm){
 }
 
 // ----- Teddy bear helper: walks to the thing you should press, points at it, and does random things -----
-var tapN=0,tapT=null,bear=null,lastX=null,lastY=null,guideTimer=null,moveTimer=null,lastTarget=null,busyAct=false,cheering=false,BW=84,BH=92,hintOn=false,hintTimer=null,wx=0,wy=0,dragging=false,drag=null,holdUntil=0,trailT=0;
+var tapN=0,tapT=null,bear=null,lastX=null,lastY=null,guideTimer=null,moveTimer=null,lastTarget=null,busyAct=false,cheering=false,BW=84,BH=92,bearS=1,hintOn=false,hintTimer=null,wx=0,wy=0,dragging=false,drag=null,holdUntil=0,trailT=0;
 var BEAR_SVG='<svg viewBox="0 0 100 110">' +
   '<ellipse cx="50" cy="106" rx="26" ry="3.5" fill="rgba(0,0,0,.18)"/>' +
   '<g id="bearHop"><g id="bearBreath"><g id="bearBody">' +
@@ -235,8 +235,24 @@ function gazeTo(x,y){
  var r=bear.getBoundingClientRect(),dx=x-(r.left+BW/2),dy=y-(r.top+BH*.35),d=Math.hypot(dx,dy)||1,k=Math.min(1,d/160);
  bear.style.setProperty("--gx",(dx/d*2.8*k)+"px");bear.style.setProperty("--gy",(dy/d*2.2*k)+"px")}
 function gazeReset(){if(bear){bear.style.setProperty("--gx","0px");bear.style.setProperty("--gy","0px")}}
+/* ---- bear size: any size the student wants (profile box slider). 1 = the normal 84x92 bear. Saved in this browser ("bearScale"); no choice saved = normal, a bit smaller on phones. ---- */
+var BASE_W=84,BASE_H=92;
+function bearDefault(){return(window.matchMedia&&matchMedia("(max-width: 640px)").matches)?0.8:1}   // phones: slightly smaller (change 0.8 to taste)
+function bearMax(){return Math.max(.3,Math.min(3,innerWidth*.7/BASE_W,innerHeight*.5/BASE_H))}
+function bearSaved(){var v=NaN;try{v=parseFloat(localStorage.getItem("bearScale"))}catch(e){}return isFinite(v)?v:null}
+function bearSize(s,init){   // s = size (1 = normal); null = back to the default
+ var keep=true;if(s===null||s===undefined||!isFinite(s)){s=bearDefault();keep=false}
+ s=Math.max(.15,Math.min(bearMax(),s));
+ try{if(keep)localStorage.setItem("bearScale",String(s));else localStorage.removeItem("bearScale")}catch(e){}
+ bearS=s;BW=Math.round(BASE_W*s);BH=Math.round(BASE_H*s);
+ if(!bear)return s;
+ bear.style.width=BW+"px";bear.style.height=BH+"px";bear.style.setProperty("--bs",s);
+ if(!init){var r=bear.getBoundingClientRect(),nx=Math.max(2,Math.min(innerWidth-BW-2,r.left)),ny=Math.max(2,Math.min(innerHeight-BH-2,r.top));   // keep it fully on screen
+  bear.style.left=nx+"px";bear.style.top=ny+"px";wx=nx;wy=ny;lastX=nx;lastY=ny}
+ return s}
 if(BEAR_ON){
  bear=document.createElement("div");bear.id="bear";bear.setAttribute("aria-hidden","true");bear.innerHTML=BEAR_SVG;
+ bearSize(bearSaved(),true);bear.style.left=(-BW-40)+"px";window.__setBearSize=bearSize;window.__bearScale=function(){return bearS};window.__bearDefault=bearDefault;
  wx=innerWidth-BW-10;wy=innerHeight-BH-10;bear.style.top=wy+"px";document.body.appendChild(bear);
  // Pick the bear up and move it. Hold without moving = pet it (keep holding 2s and it changes look). A quick tap = a trick, and the tap still presses what is under the bear.
  var ALL_ACTS=["a-jump","a-wiggle","a-spin","a-wave","a-dance","a-cheer","a-shake","a-flip","a-bounce","a-sway","a-heart","a-shy","a-kick","a-photo","a-talk","a-read","a-snack","a-music","a-sleep"];
@@ -979,7 +995,7 @@ Object.defineProperty(window.APP,"show",{get:function(){return show}});
 bridgeLink("renderUpload",function(){return renderUpload},function(f){renderUpload=f});
 bridgeLink("readUpload",function(){return readUpload},function(f){readUpload=f});
 bridgeLink("extras",function(){return extras},function(f){extras=f});
-window.__bearK={DUR:DUR,BW:BW,BH:BH,bsay:bsay,get bear(){return bear},get cheering(){return cheering},act:act,sparkleBurst:sparkleBurst,bearReact:bearReact};
+window.__bearK={DUR:DUR,get BW(){return BW},get BH(){return BH},bsay:bsay,get bear(){return bear},get cheering(){return cheering},act:act,sparkleBurst:sparkleBurst,bearReact:bearReact};
 window.curRec=curRec;window.coverBase=coverBase;window.__renderOpts=renderOpts;
 window.addEventListener("hashchange",function(){route();guide(100)});show(["s1"]);route();guide(900);
 });
