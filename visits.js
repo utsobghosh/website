@@ -69,7 +69,7 @@ function ntfBtn(){
   '<table><thead><tr><th>Time</th><th>ID</th><th>Name</th><th>How</th></tr></thead><tbody id="lRows"></tbody></table></div>'+
   '<div id="nP" class="hidden" style="text-align:left;margin-top:8px;padding:10px;border:2px dashed var(--line);border-radius:12px">'+
   chanHtml("n","📱 ntfy app",false)+chanHtml("t","✈️ Telegram",true)+
-  '<button type="button" class="p" id="nSave" style="margin-top:4px">💾 Save</button> <button type="button" class="s" id="nTest" style="margin-top:4px">📨 Send test alert</button> <span class="tiny" id="nMsg"></span>'+
+  '<button type="button" class="p" id="nSave" style="margin-top:4px">💾 Save</button> <button type="button" class="s" id="nTest" style="margin-top:4px">📨 Test all</button> <button type="button" class="s" id="tTest" style="margin-top:4px">✈️ Test Telegram</button> <span class="tiny" id="nMsg"></span>'+
   '<p class="tiny" style="margin-top:8px">Each app has its own settings, so you can use one, the other, or both. The list is used when “Only people on my list” is chosen (visits and logins).</p></div>';
  $("vSum").parentNode.appendChild(w);
  var P=$("nP"),M=$("nMsg"),CH=["n","t"];
@@ -92,11 +92,12 @@ function ntfBtn(){
    $("lIds").innerHTML=r.ids.map(function(o){return"<tr><td>"+esc(o.id)+"</td><td>"+esc(nameOf(o.id))+"</td><td><b>"+o.n+"</b></td></tr>"}).join("")||'<tr><td colspan="3">No logins yet.</td></tr>';
    $("lRows").innerHTML=r.rows.map(function(o){return"<tr><td>"+esc(o.t)+"</td><td>"+esc(o.id)+"</td><td>"+esc(nameOf(o.id))+"</td><td>"+esc(o.via)+"</td></tr>"}).join("")||'<tr><td colspan="4">No logins yet.</td></tr>'}
   catch(e){$("lSum").textContent="Could not load: "+(e.message||e)}};
- $("nTest").onclick=async function(){M.textContent="⏳ Sending…";
-  try{var r=await (await fetch(SCRIPT_URL,{method:"POST",body:JSON.stringify({action:"ntfytest",pin:ss("pin")||""})})).json();
+ function testAlert(only){return async function(){M.textContent="⏳ Sending…";
+  try{var r=await (await fetch(SCRIPT_URL,{method:"POST",body:JSON.stringify({action:"ntfytest",pin:ss("pin")||"",only:only})})).json();
    if(r&&r.error==="pin"){ss("pin",null);ntfOff();return}
    if(!r||!r.ok){M.textContent="Update Code.gs (ntfy test) and deploy a New version.";return}
-   M.textContent=r.res.join(" · ")}catch(e){M.textContent="Could not test: "+(e.message||e)}};
+   M.textContent=r.res.join(" · ")}catch(e){M.textContent="Could not test: "+(e.message||e)}}}
+ $("nTest").onclick=testAlert("");$("tTest").onclick=testAlert("tg");
  $("nSave").onclick=async function(){
   var bad=[];CH.forEach(function(c){bad=bad.concat(($(c+"Ids").value.match(/\d+/g)||[]).filter(function(x){return x.length!==8}))});if(bad.length){M.textContent="IDs have 8 digits: "+bad.join(", ");return}
   function cfg(c){return{orders:$(c+"Ord").checked,mode:$(c+"Mode").value,ids:ntfIds($(c+"Ids"))}}
