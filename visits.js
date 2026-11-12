@@ -43,15 +43,41 @@ async function loadV(askPin){
  msg("⏳ Loading…");
  try{
   var r=await (await fetch(SCRIPT_URL+"?"+new URLSearchParams({visits:1,pin:pin}))).json();
-  if(r&&r.error==="pin"){ss("pin",null);msg("Wrong PIN. Press Refresh visitors to try again.");return}
+  if(r&&r.error==="pin"){ss("pin",null);ntfOff();msg("Wrong PIN. Press Refresh visitors to try again.");return}
   if(!r||!r.ok){msg("The Apps Script does not have the visitor part yet (Code-visits.gs + New version).");return}
   TODAY=r.today;var td=(r.days&&r.days[0]&&r.days[0].d===r.today)?r.days[0]:{v:0,g:0};
   msg("Total visits: "+r.total+" · Today: "+td.v+" (🪪 ID "+(td.v-td.g)+" · 👤 guest "+td.g+")"+" · Different devices: "+r.devices+" · IDs seen: "+r.ids.length+" · Guest visits: "+r.guest.visits+" ("+r.guest.devices+" device"+(r.guest.devices===1?"":"s")+")");
   var h=r.ids.map(function(o){return"<tr><td>"+esc(o.id)+"</td><td>"+esc(nameOf(o.id))+"</td><td><b>"+o.visits+"</b></td><td>"+o.devices+"</td><td>"+esc(o.last)+"</td><td>"+(isToday(o.ts)?"✅":"")+"</td></tr>"}).join("");
   h+='<tr><td>👤 Guest</td><td>no ID</td><td><b>'+r.guest.visits+"</b></td><td>"+r.guest.devices+"</td><td>"+esc(r.guest.last)+"</td><td>"+(isToday(r.guest.ts)?"✅":"")+"</td></tr>";
   $("vRows").innerHTML=h;$("vNone").textContent=r.ids.length?"":"No student ID has visited yet.";
-  $("vDays").innerHTML=(r.days||[]).map(function(d){return"<tr><td>"+esc(d.d)+"</td><td>"+d.v+"</td><td><b>"+(d.v-d.g)+"</b></td><td>"+d.g+"</td></tr>"}).join("")||'<tr><td colspan="4">No visits yet.</td></tr>'
+  $("vDays").innerHTML=(r.days||[]).map(function(d){return"<tr><td>"+esc(d.d)+"</td><td>"+d.v+"</td><td><b>"+(d.v-d.g)+"</b></td><td>"+d.g+"</td></tr>"}).join("")||'<tr><td colspan="4">No visits yet.</td></tr>';ntfBtn()
  }catch(e){msg("Could not load visitors: "+(e.message||e))}}
+// ----- alert settings: the little 🔔 button is only created AFTER the server accepted the admin PIN, so students never see it -----
+var NM=[["off","🔕 Off"],["all","👀 Every visit"],["id","🪪 Only students with an ID"],["new","🆕 Only first-time devices"],["watch","⭐ Only people on my list"]],ntfLoaded=false;
+function ntfOff(){var x=$("vNtf");if(x)x.remove();ntfLoaded=false}
+function ntfIds(ta){return Array.from(new Set((ta.value.match(/\d+/g)||[]).filter(function(x){return x.length===8})))}
+function ntfBtn(){
+ if($("vNtf"))return;var w=document.createElement("div");w.id="vNtf";w.style.cssText="margin-top:10px;text-align:right";
+ w.innerHTML='<button type="button" class="s" id="nB" title="Alert settings" aria-label="Alert settings" style="padding:2px 8px;font-size:13px;opacity:.5">🔔</button>'+
+  '<div id="nP" class="hidden" style="text-align:left;margin-top:8px;padding:10px;border:2px dashed var(--line);border-radius:12px">'+
+  '<label style="display:flex;align-items:center;gap:8px;margin:0 0 10px;font-weight:600"><input type="checkbox" id="nOrd" style="width:20px;height:20px;min-width:20px;padding:0;margin:0;flex:none"> 🧸 Alert me for new print orders</label><b class="tiny">🔔 Phone alerts for visits</b><select id="nMode" style="display:block;width:100%;margin:8px 0;padding:8px">'+NM.map(function(m){return'<option value="'+m[0]+'">'+m[1]+'</option>'}).join("")+'</select>'+
+  '<div class="tiny">IDs on my list (8 digits, one per line):</div><textarea id="nIds" rows="4" style="width:100%;margin:6px 0;padding:8px;box-sizing:border-box" placeholder="e.g. 25101003"></textarea>'+
+  '<div class="tiny" id="nNames"></div><button type="button" class="p" id="nSave" style="margin-top:8px">💾 Save</button> <span class="tiny" id="nMsg"></span>'+
+  '<p class="tiny" style="margin-top:8px">The list is used when “Only people on my list” is chosen (visits and logins). Print order alerts are controlled by the checkbox at the top.</p></div>';
+ $("vSum").parentNode.appendChild(w);
+ var P=$("nP"),ta=$("nIds"),M=$("nMsg");
+ function names(){$("nNames").textContent=ntfIds(ta).map(function(i){return i+(nameOf(i)?" · "+nameOf(i):"")}).join("  |  ")}
+ ta.addEventListener("input",names);
+ $("nB").onclick=async function(){P.classList.toggle("hidden");if(P.classList.contains("hidden")||ntfLoaded)return;
+  M.textContent="⏳";try{var r=await (await fetch(SCRIPT_URL+"?"+new URLSearchParams({notify:1,pin:ss("pin")||""}))).json();
+   if(r&&r.error==="pin"){ss("pin",null);ntfOff();return}
+   if(!r||!r.ok){M.textContent="Update Code.gs (alert settings) and deploy a New version.";return}
+   $("nOrd").checked=r.orders!==false;$("nMode").value=r.mode;ta.value=(r.ids||[]).join("\n");ntfLoaded=true;M.textContent="";names()}catch(e){M.textContent="Could not load: "+(e.message||e)}};
+ $("nSave").onclick=async function(){
+  var bad=(ta.value.match(/\d+/g)||[]).filter(function(x){return x.length!==8});if(bad.length){M.textContent="IDs have 8 digits: "+bad.join(", ");return}
+  M.textContent="⏳ Saving…";try{var r=await (await fetch(SCRIPT_URL,{method:"POST",body:JSON.stringify({action:"notify",pin:ss("pin")||"",orders:$("nOrd").checked,mode:$("nMode").value,ids:ntfIds(ta)})})).json();
+   if(r&&r.error==="pin"){ss("pin",null);ntfOff();return}
+   M.textContent=r&&r.ok?"✅ Saved":"Could not save (update Code.gs and deploy a New version)"}catch(e){M.textContent="Could not save: "+(e.message||e)}}}
 $("vRef").onclick=function(){loadV(true)};
 function maybe(){if(location.hash==="#admin")setTimeout(function(){loadV(false)},900)}
 window.addEventListener("hashchange",maybe);maybe();

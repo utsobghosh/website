@@ -270,3 +270,20 @@ img,canvas,video,svg{max-width:100%}
 body::before,body::after{will-change:transform}
 .big,.nbtn{animation-timing-function:steps(10,end)!important}
 .kprop{filter:none!important;text-shadow:0 2px 3px rgba(0,0,0,.25)}
+/* ===== less wasted space ===== */
+/* phones: every frame inside a frame used to add its own gap; now the gaps are small so the content gets the screen */
+@media (max-width:640px){
+ .wrap{padding-left:max(6px,env(safe-area-inset-left));padding-right:max(6px,env(safe-area-inset-right))}
+ .card{padding:8px}
+ body .npg{padding:12px 4px 4px}
+ body .npin{padding:8px 10px}
+ .opt{padding:10px}
+ .dz{padding:12px 8px}
+}
+/* computers: a wider column (the AI chat can still dock in the empty sides) */
+@media (min-width:1000px){.wrap{max-width:1040px}}
+/* file options and pinned notes: several in one row when there is room (still one per row on phones) */
+#opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:0 10px}
+#opts>:not(.opt){grid-column:1/-1}
+body :has(>.npw){display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:0 8px}
+body :has(>.npw)>:not(.npw){grid-column:1/-1}

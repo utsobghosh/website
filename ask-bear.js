@@ -243,6 +243,7 @@ var CSS = [
   ".kqid{margin-top:7px;font-size:11px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}.kqid input{flex:1;min-width:120px;box-sizing:border-box;padding:5px 8px;border:1.5px solid var(--line,#c9b8f0);border-radius:9px;font:inherit;font-size:12px;background:var(--panel,#fff);color:var(--text,#3b2f45);outline:0}.kqid .ed{cursor:pointer;opacity:.85;text-decoration:underline}",
   // chat window: outer box carries the resize handles, .ak-in is the rounded body
   "#askWin{position:fixed;left:0;top:0;width:320px;height:420px;z-index:10004;color:var(--text,#3b2f45);font:13px/1.35 system-ui,-apple-system,'Segoe UI',sans-serif}#askWin.hidden{display:none}",
+  "#askWin.dk .ak-rz{display:none}#askWin.dkr .ak-rz[data-d=w],#askWin.dkl .ak-rz[data-d=e],#askWin.dkb .ak-rz[data-d=n]{display:block}#askWin.dkr .ak-rz[data-d=w]::after,#askWin.dkl .ak-rz[data-d=e]::after{content:'';position:absolute;left:7px;top:50%;width:4px;height:46px;margin-top:-23px;border-radius:4px;background:var(--accent,#ff6fae);opacity:.7}#askWin.dkb .ak-rz[data-d=n]::after{content:'';position:absolute;top:7px;left:50%;height:4px;width:46px;margin-left:-23px;border-radius:4px;background:var(--accent,#ff6fae);opacity:.7}#askWin.snp{transition:left .18s,top .18s,width .18s,height .18s}#akSnap{position:fixed;z-index:10003;display:none;pointer-events:none;box-sizing:border-box;border:2px dashed var(--accent,#ff6fae);background:rgba(255,120,180,.16);border-radius:16px}",
   ".ak-in{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--panel,#fff);border:1px solid var(--line);border-radius:16px;box-shadow:0 10px 34px var(--shadow,rgba(60,30,90,.4)),0 2px 8px rgba(0,0,0,.18);overflow:hidden}",
   ".ak-rz{position:absolute;z-index:8;touch-action:none}.ak-rz[data-d=n]{top:-9px;left:16px;right:16px;height:18px;cursor:ns-resize}.ak-rz[data-d=s]{bottom:-9px;left:16px;right:16px;height:18px;cursor:ns-resize}.ak-rz[data-d=e]{right:-9px;top:16px;bottom:16px;width:18px;cursor:ew-resize}.ak-rz[data-d=w]{left:-9px;top:16px;bottom:16px;width:18px;cursor:ew-resize}",
   ".ak-rz[data-d=ne]{top:-9px;right:-9px;width:26px;height:26px;cursor:nesw-resize}.ak-rz[data-d=nw]{top:-9px;left:-9px;width:26px;height:26px;cursor:nwse-resize}.ak-rz[data-d=se]{bottom:-9px;right:-9px;width:26px;height:26px;cursor:nwse-resize}.ak-rz[data-d=sw]{bottom:-9px;left:-9px;width:26px;height:26px;cursor:nesw-resize}",
@@ -363,29 +364,89 @@ function greet() { return '<div class="ak-st">🧸 Hi! Ask me anything: notes, c
 // window position / size: drag the top bar, resize from any side or corner; remembered
 function vp() { var v = window.visualViewport; return { w: v ? v.width : innerWidth, h: v ? v.height : innerHeight, x: v ? v.offsetLeft : 0, y: v ? v.offsetTop : 0 }; }
 function defGeo() { var v = vp(), w = Math.min(330, v.w - 16), h = Math.min(430, Math.round(v.h * .7)); return { x: v.w - w - 8, y: v.h - h - 8, w: w, h: h }; }
-function loadGeo() { try { G = JSON.parse(ls("askGeo") || "null"); } catch (e) { G = null; } if (!G || !(G.w > 0) || !(G.h > 0)) G = defGeo(); }
+function loadGeo() { try { G = JSON.parse(ls("askGeo") || "null"); } catch (e) { G = null; } if (!G || !(G.w > 0) || !(G.h > 0)) G = defGeo(); if (!G.m) G.m = vp().w >= 1000 ? "right" : "float"; }   // first time on a wide screen: docked in the empty area on the right
+function rectFor(m) {   // where each snap place is; docks start below the corner buttons (profile top-right, themes top-left) so those stay visible
+  var v = vp(), g = 8, t = g, W, el, r;
+  if (m === "max") return { x: v.x + g, y: v.y + g, w: v.w - 2 * g, h: v.h - 2 * g };
+  if (m === "bottom") { var bh = G && G.dh ? Math.max(MINH, Math.min(G.dh, Math.round(v.h * .85))) : Math.round(v.h * .55); return { x: v.x + g, y: v.y + v.h - bh - g, w: v.w - 2 * g, h: bh }; }
+  W = G && G.dw ? Math.max(MINW, Math.min(G.dw, Math.round(v.w * .7))) : Math.max(300, Math.min(420, Math.round(v.w * .28)));
+  el = $(m === "right" ? "kProf" : "kThemeBtn"); if (el && el.offsetWidth) { r = el.getBoundingClientRect(); if (r.bottom < v.h * .5) t = Math.max(t, Math.round(r.bottom + g)); }
+  return { x: m === "right" ? v.x + v.w - W - 4 : v.x + 4, y: v.y + t, w: W, h: v.h - t - g };
+}
+function reserve() {   // a docked window pushes the page aside only as much as the empty space is not enough (bottom: room to scroll above it)
+  var m = G && winVisible() ? G.m : "float", v = vp(), wr = document.querySelector(".wrap"), mw = (wr && parseFloat(getComputedStyle(wr).maxWidth)) || 860, side = (v.w - mw) / 2, p = 0, pl = 0, pr = 0, pb = 0;
+  if (m === "right" || m === "left") { var need = rectFor(m).w + 10; if (v.w >= 900 && need > side) p = Math.round(need > 2 * side ? need : 2 * (need - side)); if (m === "right") pr = p; else pl = p; }
+  else if (m === "bottom") pb = rectFor("bottom").h + 8;
+  document.body.style.paddingRight = pr ? pr + "px" : ""; document.body.style.paddingLeft = pl ? pl + "px" : ""; document.body.style.paddingBottom = pb ? pb + "px" : ""; narrowLayout(v.w - pl - pr);
+}
+var knDone = false;
+function narrowLayout(cw) {   // the docked chat squeezed the page below phone width: the page switches to its phone layout (copies of the phone-size CSS rules, turned on by the class "kn" on <html>)
+  var on = cw <= 640 && vp().w > 640;
+  if (on && !knDone) { knDone = true; try { buildNarrow(); } catch (e) {} }
+  document.documentElement.classList.toggle("kn", on);
+}
+function buildNarrow() {
+  var out = [];
+  function pre(sel) {
+    var parts = [], d = 0, cur = "", i, c;
+    for (i = 0; i < sel.length; i++) { c = sel[i]; if (c === "(" || c === "[") d++; if (c === ")" || c === "]") d--; if (c === "," && !d) { parts.push(cur); cur = ""; } else cur += c; }
+    parts.push(cur);
+    return parts.map(function (p) { p = p.trim(); return /^(html|:root)\b/.test(p) ? p.replace(/^(html|:root)/, "html.kn") : "html.kn " + p; }).join(",");
+  }
+  Array.prototype.forEach.call(document.styleSheets, function (sh) {
+    var rules; try { rules = sh.cssRules; } catch (e) { return; }
+    Array.prototype.forEach.call(rules || [], function (r) {
+      if (r.type !== 4) return;
+      var t = (r.conditionText || r.media.mediaText || "").replace(/\s+/g, "").toLowerCase(), m = /^\(max-width:(\d+)px\)$/.exec(t);
+      if (!(m && +m[1] >= 640 && +m[1] <= 900) && t !== "(orientation:portrait)") return;
+      Array.prototype.forEach.call(r.cssRules, function (x) { if (x.type === 1) out.push(pre(x.selectorText) + "{" + x.style.cssText + "}"); });
+    });
+  });
+  if (out.length) { var st = document.createElement("style"); st.id = "kNarrow"; st.textContent = out.join("\n"); document.head.appendChild(st); }
+}
+function setMode(m) {   // float | right | left | bottom | max (the old floating size comes back when the window is lifted off an edge)
+  var v = vp();
+  if (m !== "float" && (!G.m || G.m === "float")) { G.fw = G.w; G.fh = G.h; }
+  if (m === "float" && G.m && G.m !== "float") { G.w = G.fw || 330; G.h = G.fh || 430; G.x = v.x + Math.round((v.w - G.w) / 2); G.y = v.y + Math.round((v.h - G.h) / 3); }
+  G.m = m; win.classList.add("snp"); setTimeout(function () { win.classList.remove("snp"); }, 260); applyGeo(); saveGeo();
+}
+var snapEl = null, snapTo = "";
+function snapShow(m) {
+  snapTo = m; if (!m) { if (snapEl) snapEl.style.display = "none"; return; }
+  if (!snapEl) { snapEl = document.createElement("div"); snapEl.id = "akSnap"; }
+  if (snapEl.parentNode !== host()) host().appendChild(snapEl);
+  var r = rectFor(m); snapEl.style.cssText = "display:block;left:" + r.x + "px;top:" + r.y + "px;width:" + r.w + "px;height:" + r.h + "px";
+}
 function applyGeo() {   // the saved geometry is clamped to what is visible now (a phone keyboard makes the window shrink / move up, and it comes back when the keyboard closes)
-  if (!win || !G) return; var v = vp(), w = Math.max(Math.min(MINW, v.w - 8), Math.min(G.w, v.w - 8)), h = Math.max(Math.min(MINH, v.h - 8), Math.min(G.h, v.h - 8));
+  if (!win || !G) return;
+  if (G.m && G.m !== "float") { var q = rectFor(G.m); win.classList.add("dk"); win.classList.toggle("dkr", G.m === "right"); win.classList.toggle("dkl", G.m === "left"); win.classList.toggle("dkb", G.m === "bottom"); win.style.left = Math.round(q.x) + "px"; win.style.top = Math.round(q.y) + "px"; win.style.width = Math.round(q.w) + "px"; win.style.height = Math.round(q.h) + "px"; reserve(); return; }
+  win.classList.remove("dk", "dkr", "dkl", "dkb"); var v = vp(), w = Math.max(Math.min(MINW, v.w - 8), Math.min(G.w, v.w - 8)), h = Math.max(Math.min(MINH, v.h - 8), Math.min(G.h, v.h - 8));
   var x = Math.max(v.x + 4, Math.min(G.x, v.x + v.w - w - 4)), y = Math.max(v.y + 4, Math.min(G.y, v.y + v.h - h - 4));
-  win.style.left = Math.round(x) + "px"; win.style.top = Math.round(y) + "px"; win.style.width = Math.round(w) + "px"; win.style.height = Math.round(h) + "px";
+  win.style.left = Math.round(x) + "px"; win.style.top = Math.round(y) + "px"; win.style.width = Math.round(w) + "px"; win.style.height = Math.round(h) + "px"; reserve();
 }
 function saveGeo() { ls("askGeo", JSON.stringify(G)); }
-function gesture(el, onStart, onMove) {
+function gesture(el, onStart, onMove, onEnd) {
   el.addEventListener("pointerdown", function (e) {
     if (e.button > 0 || (el.className.indexOf("ak-h") > -1 && e.target.closest && e.target.closest("button"))) return;
     var r = win.getBoundingClientRect(), s = { px: e.clientX, py: e.clientY, x: r.left, y: r.top, w: r.width, h: r.height }, id = e.pointerId; onStart && onStart(); e.preventDefault();
     try { el.setPointerCapture(id); } catch (x) {}
     function mv(ev) { if (ev.pointerId !== id) return; onMove(ev.clientX - s.px, ev.clientY - s.py, s); applyGeo(); }
-    function up(ev) { if (ev.pointerId !== id) return; el.removeEventListener("pointermove", mv); el.removeEventListener("pointerup", up); el.removeEventListener("pointercancel", up); saveGeo(); }
+    function up(ev) { if (ev.pointerId !== id) return; el.removeEventListener("pointermove", mv); el.removeEventListener("pointerup", up); el.removeEventListener("pointercancel", up); onEnd && onEnd(); saveGeo(); }
     el.addEventListener("pointermove", mv); el.addEventListener("pointerup", up); el.addEventListener("pointercancel", up);
   });
 }
 function wireGeo() {
-  gesture(win.querySelector(".ak-h"), null, function (dx, dy, s) { G.x = s.x + dx; G.y = s.y + dy; G.w = s.w; G.h = s.h; });
+  gesture(win.querySelector(".ak-h"), null, function (dx, dy, s) {
+    var v = vp(), px = s.px + dx, py = s.py + dy, e = 22;
+    if (G.m && G.m !== "float") { G.m = "float"; G.w = G.fw || 330; G.h = G.fh || 430; s.w = G.w; s.h = G.h; s.x = Math.max(v.x + 4, px - G.w / 2); s.y = Math.max(v.y + 4, py - 16); s.px = px; s.py = py; dx = 0; dy = 0; }   // lifted off the edge
+    G.x = s.x + dx; G.y = s.y + dy; G.w = s.w; G.h = s.h;
+    snapShow(py <= v.y + 6 ? "max" : v.w < 700 ? (py >= v.y + v.h - e ? "bottom" : "") : px <= v.x + e ? "left" : px >= v.x + v.w - e ? "right" : "");   // drag to an edge: the preview shows where it will snap
+  }, function () { var m = snapTo; snapShow(""); if (m) setMode(m); });
   Array.prototype.forEach.call(win.querySelectorAll(".ak-rz"), function (h) {
     var d = h.getAttribute("data-d");
     gesture(h, null, function (dx, dy, s) {
       var x = s.x, y = s.y, w = s.w, hh = s.h, v = vp();
+      if (G.m && G.m !== "float") { if (G.m === "right" && d === "w") G.dw = s.w - dx; else if (G.m === "left" && d === "e") G.dw = s.w + dx; else if (G.m === "bottom" && d === "n") G.dh = s.h - dy; return; }   // docked: only the edge facing the page stretches, and the page moves with it
       if (d.indexOf("e") > -1) w = Math.min(s.w + dx, v.x + v.w - s.x - 4);
       if (d.indexOf("s") > -1) hh = Math.min(s.h + dy, v.y + v.h - s.y - 4);
       if (d.indexOf("w") > -1) { w = Math.min(s.w - dx, s.x + s.w - v.x - 4); x = s.x + s.w - Math.max(MINW, w); }
@@ -529,12 +590,18 @@ function paintSound() { ["abSnd", "akSnd"].forEach(function (id) { var b = $(id)
 function build() {
   if (win) return;
   win = document.createElement("div"); win.id = "askWin"; win.className = "hidden"; win.setAttribute("role", "dialog"); win.setAttribute("aria-label", "Ask AI");
-  win.innerHTML = '<div class="ak-in"><div class="ak-h" title="Drag to move"><button type="button" class="ak-pf" id="akPf" title="Your profile"><span id="akAv"></span></button><div class="ak-t"><b>Ask AI 🧸</b><small id="akWho"></small></div><button type="button" class="ak-ib" id="akNew" title="New chat">＋</button><button type="button" class="ak-ib" id="akHist" title="Chat history">🕘</button><button type="button" class="ak-ib" id="akCl" title="Delete this chat">🗑</button><button type="button" class="ak-ib" id="akX" title="Close">✕</button></div>' +
+  win.innerHTML = '<div class="ak-in"><div class="ak-h" title="Drag to move"><button type="button" class="ak-pf" id="akPf" title="Your profile"><span id="akAv"></span></button><div class="ak-t"><b>Ask AI 🧸</b><small id="akWho"></small></div><button type="button" class="ak-ib" id="akNew" title="New chat">＋</button><button type="button" class="ak-ib" id="akHist" title="Chat history">🕘</button><button type="button" class="ak-ib" id="akCl" title="Delete this chat">🗑</button><button type="button" class="ak-ib" id="akLay" title="Window layout">⧉</button><button type="button" class="ak-ib" id="akX" title="Close">✕</button></div>' +
     '<div class="ak-m" id="akM"></div><div class="ak-pop hidden" id="akPop"></div>' +
     '<div class="ak-stat" id="akStat"></div><div class="ak-ph hidden" id="akPh"><img alt=""><b title="Remove">✕</b></div><div class="ak-f" id="akF"><textarea id="akIn" rows="1" maxlength="1500" placeholder="Ask me anything…" enterkeyhint="send"></textarea><button type="button" class="pk" id="akMic" title="Speak (hold to switch English / বাংলা)">' + MICSVG + '</button><button type="button" class="pk" id="akPic" title="Add a photo">📷</button><button type="button" class="snd" id="akSnd">🔇</button><button type="button" id="akSend" title="Send">➤</button></div></div>' +
     ["n", "s", "e", "w", "ne", "nw", "se", "sw"].map(function (d) { return '<div class="ak-rz" data-d="' + d + '"></div>'; }).join("");
   host().appendChild(win); loadGeo(); applyGeo(); wireGeo();
   $("akX").onclick = closeAsk;
+  $("akLay").onclick = function () {   // snap menu (like Windows): dock right / left, bottom, full screen, floating
+    var inn = win.querySelector(".ak-in"), a = inn.getBoundingClientRect(), r = this.getBoundingClientRect(), menu = document.createElement("div");
+    menu.className = "ak-mnu"; menu.style.top = Math.round(r.bottom - a.top + 2) + "px"; menu.style.right = Math.round(a.right - r.right) + "px";
+    menu.innerHTML = (vp().w >= 700 ? '<button type="button" data-m="right">▶ Dock right</button><button type="button" data-m="left">◀ Dock left</button>' : "") + '<button type="button" data-m="bottom">▼ Bottom</button><button type="button" data-m="max">⛶ Full screen</button><button type="button" data-m="float">🪟 Floating</button>';
+    inn.appendChild(menu); menu.onclick = function (e) { var b = e.target.closest && e.target.closest("button"); if (b) { menu.remove(); setMode(b.getAttribute("data-m")); } };
+  };
   $("akPf").onclick = function () { showProfile(win.querySelector(".ak-in"), "ab"); };
   $("akNew").onclick = function () { if (!S.setup) return; if (view === "hist" || conv.msgs.length) { newConv(); setView("chat"); render(true); paintStat(); try { $("akIn").focus({ preventScroll: true }); } catch (e) {} } };
   $("akHist").onclick = function () { if (!S.setup) return; if (view === "hist") { setView("chat"); render(true); } else showHist(); };
@@ -570,7 +637,7 @@ function afterSetupWin() {
   if (wantHist) { wantHist = false; showHist(); return; }
   setTimeout(function () { if (S.setup && view === "chat" && $("akIn")) { try { $("akIn").focus({ preventScroll: true }); } catch (e) {} } }, 60);
 }
-function closeAsk() { closeProfile(); var mn = document.querySelector(".ak-mnu"); if (mn) mn.remove(); if (win) win.classList.add("hidden"); }
+function closeAsk() { closeProfile(); var mn = document.querySelector(".ak-mnu"); if (mn) mn.remove(); if (win) win.classList.add("hidden"); snapShow(""); reserve(); }
 
 // ---- "save this chat?" (change it later with the "change" link under the chat) ----
 function showSavePop() {
