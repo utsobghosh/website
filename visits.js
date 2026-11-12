@@ -58,11 +58,15 @@ function ntfOff(){var x=$("vNtf");if(x)x.remove();ntfLoaded=false}
 function ntfIds(ta){return Array.from(new Set((ta.value.match(/\d+/g)||[]).filter(function(x){return x.length===8})))}
 function ntfBtn(){
  if($("vNtf"))return;var w=document.createElement("div");w.id="vNtf";w.style.cssText="margin-top:10px;text-align:right";
- w.innerHTML='<button type="button" class="s" id="nB" title="Alert settings" aria-label="Alert settings" style="padding:2px 8px;font-size:13px;opacity:.5">🔔</button>'+
+ w.innerHTML='<button type="button" class="s" id="lB" title="Logins" aria-label="Logins" style="padding:2px 8px;font-size:13px;opacity:.5;margin-right:4px">🔑</button><button type="button" class="s" id="nB" title="Alert settings" aria-label="Alert settings" style="padding:2px 8px;font-size:13px;opacity:.5">🔔</button>'+
+  '<div id="lP" class="hidden" style="text-align:left;margin-top:8px;padding:10px;border:2px dashed var(--line);border-radius:12px;overflow-x:auto"><div class="tiny" id="lSum"></div>'+
+  '<table><thead><tr><th>ID</th><th>Name</th><th>Logins</th></tr></thead><tbody id="lIds"></tbody></table>'+
+  '<div class="tiny" style="margin:10px 0 4px;font-weight:600">Latest logins</div>'+
+  '<table><thead><tr><th>Time</th><th>ID</th><th>Name</th><th>How</th></tr></thead><tbody id="lRows"></tbody></table></div>'+
   '<div id="nP" class="hidden" style="text-align:left;margin-top:8px;padding:10px;border:2px dashed var(--line);border-radius:12px">'+
   '<label style="display:flex;align-items:center;gap:8px;margin:0 0 10px;font-weight:600"><input type="checkbox" id="nOrd" style="width:20px;height:20px;min-width:20px;padding:0;margin:0;flex:none"> 🧸 Alert me for new print orders</label><b class="tiny">🔔 Phone alerts for visits</b><select id="nMode" style="display:block;width:100%;margin:8px 0;padding:8px">'+NM.map(function(m){return'<option value="'+m[0]+'">'+m[1]+'</option>'}).join("")+'</select>'+
   '<div class="tiny">IDs on my list (8 digits, one per line):</div><textarea id="nIds" rows="4" style="width:100%;margin:6px 0;padding:8px;box-sizing:border-box" placeholder="e.g. 25101003"></textarea>'+
-  '<div class="tiny" id="nNames"></div><button type="button" class="p" id="nSave" style="margin-top:8px">💾 Save</button> <span class="tiny" id="nMsg"></span>'+
+  '<div class="tiny" id="nNames"></div><button type="button" class="p" id="nSave" style="margin-top:8px">💾 Save</button> <button type="button" class="s" id="nTest" style="margin-top:8px">📨 Send test alert</button> <span class="tiny" id="nMsg"></span>'+
   '<p class="tiny" style="margin-top:8px">The list is used when “Only people on my list” is chosen (visits and logins). Print order alerts are controlled by the checkbox at the top.</p></div>';
  $("vSum").parentNode.appendChild(w);
  var P=$("nP"),ta=$("nIds"),M=$("nMsg");
@@ -73,6 +77,20 @@ function ntfBtn(){
    if(r&&r.error==="pin"){ss("pin",null);ntfOff();return}
    if(!r||!r.ok){M.textContent="Update Code.gs (alert settings) and deploy a New version.";return}
    $("nOrd").checked=r.orders!==false;$("nMode").value=r.mode;ta.value=(r.ids||[]).join("\n");ntfLoaded=true;M.textContent="";names()}catch(e){M.textContent="Could not load: "+(e.message||e)}};
+ $("lB").onclick=async function(){var LP=$("lP");LP.classList.toggle("hidden");if(LP.classList.contains("hidden"))return;
+  $("lSum").textContent="⏳ Loading…";
+  try{var r=await (await fetch(SCRIPT_URL+"?"+new URLSearchParams({logins:1,pin:ss("pin")||""}))).json();
+   if(r&&r.error==="pin"){ss("pin",null);ntfOff();return}
+   if(!r||!r.ok){$("lSum").textContent="Update Code.gs (logins part) and deploy a New version.";return}
+   $("lSum").textContent="Total logins: "+r.total+" · Different IDs: "+r.ids.length;
+   $("lIds").innerHTML=r.ids.map(function(o){return"<tr><td>"+esc(o.id)+"</td><td>"+esc(nameOf(o.id))+"</td><td><b>"+o.n+"</b></td></tr>"}).join("")||'<tr><td colspan="3">No logins yet.</td></tr>';
+   $("lRows").innerHTML=r.rows.map(function(o){return"<tr><td>"+esc(o.t)+"</td><td>"+esc(o.id)+"</td><td>"+esc(nameOf(o.id))+"</td><td>"+esc(o.via)+"</td></tr>"}).join("")||'<tr><td colspan="4">No logins yet.</td></tr>'}
+  catch(e){$("lSum").textContent="Could not load: "+(e.message||e)}};
+ $("nTest").onclick=async function(){M.textContent="⏳ Sending…";
+  try{var r=await (await fetch(SCRIPT_URL,{method:"POST",body:JSON.stringify({action:"ntfytest",pin:ss("pin")||""})})).json();
+   if(r&&r.error==="pin"){ss("pin",null);ntfOff();return}
+   if(!r||!r.ok){M.textContent="Update Code.gs (ntfy test) and deploy a New version.";return}
+   M.textContent=r.res.join(" · ")+" · visit alerts: "+r.mode+" · order alerts: "+(r.orders?"on":"off")}catch(e){M.textContent="Could not test: "+(e.message||e)}};
  $("nSave").onclick=async function(){
   var bad=(ta.value.match(/\d+/g)||[]).filter(function(x){return x.length!==8});if(bad.length){M.textContent="IDs have 8 digits: "+bad.join(", ");return}
   M.textContent="⏳ Saving…";try{var r=await (await fetch(SCRIPT_URL,{method:"POST",body:JSON.stringify({action:"notify",pin:ss("pin")||"",orders:$("nOrd").checked,mode:$("nMode").value,ids:ntfIds(ta)})})).json();
