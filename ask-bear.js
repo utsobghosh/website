@@ -37,7 +37,7 @@ var S = { setup: false, guest: false, save: null, sound: ls("askSound") === "1",
 if (/iPad|iPhone|iPod/.test(navigator.userAgent)) document.documentElement.classList.add("ios");   // iPhones zoom into small text boxes, so those keep a bigger font
 function rememberedId() { var v = ls("askId") || ""; return /^\d{8}$/.test(v) ? v : ""; }
 function getId() { return S.guest ? "" : rememberedId(); }
-function setId(v) { ls("askId", v || null); S.guest = false; document.dispatchEvent(new CustomEvent("askid")); }
+function setId(v, via) { var was = rememberedId(); ls("askId", v || null); if (v && v !== was && via) try { post({ action: "login", id: v, via: via }).catch(function () {}); } catch (e) {} S.guest = false; document.dispatchEvent(new CustomEvent("askid")); }
 function setGuest() { S.guest = true; document.dispatchEvent(new CustomEvent("askid")); }
 function nameOf(id) { try { var c = typeof STUDENTS !== "undefined" && STUDENTS[id]; if (c) return c; } catch (e) {} return ls("askNm:" + id) || ""; }   // class list first, otherwise the name Apps Script found (kept on this phone)
 window.__askId = getId;
@@ -305,7 +305,7 @@ function showProfile(parent, cls) {
   var inp = box.querySelector("#kpId"), note = box.querySelector("#kpN");
   function top() { var cur = getId(); paintAvatar(box.querySelector("#kpAv"), cur, 44); box.querySelector("#kpName").textContent = cur ? (nameOf(cur) || "ID " + cur) : "Guest"; box.querySelector("#kpSub").textContent = cur ? "ID " + cur + " · remembered on this device" : "Add your ID to save your chats and quiz answers"; }
   function hint() { var v = inp.value.replace(/\D/g, ""); inp.value = v; if (/^\d{8}$/.test(v)) fetchName(v); note.textContent = /^\d{8}$/.test(v) ? (nameOf(v) ? "👋 Hi, " + nameOf(v) + "!" : "Not in the class list, but that is fine 🙂") : (v ? "The ID has 8 digits" : ""); }
-  function save() { var v = inp.value.replace(/\D/g, ""); if (!v) { setId(""); box.remove(); return; } if (!/^\d{8}$/.test(v)) { note.textContent = "Please type your 8-digit ID"; return; } setId(v); box.remove(); }
+  function save() { var v = inp.value.replace(/\D/g, ""); if (!v) { setId(""); box.remove(); return; } if (!/^\d{8}$/.test(v)) { note.textContent = "Please type your 8-digit ID"; return; } setId(v, cls === "ab" ? "ai-window-profile" : "profile-icon"); box.remove(); }
   inp.addEventListener("input", hint); inp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); save(); } });
   box.querySelector("#kpSave").onclick = save; box.querySelector("#kpClear").onclick = function () { setId(""); box.remove(); };
   box.querySelector("#kpVoice").onchange = function () { ls("askVoice", this.value); previewVoice(this.value, box.querySelector("#kpPlay")); };
@@ -408,7 +408,7 @@ function setupCard(pop, done) {
     pop.innerHTML = '<b>👋 Who is asking?</b><input class="su-id" inputmode="numeric" maxlength="8" placeholder="e.g. 25101003" value="' + esc(rem) + '" autocomplete="off"><div class="ak-n" id="suN"></div><div class="ak-row"><button type="button" id="suGo">Continue</button><button type="button" class="alt" id="suGuest">Continue as guest</button></div>';
     var inp = pop.querySelector(".su-id"), note = pop.querySelector("#suN");
     function hint() { var v = inp.value.replace(/\D/g, ""); inp.value = v; if (/^\d{8}$/.test(v)) fetchName(v); note.textContent = /^\d{8}$/.test(v) ? (nameOf(v) ? "👋 Hi, " + nameOf(v) + "!" : "") : (v ? "e.g. 25101003" : ""); }
-    function go() { var v = inp.value.replace(/\D/g, ""); if (!/^\d{8}$/.test(v)) { note.textContent = v ? "e.g. 25101003" : "Type your ID, or tap Continue as guest"; return; } if (v !== rememberedId() || S.guest) setId(v); step2(); }
+    function go() { var v = inp.value.replace(/\D/g, ""); if (!/^\d{8}$/.test(v)) { note.textContent = v ? "e.g. 25101003" : "Type your ID, or tap Continue as guest"; return; } if (v !== rememberedId() || S.guest) setId(v, "ai-button"); step2(); }
     inp.addEventListener("input", hint); inp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); go(); } }); hint();
     pop.querySelector("#suGo").onclick = go; pop.querySelector("#suGuest").onclick = function () { setGuest(); step2(); };
     setTimeout(function () { try { inp.focus({ preventScroll: true }); if (rem) inp.select(); } catch (e) {} }, 60);
@@ -738,7 +738,7 @@ window.__askQuizRow = function (box) {
       paintAvatar(box.querySelector("#kqAv"), id, 18); box.querySelector(".ed").onclick = function () { showProfile(host(), "fx"); };
     } else {
       box.innerHTML = '<input inputmode="numeric" maxlength="8" placeholder="Your ID, e.g. 25101003">';
-      var inp = box.querySelector("input"); inp.addEventListener("input", function () { inp.value = inp.value.replace(/\D/g, ""); if (/^\d{8}$/.test(inp.value)) setId(inp.value); });
+      var inp = box.querySelector("input"); inp.addEventListener("input", function () { inp.value = inp.value.replace(/\D/g, ""); if (/^\d{8}$/.test(inp.value)) setId(inp.value, "quiz"); });
     }
   };
   box.__draw();
