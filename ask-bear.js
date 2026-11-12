@@ -45,6 +45,7 @@ window.__askId = getId;
 // ---------- Apps Script ----------
 function api(q) { return fetch(URL_ + "?" + Object.keys(q).map(function (k) { return k + "=" + encodeURIComponent(q[k]); }).join("&")).then(function (r) { return r.json(); }); }
 function post(b) { return fetch(URL_, { method: "POST", body: JSON.stringify(b) }).then(function (r) { return r.json(); }); }
+function aiCount(kind) { if (!URL_) return; try { post({ action: "ai", kind: kind, id: getId(), dev: ls("visitDev") || "" }).catch(function () {}); } catch (e) {} }   // counts one AI use in the Admin Visitors panel (guests too)
 
 // ---------- profile picture: class picture if it can be fetched, otherwise a cute placeholder ----------
 var phMem = {}, profMem = {};
@@ -765,7 +766,7 @@ async function run(cv, um, note, h, shotP) {
   function unlive() { var b = $("akLive"); if (b) b.remove(); }
   try {
     var r = tidy(await gemini(h, um.text, note, shotP, live)), bm = { role: "bear", text: r, t: ts() };
-    unlive(); cv.msgs.push(bm); persist(cv, [um, bm], note); busyUI(false);
+    aiCount("chat"); unlive(); cv.msgs.push(bm); persist(cv, [um, bm], note); busyUI(false);
     if (conv === cv) { if (winVisible() && view === "chat") append(bm); if (barOpen) showAns(fmt(bm.text)); }
   } catch (e) {
     unlive(); busyUI(false); var msg = esc((e && e.message) || "error");
@@ -835,6 +836,7 @@ function qlOlder() {
 }
 (function waitKq() { var n = 0, iv = setInterval(function () { var t = $("tabKq"); if (t) { t.addEventListener("click", function () { setTimeout(qlFetch, 0); }); clearInterval(iv); } else if (++n > 40) clearInterval(iv); }, 500); })();
 window.__askQuizSave = function (q) {
+  aiCount("quiz");
   var it = { t: nowT(), subj: q.subj, q: q.q, o: q.o, a: q.a, pick: q.pick, res: q.res, src: q.src }, id = getId();
   qlSession.unshift(it); if (qlSession.length > 100) qlSession.pop();   // this visit's list (kept in memory only)
   if (id && URL_) {                                                    // saved in the sheet ONLY when the profile has an ID
