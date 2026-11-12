@@ -52,7 +52,7 @@ var VIEW="cmp";try{if(localStorage.getItem("notesView")==="det")VIEW="det"}catch
 var ARCHIVE={icon:"🗄️",label:"Archive"};   // name of the archive button / tab
 var FILES=(window.NOTES_FILES||[]).map(function(f){var pn=parseName(f.p);f.nm=pn.nm;f.pr=pn.pr;f.sj=pn.sj;f.pn=pn.pn;f.c=catFor(f);return f}).sort(function(a,b){function k(f){return hp(f)?f.pr:hl(f.p)?1:1e9}return (k(a)-k(b))||(hp(b)-hp(a))||(b.t-a.t)});   // (full) notes count as priority 1: -2, -1, 0 come before them, 2, 3… after; the rest newest first   // coloured (purple) notes first, then newest first
 var TOPICS={},INFO0=null,CFG={};try{TOPICS=JSON.parse(localStorage.getItem("notesTopics")||"{}")||{}}catch(e){}CFG=parseCfg(TOPICS.cfg);   // topics typed on the website (saved in the Google Sheet tab Topics)
-var ALL=[],curCat="",curSub=-1,curTab="files",curExtra=null,q="";
+var LASTCAT="",ALL=[],curCat="",curSub=-1,curTab="files",curExtra=null,q="";
 function eff(f){var m=META[f.p]||{},sj=m.sj&&ALL.some(function(c){return c.id===m.sj})?m.sj:"";f.c=sj||(f.fc&&ALL.some(function(c){return c.id===f.fc})?(f.an===1&&catFor(f)!==OTHERS.id?catFor(f):f.fc):catFor(f));if(!ALL.some(function(c){return c.id===f.c}))f.c=OTHERS.id;f.pinned=(m.pin===1||m.pin==="1")?true:(m.pin===0||m.pin==="0")?false:!!f.pn;f.ar=m.ar===1||m.ar==="1";f.tg=m.tg?String(m.tg).split("|").filter(Boolean):[];if(f.x&&f.at){var pp=f.p.split("/");if(pp.length>=4){var at=cleanTag(pp[2]);if(at&&f.tg.indexOf(at)<0)f.tg.push(at)}}if(f.x&&f.an===2&&f.fc){var m2=catFor(f);if(m2!==OTHERS.id&&m2!==f.fc){var l2=ALL.filter(function(c){return c.id===m2})[0],tn=cleanTag(l2?l2.label:m2);if(tn&&f.tg.indexOf(tn)<0)f.tg.push(tn)}}}   // imported Drive folder: each first-level sub-folder becomes a tab automatically
 function buildAll(){   // subjects = built-in ones (except removed) + ones added on the website (saved as __subj:<id> = icon|name|word|word…) + Others
  var base=CATS.filter(function(c){var m=META["__hide:"+c.id];return!(m&&m.tg)}),extra=[];
@@ -61,6 +61,13 @@ function buildAll(){   // subjects = built-in ones (except removed) + ones added
 buildAll();FILES.forEach(eff);
 function org(){try{return!!sessionStorage.getItem("pin")&&sessionStorage.getItem("orgHide")!=="1"}catch(e){return false}}
 function viewable(p){return /\.(pdf|jpe?g|png|webp|gif)$/i.test(p)}
+function extOf(p){var m=/\.([A-Za-z0-9]{1,5})$/.exec(String(p||""));return m?m[1].toUpperCase():""}   // file type shown on the buttons: PDF, MP4, DOCX ...
+function isVid(p){return /\.(mp4|m4v|mov|webm|mkv|avi|3gp)$/i.test(p)}
+function isAud(p){return /\.(mp3|wav|m4a|ogg|aac|flac)$/i.test(p)}
+function typeIcon(p){var e=extOf(p).toLowerCase();return isVid(p)?"🎬":isAud(p)?"🎧":/^(jpe?g|png|webp|gif|bmp|heic)$/.test(e)?"🖼️":/^(docx?|rtf|odt)$/.test(e)?"📝":/^(pptx?|odp)$/.test(e)?"📊":/^(xlsx?|csv|ods)$/.test(e)?"📈":/^(zip|rar|7z)$/.test(e)?"🗜️":/^(txt|md)$/.test(e)?"📃":/^(java|py|c|cpp|js|html|css|ipynb)$/.test(e)?"💻":"📄"}
+function typeTag(p){var e=extOf(p);return e?' <small class="nty">'+e+"</small>":""}
+function openLbl(p){return isVid(p)?"▶ Play video":isAud(p)?"🎧 Play audio":viewable(p)?"↗ New tab":"↗ Open"}
+function fileHref(f){return f.id?(viewable(f.p)?"#":"https://drive.google.com/file/d/"+encodeURIComponent(f.id)+"/view"):encodeURI(f.p)}   // "#" only for files the in-app viewer opens; Drive videos / Word / etc. open their Drive page (before: "#" opened this website again)
 function arCount(id){return FILES.filter(function(f){return f.ar&&(!id||f.c===id)}).length}
 
 var st=document.createElement("style");
@@ -74,7 +81,7 @@ st.textContent=".nbtn{display:flex;align-items:center;gap:14px;width:100%;paddin
 document.head.appendChild(st);var stPr=document.createElement("style");stPr.textContent=".nchip.pr{background:var(--pc);border-color:transparent;color:#fff;font-weight:700}.nf.pr{background:color-mix(in srgb,var(--pc) 14%,transparent);border-left:4px solid var(--pc)}.nf.pr b::after{content:'#'attr(data-pr);margin-left:8px;padding:1px 7px;border-radius:99px;background:var(--pc);color:#fff;font-size:11px;font-weight:700;vertical-align:middle}";document.head.appendChild(stPr);
 
 var stT=document.createElement("style");stT.textContent=".ntabs{flex-wrap:wrap}.ntabs button{min-width:30%}";document.head.appendChild(stT);var stO=document.createElement("style");stO.textContent=".nf{border-bottom:0;position:relative;padding-right:32px;background:color-mix(in srgb,var(--accent) 8%,transparent);border-radius:10px}.nf:after{content:'›';position:absolute;right:11px;top:50%;transform:translateY(-52%);font-size:26px;line-height:1;color:var(--accent2,#8a4dff);opacity:.85}.nfw{position:relative;border:2px solid color-mix(in srgb,var(--accent) 42%,var(--line));border-radius:16px;margin:0 0 10px;padding:6px;background:var(--panel)}.nfw:last-child{margin-bottom:2px}.nfw.org .nf{padding-right:46px}.nfw.org .nf:after{right:46px}.nfb{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:6px;padding:6px 0 0}.nfa.nfv{background:var(--accent);border-color:var(--accent);color:var(--onacc,#fff)}.nfm{position:absolute;right:8px;top:8px;z-index:2;width:30px;height:30px;padding:0;margin:0;border:0;border-radius:50%;background:var(--panel);color:var(--text);font-size:20px;line-height:1;cursor:pointer;box-shadow:0 1px 5px rgba(0,0,0,.25)}.ncat{border:2px solid color-mix(in srgb,var(--accent) 38%,var(--line))!important}.ncat.on{border-color:var(--accent)!important}.npw{position:relative;margin:0 0 6px}.npin{display:flex;align-items:center;gap:10px;box-sizing:border-box;width:100%;padding:9px 12px;border:2px solid var(--accent2,#8a4dff);border-radius:16px;background:var(--panel);color:var(--text);text-decoration:none;box-shadow:0 3px 0 color-mix(in srgb,var(--accent2,#8a4dff) 45%,transparent);cursor:pointer}.npin:active{transform:translateY(2px);box-shadow:none}.npin .ni{font-size:20px}.npin .nt2{flex:1;min-width:0;display:block}.npin .nt2 b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:14.5px}.npin .nt2 small{display:block;font-size:11px;font-weight:400;color:var(--muted)}.npin .na{font-size:24px;opacity:.7}.npw.org .npin{padding-right:46px}.nmore{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:34px;height:34px;padding:0;margin:0;border:0;background:none;color:var(--muted);font-size:22px;line-height:1;cursor:pointer;box-shadow:none}.norg{display:flex;gap:8px;align-items:center;justify-content:space-between;margin:8px 0;padding:7px 10px;border:1px dashed var(--accent2,#8a4dff);border-radius:12px;background:color-mix(in srgb,var(--accent2,#8a4dff) 12%,var(--panel));font-size:12.5px}.norg button{flex:none;padding:5px 11px;border:1px solid var(--line);border-radius:9px;background:var(--panel);color:var(--text);font:inherit;font-size:12px;cursor:pointer;margin:0;box-shadow:none}.nmenu{position:fixed;z-index:10010;width:min(290px,calc(100vw - 16px));box-sizing:border-box;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.3);padding:6px;font-size:14px}.nmenu .mh{display:block;padding:6px 10px;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.nmenu button{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:0;background:none;color:inherit;font:inherit;padding:10px 12px;border-radius:9px;cursor:pointer;margin:0;box-shadow:none;transform:none}.nmenu button:hover,.nmenu button:active{background:var(--line)}.nmenu button.cur{font-weight:700}.nmenu button small{margin-left:auto;color:var(--muted);font-weight:400}";document.head.appendChild(stO);
-function stripHtml(){return FILES.filter(function(f){return!f.ar}).slice(0,STRIP_MAX).map(function(f){var n=f.nm;return'<a class="nchip'+prc(f)+'"'+prs(f,cfs(n))+' target="_blank" rel="noopener" data-p="'+esc(f.p)+'" data-n="'+esc(n)+'" title="'+esc(n)+'" href="'+esc(f.id?"#":encodeURI(f.p))+'">'+(isImg(f.p)?"🖼️":"📄")+' '+esc(n)+"</a>"}).join("")}
+function stripHtml(){return FILES.filter(function(f){return!f.ar}).slice(0,STRIP_MAX).map(function(f){var n=f.nm;return'<a class="nchip'+prc(f)+'"'+prs(f,cfs(n))+' target="_blank" rel="noopener" data-p="'+esc(f.p)+'" data-n="'+esc(n)+'" title="'+esc(n)+'" href="'+esc(fileHref(f))+'">'+typeIcon(f.p)+' '+esc(n)+typeTag(f.p)+"</a>"}).join("")}
 function stripBox(){var r=stripHtml();return r?'<div class="nlab">🕘 Latest notes (tap to open)</div><div class="nstrip'+(STRIP==="grid"?" grid":"")+'">'+r+"</div>":""}
 $("s1").insertAdjacentHTML("afterbegin",'<div id="nStripBox">'+stripBox()+'</div><div id="nPins"></div>'+'<button type="button" class="nbtn" id="nOpen"><span class="ni">📚</span><span class="nt2">Notes by utsob 🐱<small>Browse all notes and syllebus by subject</small></span><span class="na">›</span></button><div id="nSyl"></div><div id="nOrg"></div>');
 // inside Messenger etc. (Android): reading notes works, downloading may not -> warning + browser buttons inside the Notes card
@@ -90,7 +97,7 @@ function cleanTag(s){return String(s||"").replace(/[|\r\n]/g," ").replace(/\s+/g
 function tagsOf(id){var o=[];FILES.forEach(function(f){if(f.c===id&&!f.ar)f.tg.forEach(function(t){if(o.indexOf(t)<0)o.push(t)})});return o.sort()}   // custom tabs of one subject (made from the tabs given to its files)
 function allTags(){var o=[];FILES.forEach(function(f){f.tg.forEach(function(t){if(o.indexOf(t)<0)o.push(t)})});return o.sort()}
 function tgCount(id,t){return FILES.filter(function(f){return f.c===id&&!f.ar&&f.tg.indexOf(t)>=0}).length}
-function applyLabels(){ALL.forEach(function(c){if(c.l0==null){c.l0=c.label;c.i0=c.icon}var m=META["__label:"+c.id],s=(CFG.st||{})[c.id]||{};c.label=s.n||((m&&m.tg)?m.tg:c.l0);c.icon=s.i||c.i0;c.co=s.c||"";if(c.re0===undefined)c.re0=c.re||null;var ex=(s.k||[]).filter(Boolean);c.re=ex.length?rx((c.keys||[]).concat(ex)):c.re0})}   // name / icon / colour set on the website
+function applyLabels(){ALL.forEach(function(c){if(c.l0==null){c.l0=c.label;c.i0=c.icon}var m=META["__label:"+c.id],s=(CFG.st||{})[c.id]||{};c.label=s.n||((m&&m.tg)?m.tg:c.l0);c.icon=s.i||c.i0;c.co=s.c||"";c.fs=+s.fs||0;if(c.re0===undefined)c.re0=c.re||null;var ex=(s.k||[]).filter(Boolean);c.re=ex.length?rx((c.keys||[]).concat(ex)):c.re0})}   // name / icon / colour set on the website
 function renameTab(from,to){var p=Promise.resolve();FILES.filter(function(f){return f.tg.indexOf(from)>=0}).forEach(function(f){p=p.then(function(){var nt=f.tg.map(function(t){return t===from?to:t}).filter(function(t,i,a){return a.indexOf(t)===i});return metaSet(f.p,{tg:nt.join("|")})})});return p}
 function orgBar(){if(!org())return"";var c=ALL.filter(function(x){return x.id===curCat})[0],h=[];
  if(c&&curCat!=="__ar"){h.push('<button type="button" class="s" data-ren="sj">✏️ Edit subject</button>');
@@ -99,10 +106,13 @@ function orgBar(){if(!org())return"";var c=ALL.filter(function(x){return x.id===
   if(curTab.indexOf("tg:")===0)h.push('<button type="button" class="s" data-ren="tab">✏️ Rename tab “'+esc(curTab.slice(3))+'”</button>');
   if(c.id!==OTHERS.id)h.push('<button type="button" class="s" data-ren="del">🗑 Remove “'+esc(c.label)+'”</button>')}
  h.push('<button type="button" class="s" data-ren="add">➕ Add subject</button>');h.push('<button type="button" class="s" data-ren="ord">↕ Reorder subjects</button>');h.push('<button type="button" class="s" data-ren="sel">'+(SELMODE?"✖ Done selecting":"☑️ Select multiple files")+"</button>");h.push('<button type="button" class="s" data-ren="onew">'+(ONLYNEW?"👁 Show organized files too":"🙈 Hide files already in a tab")+"</button>");
+ var orph=curCat===OTHERS.id?orphans():[];if(orph.length)h.push('<button type="button" class="s" data-ren="orph">🧹 Remove leftover Drive imports of deleted subjects ('+orph.length+')</button>');
  var hid=CATS.filter(function(x){var m=META["__hide:"+x.id];return m&&m.tg});
  if(hid.length)h.push('<button type="button" class="s" data-ren="res">↩ Restore removed ('+hid.length+')</button>');
- return'<div style="margin:0 0 8px;display:flex;gap:6px;flex-wrap:wrap">'+h.join("")+"</div>"+(SELMODE?bulkBar():"")}
+ return'<div class="norgbar">'+h.join("")+"</div>"+(SELMODE?bulkBar():"")}
+function orphans(){return Object.keys((CFG&&CFG.src)||{}).filter(function(s){return!ALL.some(function(x){return x.id===s})&&!CATS.some(function(x){return x.id===s})&&((CFG.src[s]||[]).length)})}   // imports whose subject was removed
 function orgAct(a){var c=ALL.filter(function(x){return x.id===curCat})[0];
+ if(a==="orph"){var o=orphans();if(!o.length)return;if(!confirm("These Drive folders belong to subjects that were removed, so their files only show up in Others.\nStop importing them? (Nothing is deleted from Drive.)"))return;cfgSave(function(n){o.forEach(function(s){delete n.src[s];delete n.lk[s];delete n.st[s]})});return}
  if(a==="sj"&&c){subjDlg(c);return}if(a==="add"){subjDlg(null);return}if(a==="lnk"){linkDlg();return}if(a==="ord"){ordDlg();return}if(/^(lk|src)[EDRTN]:/.test(a)){lkAct(a);return}if(a==="sel"){SELMODE=!SELMODE;SEL={};render();return}if(a==="onew"){ONLYNEW=!ONLYNEW;render();return}if(/^bk:/.test(a)){bulkAct(a);return}
  if(a==="topics"){topicEditor();return}
  if(a==="sj"&&c){var n1=prompt("New name for this subject (leave empty = original name)",c.label);if(n1===null)return;n1=cleanTag(n1);metaSet("__label:"+curCat,{tg:n1===c.l0?"":n1})}
@@ -111,43 +121,60 @@ function orgAct(a){var c=ALL.filter(function(x){return x.id===curCat})[0];
   var ic=(prompt("An emoji for it (optional)","📘")||"📘").replace(/\|/g,"").trim().slice(0,6)||"📘";
   var ks=(prompt("Words in the file names that belong to it, separated by commas (optional, example: phy, physics).\nYou can also move files here by hand with ⋮.","")||"").split(",").map(function(k){return cleanTag(k).toLowerCase()}).filter(Boolean).slice(0,6),id="c"+Math.random().toString(36).slice(2,8);
   metaSet("__subj:"+id,{tg:[ic,nm].concat(ks).join("|")}).then(function(){if(ALL.some(function(x){return x.id===id})){curCat=id;curTab="files";curSub=-1;render()}})}
- else if(a==="del"&&c){if(!confirm("Remove the subject “"+c.label+"”?\nNo file is deleted: its files move to Others (or to a matching subject)."))return;
-  metaSet(c.custom?"__subj:"+c.id:"__hide:"+c.id,{tg:c.custom?"":"1"}).then(function(){curTab="files";render()})}
+ else if(a==="del"&&c){var imp=c.custom&&hasLk(c.id),cid=c.id;if(!confirm("Remove the subject “"+c.label+"”?\n"+(imp?"Its links and imported Drive folders are removed too (nothing is deleted from Drive).\n":"")+"Other files move to Others (or to a matching subject)."))return;
+  metaSet(c.custom?"__subj:"+c.id:"__hide:"+c.id,{tg:c.custom?"":"1"}).then(function(){curTab="files";if(imp)cfgSave(function(n){delete n.src[cid];delete n.lk[cid];delete n.st[cid]});render()})}
  else if(a==="res"){var p=Promise.resolve();CATS.forEach(function(x){var m=META["__hide:"+x.id];if(m&&m.tg)p=p.then(function(){return metaSet("__hide:"+x.id,{tg:""})})});p.then(render)}}
 function count(id){return FILES.filter(function(f){return f.c===id&&!f.ar}).length}
 
 function render(){
  if(DG){DG.again=1;return}
- buildAll();applyLabels();
- if(curCat&&curCat!=="__ar"&&!ALL.some(function(c){return c.id===curCat})){var fc0=ALL.filter(function(c){return count(c.id)})[0];curCat=fc0?fc0.id:""}
+ buildAll();applyLabels();if(curCat&&curCat!=="__ar")LASTCAT=curCat;
+ if(curCat&&curCat!=="__ar"&&(!ALL.some(function(c){return c.id===curCat})||(curCat===OTHERS.id&&!count(OTHERS.id)&&!(org()&&(hasLk(OTHERS.id)||orphans().length))))){var fc0=ALL.filter(function(c){return count(c.id)})[0];curCat=fc0?fc0.id:""}
  if(curTab.indexOf("tg:")===0&&tagsOf(curCat).indexOf(curTab.slice(3))<0)curTab="files";
  if(!arCount()){if(curCat==="__ar"){var fc=ALL.filter(function(c){return count(c.id)})[0];if(fc)curCat=fc.id}if(curTab==="arch")curTab="files"}
- $("nCats").innerHTML=ALL.filter(function(c){return count(c.id)||arCount(c.id)||(org()&&c.custom)||hasLk(c.id)}).map(function(c){var n=count(c.id);
-  return'<button type="button" class="ncat'+(c.id===curCat&&!q?" on":"")+'"'+(c.co?' style="--sc:'+esc(c.co)+'"':"")+' data-c="'+c.id+'">'+'<i class=\"nci\">'+c.icon+"</i> "+esc(c.label)+" <small>("+n+")</small></button>"}).join("")+(arCount()?'<button type="button" class="ncat'+("__ar"===curCat&&!q?" on":"")+'" data-c="__ar"><i class="nci">'+ARCHIVE.icon+"</i> "+ARCHIVE.label+" <small>("+arCount()+")</small></button>":"");
+ $("nCats").innerHTML=ALL.filter(function(c){return c.id===OTHERS.id?(count(c.id)||(org()&&(hasLk(c.id)||orphans().length))):(count(c.id)||arCount(c.id)||(org()&&c.custom)||hasLk(c.id))}).map(function(c){var n=count(c.id);
+  return'<button type="button" class="ncat'+(c.id===curCat&&!q?" on":"")+'"'+((c.co||c.fs)?' style="'+(c.co?"--sc:"+esc(c.co)+";":"")+(c.fs?"font-size:"+c.fs+"px;":"")+'"':"")+' data-c="'+c.id+'">'+'<i class=\"nci\">'+c.icon+"</i> "+esc(c.label)+" <small>("+n+")</small></button>"}).join("")+(arCount()?'<button type="button" class="ncat ncmore'+("__ar"===curCat&&!q?" on":"")+'" data-c="__more" title="More (archive)" aria-label="More: archive">⋮</button>':"");
  var qw=q.split(/\s+/).filter(Boolean),list=q?FILES.filter(function(f){var p=f.p.toLowerCase();return qw.every(function(w){return p.indexOf(w)>=0})}).sort(function(a,b){return (a.ar?1:0)-(b.ar?1:0)}):(curCat==="__ar"?FILES.filter(function(f){return f.ar}):FILES.filter(function(f){return f.c===curCat&&(curTab==="arch"?f.ar:!f.ar)&&(curTab.indexOf("tg:")!==0||f.tg.indexOf(curTab.slice(3))>=0)&&(curSub<0||SUBS[curSub].re.test(f.p))&&!(ONLYNEW&&curTab==="files"&&org()&&f.tg.length)}));
  var chips=SUBS.length?'<div class="nchips"><button type="button" data-s="-1" class="'+(curSub<0?"on":"")+'">All</button>'+SUBS.map(function(s,i){return'<button type="button" data-s="'+i+'" class="'+(i===curSub?"on":"")+'">'+esc(s.label)+"</button>"}).join("")+"</div>":"";
- var ci=infoForCat(curCat);if(curExtra&&ci.indexOf(curExtra)<0)ci=[curExtra].concat(ci);var arN=curCat==="__ar"?0:arCount(curCat),tgs=curCat==="__ar"?[]:tagsOf(curCat),tabs=(curCat!=="__ar"&&(ci.length||arN||tgs.length))?'<div class="ntabs"><button type="button" data-t="files" class="'+(curTab==="files"?"on":"")+'">📄 Notes ('+count(curCat)+')</button>'+(ci.length?'<button type="button" data-t="syl" class="'+(curTab==="syl"?"on":"")+'">📋 Topics</button>':"")+(ci.some(function(e){return e.tab})?'<button type="button" data-t="cx" class="'+(curTab==="cx"?"on":"")+'">⏱️ '+cxLabel(ci)+'</button>':"")+(arN?'<button type="button" data-t="arch" class="'+(curTab==="arch"?"on":"")+'">'+ARCHIVE.icon+" "+ARCHIVE.label+" ("+arN+")</button>":"")+tgs.map(function(t){return'<button type="button" data-t="tg:'+esc(t)+'" class="'+(curTab==="tg:"+t?"on":"")+'">🏷️ '+esc(t)+" ("+tgCount(curCat,t)+")</button>"}).join("")+"</div>":"";
-  var box=function(e){return'<div class="nsyl nsylbx"><b>'+(e.tab?"⏱️ ":"📋 ")+esc(e.title)+"</b>"+cpBtn('data-cpi="'+(window.NOTES_INFO||[]).indexOf(e)+'"')+bodyHtml(e)+"</div>"},topics=ci.filter(function(e){return!e.tab}).map(box).join(""),cxb=ci.filter(function(e){return e.tab}).map(box).join("");   // topics are always visible under/over the files; the tab only decides which comes first
+ var ci=infoForCat(curCat);if(curExtra&&ci.indexOf(curExtra)<0)ci=[curExtra].concat(ci);var arN=curCat==="__ar"?0:arCount(curCat),tgs=curCat==="__ar"?[]:tagsOf(curCat),tabs=(curCat!=="__ar"&&(ci.length||tgs.length||curTab==="arch"))?'<div class="ntabs"><button type="button" data-t="files" class="'+(curTab==="files"?"on":"")+'">📄 Notes ('+count(curCat)+')</button>'+(ci.length?'<button type="button" data-t="syl" class="'+(curTab==="syl"?"on":"")+'">📋 Topics</button>':"")+(ci.some(function(e){return e.tab})?'<button type="button" data-t="cx" class="'+(curTab==="cx"?"on":"")+'">⏱️ '+cxLabel(ci)+'</button>':"")+(curTab==="arch"?'<button type="button" data-t="arch" class="'+(curTab==="arch"?"on":"")+'">'+ARCHIVE.icon+" "+ARCHIVE.label+" ("+arN+")</button>":"")+tgs.map(function(t){return'<button type="button" data-t="tg:'+esc(t)+'" class="'+(curTab==="tg:"+t?"on":"")+'">🏷️ '+esc(t)+" ("+tgCount(curCat,t)+")</button>"}).join("")+"</div>":"";
+  var box=function(e){return'<div class="nsyl nsylbx">'+(e.title?"<b>"+(e.tab?"⏱️ ":"📋 ")+esc(e.title)+"</b>":"")+cpBtn('data-cpi="'+(window.NOTES_INFO||[]).indexOf(e)+'"')+bodyHtml(e)+"</div>"},topics=ci.filter(function(e){return!e.tab}).map(box).join(""),cxb=ci.filter(function(e){return e.tab}).map(box).join("");   // topics are always visible under/over the files; the tab only decides which comes first
  LISTP=list.map(function(f){return f.p});var fh=chips+(list.length?viewBar(list.length)+'<div class="nflist'+(VIEW==="cmp"?" cmp":"")+(q?" qs":"")+'">'+list.map(rowHtml).join("")+"</div>"
   :'<p class="note" style="margin:8px">'+(q?"No notes match your search 🔍":(curTab==="arch"||curCat==="__ar")?"Nothing in the "+ARCHIVE.label+" yet.":FILES.length?"No files here yet.":"No notes found. Run update-notes.bat, then reload.")+"</p>");
  if(ED&&!q&&ED.id===curCat){$("nList").innerHTML=edHtml();return}
- $("nList").innerHTML=q?fh:orgBar()+tabs+((curCat==="__ar"||curTab==="cx")?"":linksHtml(curCat))+(curTab==="cx"?cxb:curTab==="syl"?topics+fh:(curTab==="arch"||curCat==="__ar"||curTab.indexOf("tg:")===0)?fh:fh+topics)}
+ $("nList").innerHTML=q?fh:orgBar()+((curCat==="__ar"||curTab==="arch")?'<div class="note" style="margin:0 0 8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap"><b>'+ARCHIVE.icon+" "+ARCHIVE.label+'</b><button type="button" class="s" data-ar="back">← Back to notes</button></div>':"")+tabs+((curCat==="__ar"||curTab==="cx")?"":linksHtml(curCat))+(curTab==="cx"?cxb:curTab==="syl"?topics+fh:(curTab==="arch"||curCat==="__ar"||curTab.indexOf("tg:")===0)?fh:fh+topics)}
 
 function rowHtml(f){
  var parts=f.p.split("/"),name=(parts.pop(),f.nm),sub=parts.slice(1).join(" / "),o=org();
- var dUrl=f.id?"https://drive.google.com/file/d/"+encodeURIComponent(f.id)+"/view":encodeURI(f.p),dlUrl=f.id?"https://drive.google.com/uc?export=download&id="+encodeURIComponent(f.id):encodeURI(f.p),absUrl=f.id?dUrl:new URL(encodeURI(f.p),document.baseURI).href;
+ var ex=extOf(f.p),tl=ex?" ("+ex+")":"",dUrl=f.id?"https://drive.google.com/file/d/"+encodeURIComponent(f.id)+"/view":encodeURI(f.p),dlUrl=f.id?"https://drive.google.com/uc?export=download&id="+encodeURIComponent(f.id):encodeURI(f.p),absUrl=f.id?dUrl:new URL(encodeURI(f.p),document.baseURI).href;
  return'<div class="nfw'+(o?" org":"")+(o&&f.tg.length&&curTab.indexOf("tg:")!==0&&curCat!=="__ar"?" ndone":"")+'">'+(o?'<button type="button" class="nfd" data-dg="'+esc(f.p)+'" title="Drag me onto a subject or tab" aria-label="Drag this file">⠿</button>':"")+'<button type="button" class="nft" data-more="1" title="Open / download…" aria-label="Show open and download buttons">⋯</button>'+(o?(SELMODE?'<button type="button" class="nfm nsel" data-sel="'+esc(f.p)+'">'+(SEL[f.p]?"✅":"☐")+"</button>":'<button type="button" class="nfm" data-mp="'+esc(f.p)+'" title="Organize this file">⋮</button>'):"")+
-  '<a class="nf'+prc(f)+'"'+prs(f)+' target="_blank" rel="noopener" data-p="'+esc(f.p)+'" data-n="'+esc(name)+'" href="'+esc(f.id?"#":encodeURI(f.p))+'"><b>'+(isImg(f.p)?"🖼️":"📄")+" "+esc(name)+(f.pinned?" 📌":"")+"</b><small>"+fmtDate(f.t)+" · "+fmtSize(f.s)+(sub?" · "+esc(sub):"")+(q?" · "+esc(ALL.filter(function(x){return x.id===f.c})[0].label):"")+(f.ar?" · "+ARCHIVE.icon+" "+ARCHIVE.label:"")+(curTab.indexOf("tg:")!==0?(f.tg.length?" · "+(o?"✅ in tab: ":"🏷️ ")+esc(f.tg.join(", ")):(o&&!q&&curCat!=="__ar"?" · ⬜ no tab yet":"")):"")+"</small></a>"+
-  '<div class="nfb">'+(viewable(f.p)?'<a class="nfa nfv" target="_blank" rel="noopener" data-p="'+esc(f.p)+'" data-n="'+esc(name)+'" href="'+esc(f.id?"#":encodeURI(f.p))+'">📖 View here</a>':"")+'<a class="nfa" target="_blank" rel="noopener" href="'+esc(dUrl)+'">↗ New tab</a><a class="nfa" href="'+esc(dlUrl)+'" download="'+esc(name)+'"'+(f.id?' target="_blank" rel="noopener"':"")+'>⬇ Download</a><button type="button" class="nfa" data-cp="'+esc(absUrl)+'">🔗 Copy link</button></div></div>'}
+  '<a class="nf'+prc(f)+'"'+prs(f)+' target="_blank" rel="noopener" data-p="'+esc(f.p)+'" data-n="'+esc(name)+'" href="'+esc(fileHref(f))+'"><b>'+typeIcon(f.p)+" "+esc(name)+(f.pinned?" 📌":"")+"</b><small>"+(ex?ex+" · ":"")+fmtDate(f.t)+" · "+fmtSize(f.s)+(sub?" · "+esc(sub):"")+(q?" · "+esc(ALL.filter(function(x){return x.id===f.c})[0].label):"")+(f.ar?" · "+ARCHIVE.icon+" "+ARCHIVE.label:"")+(curTab.indexOf("tg:")!==0?(f.tg.length?" · "+(o?"✅ in tab: ":"🏷️ ")+esc(f.tg.join(", ")):(o&&!q&&curCat!=="__ar"?" · ⬜ no tab yet":"")):"")+"</small></a>"+
+  '<div class="nfb">'+(viewable(f.p)?'<a class="nfa nfv" target="_blank" rel="noopener" data-p="'+esc(f.p)+'" data-n="'+esc(name)+'" href="'+esc(fileHref(f))+'">📖 View here'+tl+'</a>':"")+'<a class="nfa" target="_blank" rel="noopener" href="'+esc(dUrl)+'">'+openLbl(f.p)+tl+'</a><a class="nfa" href="'+esc(dlUrl)+'" download="'+esc(name)+'"'+(f.id?' target="_blank" rel="noopener"':"")+'>⬇ Download'+tl+'</a><button type="button" class="nfa" data-cp="'+esc(absUrl)+'">🔗 Copy link</button></div></div>'}
+/* ----- UPDATES: free text cards on the front page (no subject, no file). Admin: ➕ Add note, then ✏️ / 👁 / 🗑 on each card ----- */
+function ntList(){return((CFG&&CFG.nt)||[]).filter(function(x){return x&&(x.t||x.b)})}
+function ntHtml(t){return esc(t).replace(/(https?:\/\/[^\s<]+)/g,'<a href="$1" target="_blank" rel="noopener">$1</a>')}
+function notesHtml(){var o=org(),L=ntList(),h=L.map(function(x,i){if(x.h&&!o)return"";
+  return'<div class="nnote'+(x.h?" nhid":"")+'">'+(x.t?"<b>"+esc(x.t)+"</b>":"")+(x.b?'<div class="nnb">'+ntHtml(x.b)+"</div>":"")+(o?'<div class="nnc"><button type="button" class="nlkb" data-nt="e:'+i+'">✏️ Edit</button><button type="button" class="nlkb" data-nt="v:'+i+'">'+(x.h?"🙈 Show":"👁 Hide")+'</button><button type="button" class="nlkb" data-nt="u:'+i+'">⬆</button><button type="button" class="nlkb" data-nt="d:'+i+'">🗑</button></div>':"")+"</div>"}).join("");
+ if(!h&&!o)return"";return'<div class="nlab">📝 Updates'+(o?' <button type="button" class="nlkb" data-nt="add">➕ Add note</button>':"")+"</div>"+h}
+function ntEdit(x,done){modal('<b>'+(x?"✏️ Edit note":"➕ New note")+'</b><label>Title (optional)<input id="ntT" class="edin" maxlength="60" value="'+esc(x?x.t||"":"")+'"></label><label>Text (links become clickable)<textarea id="ntB" class="edin" rows="6" maxlength="1500" style="width:100%;box-sizing:border-box">'+esc(x?x.b||"":"")+'</textarea></label><div class="edfoot"><button type="button" class="p" data-m="ok">💾 Save</button><button type="button" class="s" data-m="x">Cancel</button></div>',
+  function(a,ov){if(a!=="ok")return;var t=ov.querySelector("#ntT").value.replace(/[\r\n]/g," ").trim(),b=ov.querySelector("#ntB").value.trim();if(!t&&!b){alert("Please write something.");return}ov.remove();done({t:t,b:b,h:x&&x.h?1:0})})}
+document.addEventListener("click",function(e){var bt=e.target.closest&&e.target.closest("[data-nt]");if(!bt)return;e.preventDefault();
+ var a=bt.getAttribute("data-nt"),p=a.split(":"),i=+p[1],A=jcopy(ntList());
+ if(a==="add"){ntEdit(null,function(o){cfgSave(function(n){n.nt=[o].concat(A)})});return}
+ var x=A[i];if(!x)return;
+ if(p[0]==="e")ntEdit(x,function(o){A[i]=o;cfgSave(function(n){n.nt=A})});
+ else if(p[0]==="v"){x.h=x.h?0:1;cfgSave(function(n){n.nt=A})}
+ else if(p[0]==="u"&&i>0){A.splice(i-1,0,A.splice(i,1)[0]);cfgSave(function(n){n.nt=A})}
+ else if(p[0]==="d"){if(confirm("Delete this note?")){A.splice(i,1);cfgSave(function(n){n.nt=A})}}});
+function pinLbl(f){return((CFG&&CFG.pn)||{})[f.p]||f.nm}   // text of a pinned button (set with ⋮ > Name on the front page)
 function renderPins(){   // pinned files: smaller buttons above the big "Notes by utsob" button
  var box=$("nPins");if(!box)return;var o=org();
- var h=FILES.filter(function(f){return f.pinned&&!f.ar}).map(function(f){var nm=f.nm;
-  return'<div class="npw'+(o?" org":"")+'"><a class="npin'+prc(f)+'"'+prs(f)+' target="_blank" rel="noopener" data-p="'+esc(f.p)+'" data-n="'+esc(nm)+'" title="'+esc(nm)+'" href="'+esc(f.id?"#":encodeURI(f.p))+'"><span class="ni">📌</span><span class="nt2"><b>'+esc(nm)+"</b><small>"+(viewable(f.p)?"tap to read here":"tap to open")+'</small></span><span class="na">›</span></a>'+(o?'<button type="button" class="nmore" data-mp="'+esc(f.p)+'" title="Organize this file">⋮</button>':"")+"</div>"}).join("");
- box.innerHTML=h?'<div class="nlab">📌 Pinned</div>'+h:""}
+ var seenDef=0,h=FILES.filter(function(f){return f.pinned&&!f.ar}).map(function(f){var nm=f.nm,hd=((CFG&&CFG.ph)||{})[f.p],pre="",post="";if(hd){pre='<div class="npg"><div class="npgh">'+esc(hd)+"</div>";post="</div>"}else if(!seenDef){seenDef=1;pre='<div class="nlab">📌 Pinned</div>'}
+  return pre+'<div class="npw'+(o?" org":"")+'"><a class="npin'+prc(f)+'"'+prs(f)+' target="_blank" rel="noopener" data-p="'+esc(f.p)+'" data-n="'+esc(nm)+'" title="'+esc(pinLbl(f))+'" href="'+esc(fileHref(f))+'"><span class="ni">📌</span><span class="nt2"><b>'+esc(pinLbl(f))+"</b><small>"+(extOf(f.p)?extOf(f.p)+" · ":"")+(viewable(f.p)?"tap to read here":isVid(f.p)?"tap to play":"tap to open")+'</small></span><span class="na">›</span></a>'+(o?'<button type="button" class="nmore" data-mp="'+esc(f.p)+'" title="Organize this file">⋮</button>':"")+"</div>"+post}).join("");
+ box.innerHTML=notesHtml()+h}
 function renderOrg(){var b=$("nOrg");if(!b)return;var has=false;try{has=!!sessionStorage.getItem("pin")}catch(e){}
  if(!has){b.innerHTML="";return}var on=org();
  b.innerHTML='<div class="norg"><span>🛠 <b>Organize</b> '+(on?"is on: drag ⠿ a file onto a subject or a tab (or tap ⋮ for more)":"is hidden")+'</span><button type="button" id="nOrgT">'+(on?"Hide":"Show")+"</button></div>"}
-function refreshAll(){renderPins();renderOrg();var sn=$("sn");if(sn&&!sn.classList.contains("hidden"))render()}
+function refreshAll(){renderPins();renderOrg();buildSyl();var sn=$("sn");if(sn&&!sn.classList.contains("hidden"))render()}
 function rebuildStrip(){var b=$("nStripBox");if(!b)return;b.innerHTML=stripBox();autoScroll(document.querySelector(".nstrip"))}
 // ----- ORGANIZE MENU (only after the admin PIN was typed in this browser tab) -----
 var menuEl=null;
@@ -167,12 +194,19 @@ function metaSet(p,patch){   // shows the change at once, then saves it in the s
   if(old)META[p]=old;else delete META[p];if(p.indexOf("__")===0){buildAll();FILES.forEach(eff)}else{var ff=fileOf(p);if(ff)eff(ff)}
   if(/PIN/.test(e.message)){try{sessionStorage.removeItem("pin")}catch(x){}}
   rebuildStrip();refreshAll();alert("Could not save: "+(e&&e.message||e))})}
+function moreMenu(btn){closeMenu();var m=document.createElement("div");m.className="nmenu";menuEl=m;
+ var n=arCount(),cs=(curCat&&curCat!=="__ar")?ALL.filter(function(x){return x.id===curCat})[0]:null,nc=cs?arCount(cs.id):0;
+ m.innerHTML='<span class="mh">More</span>'+(nc?'<button type="button" data-a="arcS">'+ARCHIVE.icon+" Archived in “"+esc(cs.label)+"”<small>"+nc+"</small></button>":"")+'<button type="button" data-a="arcA">'+ARCHIVE.icon+" All archived files<small>"+n+"</small></button>";
+ m.onclick=function(e){var b=e.target.closest("button");if(!b)return;var a=b.getAttribute("data-a");closeMenu();
+  if(a==="arcA"){curCat="__ar";curTab="files"}else if(a==="arcS"){curTab="arch"}else return;
+  curSub=-1;q="";var si=$("nSearch");if(si)si.value="";render()};
+ document.body.appendChild(m);var r=btn.getBoundingClientRect(),w=m.offsetWidth,h=m.offsetHeight,x=Math.max(8,Math.min(innerWidth-w-8,r.right-w)),y=r.bottom+4;if(y+h>innerHeight-8)y=Math.max(8,r.top-h-4);m.style.left=x+"px";m.style.top=y+"px"}
 function openMenu(btn){
  var p=btn.getAttribute("data-mp"),f=fileOf(p);if(!f)return;closeMenu();
  var m=document.createElement("div");m.className="nmenu";menuEl=m;
  function main(){m.innerHTML='<span class="mh">'+esc(f.nm)+'</span>'+
   '<button type="button" data-a="pin">📌 '+(f.pinned?"Unpin from the front page":"Pin on the front page")+'</button>'+
-  '<button type="button" data-a="move">📂 Move to a subject…<small>'+esc(labelOf(f.c))+'</small></button>'+
+  (f.pinned?'<button type="button" data-a="plbl">✏️ Name on the front page…<small>'+esc(pinLbl(f)===f.nm?"file name":pinLbl(f))+'</small></button><button type="button" data-a="phdr">🏷️ Header above it…<small>'+esc(((CFG&&CFG.ph)||{})[f.p]||"📌 Pinned")+"</small></button>":"")+'<button type="button" data-a="move">📂 Move to a subject…<small>'+esc(labelOf(f.c))+'</small></button>'+
   '<button type="button" data-a="tabs">🏷️ Tabs…<small>'+esc(f.tg.join(", "))+'</small></button>'+
   '<button type="button" data-a="arc">'+ARCHIVE.icon+" "+(f.ar?"Take out of the "+ARCHIVE.label:"Move to the "+ARCHIVE.label)+"</button>"}
  var tl=[];function tabsMenu(){tl=allTags();m.innerHTML='<span class="mh">Show “'+esc(f.nm)+'” in tab…</span>'+tl.map(function(t,i){var on=f.tg.indexOf(t)>=0;return'<button type="button" data-tg="'+i+'" class="'+(on?"cur":"")+'">🏷️ '+esc(t)+(on?"<small>✓ on</small>":"")+"</button>"}).join("")+'<button type="button" data-a="newtab">➕ New tab…<small>your own name</small></button><button type="button" data-a="back">← Back</button>'}
@@ -183,6 +217,8 @@ function openMenu(btn){
   else if(a==="tabs"){tabsMenu();place()}
   else if(a==="newtab"){var nn=cleanTag(prompt("Name of the new tab (for example: Question)")||"");closeMenu();if(nn&&f.tg.indexOf(nn)<0)metaSet(p,{tg:f.tg.concat(nn).join("|")})}
   else if(tgi!==null){closeMenu();var t=tl[+tgi],has=f.tg.indexOf(t)>=0;if(t)metaSet(p,{tg:(has?f.tg.filter(function(x){return x!==t}):f.tg.concat(t)).join("|")})}
+  else if(a==="plbl"){closeMenu();var v=prompt("Text shown on the pinned button (empty = the file name)",pinLbl(f));if(v===null)return;v=v.replace(/[|\r\n]/g," ").trim().slice(0,60);cfgSave(function(n){n.pn=n.pn||{};if(v&&v!==f.nm)n.pn[p]=v;else delete n.pn[p]})}
+  else if(a==="phdr"){closeMenu();var hv=prompt("Header shown above this pinned button (empty = “📌 Pinned”)",((CFG&&CFG.ph)||{})[p]||"");if(hv===null)return;hv=hv.replace(/[|\r\n]/g," ").trim().slice(0,60);cfgSave(function(n){n.ph=n.ph||{};if(hv)n.ph[p]=hv;else delete n.ph[p]})}
   else if(a==="back"){main();place()}
   else if(a==="arc"){closeMenu();metaSet(p,{ar:f.ar?"":1})}
   else if(sj!==null){closeMenu();metaSet(p,{sj:sj})}};
@@ -217,8 +253,8 @@ if(gs&&gs.parentNode.parentNode){var gb=document.createElement("button");gb.type
  gb.innerHTML='<span class="ni">📚</span><span class="nt2">Notes by utsob 🐱<small>Read your notes here, no browser needed</small></span><span class="na">›</span>';
  gs.parentNode.parentNode.insertBefore(gb,gs.parentNode);
  gb.onclick=function(){try{sessionStorage.setItem("iabSkip","1")}catch(x){}gate.remove();$("nOpen").click()}}
-$("nCats").onclick=function(e){var b=e.target.closest("button");if(!b)return;var nc=b.getAttribute("data-c");if(nc!==curCat){curExtra=null;if(!infoForCat(nc).length)curTab="files";if(nc==="__ar")curTab="files"}curCat=nc;curSub=-1;q="";var si=$("nSearch");if(si)si.value="";render()};   // the tab stays (Topics stays Topics) when the subject you open has topics too; a subject without topics opens on Notes
-$("nList").onclick=function(e){var b=e.target.closest("button");if(!b)return;var rn=b.getAttribute("data-ren");if(rn){orgAct(rn);return}var t=b.getAttribute("data-t");if(t){curTab=t;render();return}var sv=b.getAttribute("data-s");if(sv===null)return;curSub=+sv;render()};
+$("nCats").onclick=function(e){var b=e.target.closest("button");if(!b)return;var nc=b.getAttribute("data-c");if(nc==="__more"){moreMenu(b);return}if(nc!==curCat){curExtra=null;if(!infoForCat(nc).length)curTab="files";if(nc==="__ar"||curTab==="arch")curTab="files"}curCat=nc;curSub=-1;q="";var si=$("nSearch");if(si)si.value="";render()};   // the tab stays (Topics stays Topics) when the subject you open has topics too; a subject without topics opens on Notes
+$("nList").onclick=function(e){var b=e.target.closest("button");if(!b)return;if(b.getAttribute("data-ar")==="back"){if(curCat==="__ar"){var fb=ALL.filter(function(x){return x.id===LASTCAT})[0]||ALL.filter(function(x){return count(x.id)})[0];curCat=fb?fb.id:""}curTab="files";render();return}var rn=b.getAttribute("data-ren");if(rn){orgAct(rn);return}var t=b.getAttribute("data-t");if(t){curTab=t;render();return}var sv=b.getAttribute("data-s");if(sv===null)return;curSub=+sv;render()};
 // ----- auto-scrolling "Latest notes" strip: loops, stops when touched, restarts after AUTO_RESUME_MS -----
 function autoScroll(el){
  if(!el||STRIP==="grid"||!AUTO_SPEED||(!AUTO_IGNORE_REDUCED_MOTION&&window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches))return;
@@ -249,12 +285,12 @@ function parseTopics(txt){var root={c:[]},st=[{d:-1,n:root}];
   var d=Math.floor(m/2);while(st.length>1&&st[st.length-1].d>=d)st.pop();var n={t:t,c:[]};st[st.length-1].n.c.push(n);st.push({d:d,n:n})});
  function conv(l){return l.map(function(n){return n.c.length?{t:n.t,sub:conv(n.c)}:n.t})}return conv(root.c)}
 function applyTopics(){if(!INFO0)return;var I=JSON.parse(JSON.stringify(INFO0));
- Object.keys(TOPICS).forEach(function(id){var txt=TOPICS[id],c=ALL.filter(function(x){return x.id===id})[0];if(!txt||!c)return;
+ Object.keys(TOPICS).forEach(function(id){var txt=TOPICS[id],c=ALL.filter(function(x){return x.id===id})[0];if(!txt||!String(txt).trim()||!c)return;
   var ob=I.filter(function(e){return!e.tab&&(e.cat===id||(c.keys&&e.keys&&e.keys.some(function(k){return c.keys.some(function(ck){return ck.toLowerCase()===k.toLowerCase()})})))}),first=ob[0],quiz=[];
   ob.forEach(function(e){if(e.quiz)quiz=quiz.concat(e.quiz)});
   var at=first?I.slice(0,I.indexOf(first)).filter(function(e){return ob.indexOf(e)<0}).length:I.length;
   I=I.filter(function(e){return ob.indexOf(e)<0});
-  I.splice(at,0,{cat:id,keys:(first&&first.keys)||(c.keys&&c.keys.length?c.keys:undefined),title:c.label+" topics",items:parseTopics(txt),quiz:quiz.length?quiz:undefined})});
+  I.splice(at,0,{cat:id,keys:(first&&first.keys)||(c.keys&&c.keys.length?c.keys:undefined),title:((CFG&&CFG.tt)||{})[id]||"",items:parseTopics(txt),quiz:quiz.length?quiz:undefined})});
  applyTables(I);window.NOTES_INFO=I}
 function fetchTopics(){if(typeof SCRIPT_URL==="undefined"||!SCRIPT_URL)return;
  fetch(SCRIPT_URL+"?topics=1").then(function(r){return r.json()}).then(function(d){if(!d||!d.ok||!d.items)return;var same=JSON.stringify(d.items)===JSON.stringify(TOPICS);TOPICS=d.items;CFG=parseCfg(TOPICS.cfg);
@@ -310,13 +346,13 @@ function modal(h,on){var ov=document.createElement("div");ov.className="edmo";ov
 
 /* ----- subject: name, icon, colour (and a link when creating) ----- */
 var EMO=["📘","📕","📗","🧮","☕","⚡","⚖️","➗","🧪","🧬","🌍","💻","📐","🎨","📜","🧠","🗂️","⭐"];
-function addLinkTo(n,sid,u){var d=driveId(u);if(d){var L=n.src[sid]=n.src[sid]||[];if(!L.some(function(x){return x.id===d}))L.push({id:d,u:u,t:"Drive folder"})}
+function addLinkTo(n,sid,u){var d=driveId(u);if(d){var L=n.src[sid]=n.src[sid]||[];if(!L.some(function(x){return x.id===d}))L.push({id:d,u:u,t:"Drive folder",at:1})}
  else{(n.lk[sid]=n.lk[sid]||[]).push({u:u,t:hostOf(u),i:"🔗"})}}
-function subjDlg(c){var isNew=!c,ic=isNew?"📘":c.icon,nm=isNew?"":c.label,co=isNew?"":(c.co||""),ks=(c&&c.custom)?(c.keys||[]).join(", "):"",hasSt=!isNew&&(CFG.st||{})[c.id];
+function subjDlg(c){var isNew=!c,ic=isNew?"📘":c.icon,nm=isNew?"":c.label,co=isNew?"":(c.co||""),fs0=isNew?0:(c.fs||0),ks=(c&&c.custom)?(c.keys||[]).join(", "):"",hasSt=!isNew&&(CFG.st||{})[c.id];
  var ov=modal('<b>'+(isNew?"➕ New subject":"✏️ Edit “"+esc(c.label)+"”")+'</b>'+
   '<label>Name<input id="edN" class="edin" maxlength="24" value="'+esc(nm)+'" placeholder="Example: Physics"></label>'+
   '<label>Icon<input id="edI" class="edin" maxlength="6" value="'+esc(ic)+'"></label><div class="edemo">'+EMO.map(function(e){return'<button type="button" data-m="emo" data-e="'+e+'">'+e+"</button>"}).join("")+"</div>"+
-  '<label>Colour <input id="edC" type="color" value="'+(co||"#8a4dff")+'"><span style="font-weight:400"><input type="checkbox" id="edC0"'+(co?"":" checked")+'> default colour</span></label>'+
+  '<label>Colour <input id="edC" type="color" value="'+(co||"#8a4dff")+'"><span style="font-weight:400"><input type="checkbox" id="edC0"'+(co?"":" checked")+'> default colour</span></label>'+'<label>Text size of the button <input id="edF" type="range" min="8" max="18" value="'+(fs0||14)+'"><span style="font-weight:400"><input type="checkbox" id="edF0"'+(fs0?"":" checked")+'> default size</span></label>'+
   ((isNew||c.custom)?'<label>Words in file names that belong here (optional, comma separated)<input id="edK" class="edin" value="'+esc(ks)+'" placeholder="phy, physics"></label>':"")+(!isNew&&!c.custom&&c.id!==OTHERS.id?'<label>Extra words to find in file names (optional, comma separated)<input id="edX" class="edin" value="'+esc((((CFG.st||{})[c.id]||{}).k||[]).join(", "))+'" placeholder="'+esc((c.keys||[]).join(", "))+'"></label><div class="tiny">Already found: '+esc((c.keys||[]).join(", "))+"</div>":"")+
   (isNew?'<label>Link (optional): a Drive folder imports its files, any other link becomes a button<input id="edU" class="edin" inputmode="url" placeholder="https://drive.google.com/drive/folders/…"></label>':"")+
   '<div class="edfoot"><button type="button" class="p" data-m="ok">💾 Save</button><button type="button" class="s" data-m="x">Cancel</button>'+(hasSt?'<button type="button" class="s" data-m="rs">↺ Default look</button>':"")+"</div>",
@@ -325,32 +361,78 @@ function subjDlg(c){var isNew=!c,ic=isNew?"📘":c.icon,nm=isNew?"":c.label,co=i
   if(a==="rs"){ov.remove();cfgSave(function(n){delete n.st[c.id]});return}
   if(a!=="ok")return;
   var nm2=cleanTag(g("edN").value);if(!nm2){alert("Please type a name.");return}
-  var ic2=(g("edI").value||"").replace(/\|/g,"").trim().slice(0,6)||"📘",co2=g("edC0").checked?"":g("edC").value,
+  var ic2=(g("edI").value||"").replace(/\|/g,"").trim().slice(0,6)||"📘",co2=g("edC0").checked?"":g("edC").value,fs2=g("edF0").checked?0:+g("edF").value,
    ks2=g("edK")?g("edK").value.split(",").map(function(k){return cleanTag(k).toLowerCase()}).filter(Boolean).slice(0,6):[],u=g("edU")?g("edU").value.trim():"";
   if(u&&!/^https?:\/\//i.test(u)){alert("The link must start with https://");return}
   ov.remove();
   if(isNew){var id="c"+Math.random().toString(36).slice(2,8);
    metaSet("__subj:"+id,{tg:[ic2,nm2].concat(ks2).join("|")}).then(function(){if(!ALL.some(function(x){return x.id===id}))return;
-    if(co2||u)cfgSave(function(n){if(co2)n.st[id]={c:co2};if(u)addLinkTo(n,id,u)});
+    if(co2||fs2||u)cfgSave(function(n){if(co2||fs2){n.st[id]={c:co2};if(fs2)n.st[id].fs=fs2}if(u)addLinkTo(n,id,u)});
     curCat=id;curTab="files";curSub=-1;render()})}
   else{if(c.custom)metaSet("__subj:"+c.id,{tg:[ic2,nm2].concat(ks2).join("|")});
-   var kx=g("edX")?g("edX").value.split(",").map(function(k){return cleanTag(k).toLowerCase()}).filter(Boolean).slice(0,12):[];cfgSave(function(n){n.st[c.id]={i:ic2,n:nm2,c:co2};if(kx.length)n.st[c.id].k=kx})}});
- ov.querySelector("#edC").oninput=function(){ov.querySelector("#edC0").checked=false}}
+   var kx=g("edX")?g("edX").value.split(",").map(function(k){return cleanTag(k).toLowerCase()}).filter(Boolean).slice(0,12):[];cfgSave(function(n){n.st[c.id]={i:ic2,n:nm2,c:co2};if(fs2)n.st[c.id].fs=fs2;if(kx.length)n.st[c.id].k=kx})}});
+ ov.querySelector("#edC").oninput=function(){ov.querySelector("#edC0").checked=false};ov.querySelector("#edF").oninput=function(){ov.querySelector("#edF0").checked=false}}
 
 /* ----- reorder subjects ----- */
+/* drag a row by its ⠿ handle (works with finger and mouse); done(list of data-k in the new order) */
+function dragList(box,done){var cur=null;
+ box.addEventListener("pointerdown",function(e){var h=e.target.closest(".edh");if(!h)return;cur=h.closest(".edor");cur.classList.add("edrag");try{h.setPointerCapture(e.pointerId)}catch(x){}e.preventDefault()});
+ box.addEventListener("pointermove",function(e){if(!cur)return;var rows=Array.prototype.slice.call(box.querySelectorAll(".edor"));
+  for(var i=0;i<rows.length;i++){var r=rows[i];if(r===cur)continue;var bb=r.getBoundingClientRect();if(e.clientY>bb.top&&e.clientY<bb.bottom){if(e.clientY<bb.top+bb.height/2)box.insertBefore(cur,r);else box.insertBefore(cur,r.nextSibling);break}}});
+ function end(){if(!cur)return;cur.classList.remove("edrag");cur=null;done(Array.prototype.map.call(box.querySelectorAll(".edor"),function(r){return r.getAttribute("data-k")}))}
+ box.addEventListener("pointerup",end);box.addEventListener("pointercancel",end)}
 function ordDlg(){var ids=ALL.filter(function(c){return c.id!==OTHERS.id}).map(function(c){return c.id});
- function draw(){ov.querySelector("#edOl").innerHTML=ids.map(function(id,i){var c=ALL.filter(function(x){return x.id===id})[0];return'<div class="edor"><span>'+c.icon+" "+esc(c.label)+'</span><button type="button" class="edb" data-m="u:'+i+'">↑</button><button type="button" class="edb" data-m="d:'+i+'">↓</button></div>'}).join("")}
- var ov=modal('<b>↕ Reorder subjects</b><div class="tiny">Use the arrows. “Others” and “Archive” always stay at the end.</div><div id="edOl"></div><div class="edfoot"><button type="button" class="p" data-m="ok">💾 Save</button><button type="button" class="s" data-m="x">Cancel</button><button type="button" class="s" data-m="rs">↺ Original order</button></div>',function(a,ov){
-  var p=a.split(":"),i=+p[1];
-  if(p[0]==="u"&&i>0){ids.splice(i-1,0,ids.splice(i,1)[0]);draw()}
-  else if(p[0]==="d"&&i<ids.length-1){ids.splice(i+1,0,ids.splice(i,1)[0]);draw()}
-  else if(a==="ok"){ov.remove();cfgSave(function(n){n.ord=ids})}
-  else if(a==="rs"){ov.remove();cfgSave(function(n){delete n.ord})}});draw()}
+ var ov=modal('<b>↕ Reorder subjects</b><div class="tiny">Hold ⠿ and drag a subject up or down. “Others” always stays at the end.</div><div id="edOl"></div><div class="edfoot"><button type="button" class="p" data-m="ok">💾 Save</button><button type="button" class="s" data-m="x">Cancel</button><button type="button" class="s" data-m="rs">↺ Original order</button></div>',function(a,ov){
+  if(a==="ok"){ov.remove();cfgSave(function(n){n.ord=ids})}
+  else if(a==="rs"){ov.remove();cfgSave(function(n){delete n.ord})}});
+ var box=ov.querySelector("#edOl");box.innerHTML=ids.map(function(id){var c=ALL.filter(function(x){return x.id===id})[0];return'<div class="edor" data-k="'+id+'"><b class="edh" title="Drag">⠿</b><span>'+c.icon+" "+esc(c.label)+"</span></div>"}).join("");
+ dragList(box,function(k){ids=k})}
+
+/* ----- FRONT-PAGE BUTTONS: a button that opens a subject (and a tab of it); own text, icon, text size; can be hidden; drag to reorder ----- */
+function fbList(){return((CFG&&CFG.fb)||[]).filter(function(x){return x&&x.c})}
+function openShortcut(b){if(!ALL.some(function(x){return x.id===b.c})){alert("This subject was removed.");return}
+ curCat=b.c;curSub=-1;q="";curExtra=null;var si=$("nSearch");if(si)si.value="";
+ curTab=(b.t==="syl"&&infoForCat(b.c).length)?"syl":(b.t&&b.t.indexOf("tg:")===0&&tagsOf(b.c).indexOf(b.t.slice(3))>=0)?b.t:"files";render();show(["sn"])}
+function scEdit(b0,done){var b=b0||{i:"📍",n:"",c:(ALL[0]||{}).id,t:"",fs:0};
+ var ov=modal('<b>'+(b0?"✏️ Edit button":"➕ New front-page button")+'</b>'+
+  '<label>Opens subject<select id="sbC" class="edin">'+ALL.filter(function(x){return x.id!==OTHERS.id||count(x.id)}).map(function(x){return'<option value="'+x.id+'"'+(x.id===b.c?" selected":"")+">"+esc(x.icon+" "+x.label)+"</option>"}).join("")+'</select></label>'+
+  '<label>…and this tab<select id="sbT" class="edin"></select></label>'+
+  '<label>Button text (empty = subject name)<input id="sbN" class="edin" maxlength="30" value="'+esc(b.n||"")+'"></label>'+
+  '<label>Icon (empty = subject icon)<input id="sbI" class="edin" maxlength="6" value="'+esc(b.i||"")+'"></label>'+
+  '<label>Text size <input id="sbF" type="range" min="8" max="20" value="'+(b.fs||15)+'"><span style="font-weight:400"><input type="checkbox" id="sbF0"'+(b.fs?"":" checked")+'> default size</span></label>'+
+  '<div class="edfoot"><button type="button" class="p" data-m="ok">💾 Save</button><button type="button" class="s" data-m="x">Cancel</button></div>',
+  function(a,ov){if(a!=="ok")return;var g=function(i){return ov.querySelector("#"+i)},c=g("sbC").value;if(!c)return;
+   ov.remove();done({c:c,t:g("sbT").value,n:cleanTag(g("sbN").value),i:(g("sbI").value||"").replace(/\|/g,"").trim().slice(0,6),fs:g("sbF0").checked?0:+g("sbF").value,h:b.h?1:0,id:b.id||"n"+Math.random().toString(36).slice(2,7)})});
+ var g=function(i){return ov.querySelector("#"+i)};
+ function tabs(sel){var c=g("sbC").value,o='<option value="">📄 All notes</option>';if(infoForCat(c).length)o+='<option value="syl">📋 Topics</option>';
+  tagsOf(c).forEach(function(t){o+='<option value="tg:'+esc(t)+'">🏷️ '+esc(t)+"</option>"});g("sbT").innerHTML=o;g("sbT").value=sel||""}
+ g("sbC").onchange=function(){tabs("")};tabs(b.t);g("sbF").oninput=function(){g("sbF0").checked=false}}
+function fbKey(e){return String((e.keys&&e.keys[0])||e.cat||e.title||"").toLowerCase()}
+function fbSet(k){return((CFG&&CFG.fbs)||{})[k]||{}}
+function fbAll(){   // every button of the front row "Topics": the topic buttons (one per subject) + your own shortcuts, in your order
+ var I=window.NOTES_INFO||[],seen={},L=[],out=[];
+ I.forEach(function(e,i){var k=fbKey(e),j=seen[k];if(j===undefined){seen[k]=L.length;L.push(i)}else if(/topics/i.test(e.title)&&!/topics/i.test(I[L[j]].title))L[j]=i});
+ L.forEach(function(i){var e=I[i];if(!((e.items&&e.items.length)||e.table))return;var k="t:"+fbKey(e),st=fbSet(k),n0=String(e.title||"").replace(/\s*topics?\s*$/i,"")||(e.cat?labelOf(e.cat):"")||e.title||"Topics";out.push({k:k,kind:"t",ix:i,n0:n0,n:st.n||n0,fs:st.fs||0,h:st.h?1:0})});
+ fbList().forEach(function(b,j){var c=ALL.filter(function(x){return x.id===b.c})[0];if(!c)return;out.push({k:"s:"+(b.id||j),kind:"s",j:j,b:b,n:b.n||c.label,i:b.i||"",fs:b.fs||0,h:b.h?1:0})});
+ var o=(CFG&&CFG.fbo)||[];if(o.length){out.forEach(function(x,p){x.p=o.indexOf(x.k)<0?1000+p:o.indexOf(x.k)});out.sort(function(a,b){return a.p-b.p})}
+ return out}
+function scDlg(){var E=fbAll().map(function(x){return jcopy(x)});
+ var ov=modal('<b>📋 Edit the front-page buttons</b><div class="tiny">Hold ⠿ and drag to reorder · ✏️ change the text / size · 👁 hide from students · ➕ add a button that opens a subject or tab.</div><div id="scL"></div><div class="edfoot"><button type="button" class="s" data-m="add">➕ Add button</button><button type="button" class="p" data-m="ok">💾 Save</button><button type="button" class="s" data-m="x">Cancel</button><button type="button" class="s" data-m="rs">↺ Reset</button></div>',function(a,ov){
+  var p=a.split(":"),i=+p[1],x=E[i];
+  if(a==="add")scEdit(null,function(o){var c=ALL.filter(function(z){return z.id===o.c})[0];E.push({k:"s:"+o.id,kind:"s",b:o,n:o.n||(c?c.label:""),i:o.i,fs:o.fs,h:0});draw()});
+  else if(p[0]==="e"&&x){if(x.kind==="s")scEdit(x.b,function(o){x.b=o;var c=ALL.filter(function(z){return z.id===o.c})[0];x.n=o.n||(c?c.label:"");x.i=o.i;x.fs=o.fs;draw()});
+   else modal('<b>✏️ '+esc(x.n0)+'</b><label>Button text<input id="tbN" class="edin" maxlength="30" value="'+esc(x.n)+'"></label><label>Text size <input id="tbF" type="range" min="8" max="20" value="'+(x.fs||15)+'"><span style="font-weight:400"><input type="checkbox" id="tbF0"'+(x.fs?"":" checked")+'> default size</span></label><div class="edfoot"><button type="button" class="p" data-m="ok">OK</button><button type="button" class="s" data-m="x">Cancel</button></div>',function(a2,o2){if(a2!=="ok")return;x.n=cleanTag(o2.querySelector("#tbN").value)||x.n0;x.fs=o2.querySelector("#tbF0").checked?0:+o2.querySelector("#tbF").value;o2.remove();draw()}).querySelector("#tbF").oninput=function(){this.closest(".edbx").querySelector("#tbF0").checked=false}}
+  else if(p[0]==="v"&&x){x.h=x.h?0:1;draw()}
+  else if(p[0]==="d"&&x&&x.kind==="s"){E.splice(i,1);draw()}
+  else if(a==="rs"){if(!confirm("Back to the original buttons (your own buttons are removed too)?"))return;ov.remove();cfgSave(function(n){delete n.fb;delete n.fbs;delete n.fbo})}
+  else if(a==="ok"){ov.remove();cfgSave(function(n){var fbs={},fb=[],fbo=[];E.forEach(function(x){fbo.push(x.k);if(x.kind==="t"){var st={};if(x.n!==x.n0)st.n=x.n;if(x.fs)st.fs=x.fs;if(x.h)st.h=1;if(Object.keys(st).length)fbs[x.k]=st}else{x.b.h=x.h?1:0;fb.push(x.b)}});n.fbs=fbs;n.fb=fb;n.fbo=fbo})}});
+ function draw(){ov.querySelector("#scL").innerHTML=E.map(function(x,i){return'<div class="edor" data-k="'+i+'"><b class="edh" title="Drag">⠿</b><span style="'+(x.h?"opacity:.5":"")+(x.fs?";font-size:"+x.fs+"px":"")+'">'+esc((x.i?x.i+" ":"")+x.n)+(x.kind==="s"?" <small>(shortcut)</small>":"")+'</span><button type="button" class="edb" data-m="e:'+i+'">✏️</button><button type="button" class="edb" data-m="v:'+i+'">'+(x.h?"🙈":"👁")+"</button>"+(x.kind==="s"?'<button type="button" class="edb" data-m="d:'+i+'">🗑</button>':"")+"</div>"}).join("")}
+ draw();dragList(ov.querySelector("#scL"),function(k){E=k.map(function(z){return E[+z]});draw()})}
 
 /* ----- links (buttons) and Drive folders of a subject ----- */
 function linksHtml(id){var L=((CFG.lk||{})[id]||[]).filter(function(l){return/^https?:\/\//i.test(l.u)}),S=(CFG.src||{})[id]||[],o=org();if(!L.length&&!(o&&S.length))return"";
  var h=L.map(function(l,i){return'<span class="nlkw"><a class="nlk" target="_blank" rel="noopener" href="'+esc(l.u)+'">'+esc(l.i||"🔗")+" "+esc(l.t)+"</a>"+(o?'<button type="button" class="nlkb" data-ren="lkE:'+i+'" title="Edit">✏️</button><button type="button" class="nlkb" data-ren="lkD:'+i+'" title="Remove">🗑</button>':"")+"</span>"}).join("");
- var s=o?S.map(function(x,i){return'<div class="tiny nsrc">📥 <a href="'+esc(x.u||"#")+'" target="_blank" rel="noopener">'+esc(x.t||"Drive folder")+"</a> · "+esc(IMP_ST[x.id]||"loading…")+' <button type="button" class="nlkb" data-ren="srcT:'+i+'" title="Make a tab for each sub-folder">🏷️ Sub-folder tabs: '+(x.at?"ON":"off")+'</button><button type="button" class="nlkb" data-ren="srcN:'+i+'" title="Put files in subjects or tabs by their file name">🔤 Sort by name: '+["off","into subjects","into tabs"][x.an||0]+'</button><button type="button" class="nlkb" data-ren="srcR:'+i+'" title="Reload">🔄</button><button type="button" class="nlkb" data-ren="srcD:'+i+'" title="Stop importing">🗑</button></div>'}).join(""):"";
+ var s=o?S.map(function(x,i){return'<div class="tiny nsrc">📥 <a href="'+esc(x.u||"#")+'" target="_blank" rel="noopener">'+esc(x.t||"Drive folder")+"</a> · "+esc(IMP_ST[x.id]||"loading…")+' <button type="button" class="nlkb" data-ren="srcE:'+i+'" title="Change the link / name">✏️ Edit link</button><button type="button" class="nlkb" data-ren="srcT:'+i+'" title="Make a tab for each sub-folder of the Drive folder">📂 Folders as tabs: '+(x.at?"ON":"off")+'</button><button type="button" class="nlkb" data-ren="srcN:'+i+'" title="Put files in subjects or tabs by their file name">🔤 Sort by name: '+["off","into subjects","into tabs"][x.an||0]+'</button><button type="button" class="nlkb" data-ren="srcR:'+i+'" title="Reload">🔄</button><button type="button" class="nlkb" data-ren="srcD:'+i+'" title="Stop importing">🗑</button></div>'}).join(""):"";
  return(h?'<div class="nlks">'+h+"</div>":"")+s}
 function linkDlg(ei){var id=curCat,c=ALL.filter(function(x){return x.id===id})[0];if(!c||id==="__ar")return;var cur=ei!=null?((CFG.lk||{})[id]||[])[ei]:null;
  var ov=modal('<b>🔗 '+(cur?"Edit link":"Add a link to “"+esc(c.label)+"”")+'</b>'+
@@ -362,16 +444,31 @@ function linkDlg(ei){var id=curCat,c=ALL.filter(function(x){return x.id===id})[0
  function(a,ov){var u=ov.querySelector("#lkU").value.trim(),t=ov.querySelector("#lkT").value.trim().slice(0,40),i=ov.querySelector("#lkI").value.trim().slice(0,6)||"🔗";
   if(!/^https?:\/\//i.test(u)){alert("Please paste a full link starting with https://");return}
   if(a==="imp"){var d=driveId(u);if(!d){alert("That is not a Google Drive folder/file link. Use “Save as button” instead.");return}
-   ov.remove();cfgSave(function(n){var L=n.src[id]=n.src[id]||[];if(!L.some(function(x){return x.id===d}))L.push({id:d,u:u,t:t||"Drive folder"})});return}
+   ov.remove();cfgSave(function(n){var L=n.src[id]=n.src[id]||[];if(!L.some(function(x){return x.id===d}))L.push({id:d,u:u,t:t||"Drive folder",at:1})});return}
   ov.remove();cfgSave(function(n){var L=n.lk[id]=n.lk[id]||[],o={u:u,t:t||hostOf(u),i:i};if(cur)L[ei]=o;else L.push(o)})})}
 function lkAct(a){var p=a.split(":"),op=p[0],i=+p[1],id=curCat;
  if(op==="lkE")linkDlg(i);
  else if(op==="lkD"){if(confirm("Remove this link?"))cfgSave(function(n){(n.lk[id]||[]).splice(i,1)})}
+ else if(op==="srcE")srcDlg(i);
  else if(op==="srcD"){if(confirm("Stop importing this folder? (Nothing is deleted from Drive.)"))cfgSave(function(n){(n.src[id]||[]).splice(i,1)})}
  else if(op==="srcT"){var s0=((CFG.src||{})[id]||[])[i];if(!s0)return;var on=s0.at?0:1,k0=id+"|"+s0.id;cfgSave(function(n){var z=(n.src[id]||[])[i];if(z){if(on)z.at=1;else delete z.at}});FILES.forEach(function(f){if(f.fk===k0)f.at=on});FILES.forEach(eff);refreshAll()}
  else if(op==="srcN"){var s1=((CFG.src||{})[id]||[])[i];if(!s1)return;var nv=((+s1.an||0)+1)%3,k1=id+"|"+s1.id;cfgSave(function(n){var z=(n.src[id]||[])[i];if(z){if(nv)z.an=nv;else delete z.an}});FILES.forEach(function(f){if(f.fk===k1)f.an=nv});FILES.forEach(eff);refreshAll()}
  else if(op==="srcR"){var s=((CFG.src||{})[id]||[])[i];if(!s)return;var k=id+"|"+s.id;try{localStorage.removeItem("notesImp:"+s.id)}catch(e){}
   FILES=FILES.filter(function(f){return f.fk!==k});IMP_ST[s.id]="loading…";impLoad({sid:id,id:s.id,t:s.t,at:s.at,an:s.an},k);refreshAll()}}
+
+/* ----- edit the link of an imported Drive folder ----- */
+function srcDlg(i){var id=curCat,cur=((CFG.src||{})[id]||[])[i];if(!cur)return;
+ modal('<b>✏️ Edit Drive folder</b><label>Link (https://…)<input id="srU" class="edin" inputmode="url" value="'+esc(cur.u||"")+'"></label><label>Name<input id="srT" class="edin" maxlength="40" value="'+esc(cur.t||"Drive folder")+'"></label>'+
+  '<label><input type="checkbox" id="srA"'+(cur.at?" checked":"")+'> Make a tab for each sub-folder (sorts the files by their folder)</label>'+
+  '<div class="tiny">Nothing is deleted from Drive. If you change the link, the files of the old folder are replaced by the files of the new one.</div>'+
+  '<div class="edfoot"><button type="button" class="p" data-m="ok">💾 Save</button><button type="button" class="s" data-m="x">Cancel</button></div>',
+ function(a,ov){if(a!=="ok")return;var u=ov.querySelector("#srU").value.trim(),t=ov.querySelector("#srT").value.trim().slice(0,40)||"Drive folder",at=ov.querySelector("#srA").checked?1:0,d=driveId(u);
+  if(!d){alert("That is not a Google Drive folder/file link.");return}
+  if(d!==cur.id&&((CFG.src||{})[id]||[]).some(function(x){return x.id===d})){alert("This folder is already added here.");return}
+  var oldK=id+"|"+cur.id;ov.remove();
+  if(d!==cur.id){try{localStorage.removeItem("notesImp:"+cur.id)}catch(e){}delete IMP_ST[cur.id];IMPQ[oldK]=0}
+  cfgSave(function(n){var z=(n.src[id]||[])[i];if(!z)return;z.id=d;z.u=u;z.t=t;if(at)z.at=1;else delete z.at});
+  if(d===cur.id){FILES.forEach(function(f){if(f.fk===oldK)f.at=at});FILES.forEach(eff);refreshAll()}})}
 
 /* ----- Drive folders imported as notes (Apps Script: ?folder=ID lists the files, ?dfile=ID sends one file) ----- */
 var IMP_ST={},IMPQ={};
@@ -402,7 +499,7 @@ function edTable(id){var b=infoForCat(id).filter(function(e){return e.tab&&e.tab
  if(b)return{title:b.title||"Table",note:b.note||"",head:(b.head||["Name","Time complexity"]).slice(),rows:jcopy(b.table)};
  return{title:"Table",note:"",head:["Name","Value"],rows:[]}}
 function edStart(){var id=curCat,c=ALL.filter(function(x){return x.id===id})[0];if(!c||id==="__ar")return;
- var t=parseTree(topicsText(id));ED={id:id,tab:"t",W:t,t0:trTxt(parseTree(topicsText(id)),0),T:edTable(id),tdirty:false,sel:null,U:[],R:[],tk:null,tt:0};curTab="syl";curSub=-1;q="";var si=$("nSearch");if(si)si.value="";render()}
+ var t=parseTree(topicsText(id));ED={id:id,title:((CFG&&CFG.tt)||{})[id]||"",ttld:false,ttlOn:false,tab:"t",W:t,t0:trTxt(parseTree(topicsText(id)),0),T:edTable(id),tdirty:false,sel:null,U:[],R:[],tk:null,tt:0};curTab="syl";curSub=-1;q="";var si=$("nSearch");if(si)si.value="";render()}
 // ----- UNDO / REDO (Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z, and the ↶ ↷ buttons): the editor keeps its own history, because the page redraws the lines after every change -----
 function edStr(){return JSON.stringify({W:ED.W,T:ED.T,d:ED.tdirty})}
 function edPush(b){if(!ED)return;if(ED.U.length&&ED.U[ED.U.length-1]===b)return;ED.U.push(b);if(ED.U.length>150)ED.U.shift();ED.R=[];ED.tk=null}
@@ -410,7 +507,7 @@ function edTyping(key){if(!ED)return;var now=Date.now();if(ED.tk!==key||now-ED.t
 function edLoad(str){var o=JSON.parse(str);ED.W=o.W;ED.T=o.T;ED.tdirty=o.d;ED.tk=null;edRender(ED.sel)}
 function edUndo(){if(!ED)return;var cur=edStr(),s;while(ED.U.length&&(s=ED.U.pop())===cur);if(s==null||s===cur){dgToast("Nothing to undo");return}ED.R.push(cur);edLoad(s)}
 function edRedo(){if(!ED)return;var cur=edStr(),s;while(ED.R.length&&(s=ED.R.pop())===cur);if(s==null||s===cur){dgToast("Nothing to redo");return}ED.U.push(cur);edLoad(s)}
-function edDirty(){return ED&&(trTxt(ED.W,0)!==ED.t0||ED.tdirty)}
+function edDirty(){return ED&&(trTxt(ED.W,0)!==ED.t0||ED.tdirty||ED.ttld)}
 function edList(p){var l=ED.W;p.forEach(function(j){l=l[j].c});return l}
 function edAt(k){var p=String(k).split(".").map(Number),i=p.pop(),l=edList(p);return{list:l,i:i,node:l[i],par:p}}
 function trHtml(a,path,d){return a.map(function(n,i){var p=path.concat(i),k=p.join("."),sel=ED.sel===k,hd=n.c.length>0;
@@ -424,7 +521,7 @@ function tblHtml(){var T=ED.T,h='<div class="edtb"><label>Table title<input clas
   else h+='<tr class="nth"><td colspan="'+T.head.length+'"><input class="edin" data-tc="'+i+'.0" value="'+esc(r.h||"")+'" placeholder="Heading row"></td>'+ctl+"</tr>"});
  return h+'</table></div><div class="edfoot"><button type="button" class="edb" data-ed="tadd">＋ Row</button><button type="button" class="edb" data-ed="thd">＋ Heading row</button><button type="button" class="edb" data-ed="tcol">＋ Column</button><button type="button" class="edb" data-ed="tdc">− Last column</button></div></div>'}
 function edHtml(){var c=ALL.filter(function(x){return x.id===ED.id})[0]||{label:""};
- var body=ED.tab==="t"?'<div class="tiny edhelp">Tap any line to type in it. Buttons appear under the line you tapped. <b>Enter</b> = new line below · <b>Tab</b> / <b>Shift+Tab</b> = move in / out · a line with lines inside it becomes a heading · <b>Ctrl+Z</b> = undo, <b>Ctrl+Y</b> = redo (or the ↶ ↷ buttons).</div><div class="nsyl nsylbx"><b>📋 '+esc(c.label)+' topics</b>'+(ED.W.length?"<ul>"+trHtml(ED.W,[],0)+"</ul>":'<p class="note">No topics yet. Press “＋ Add section”.</p>')+'</div><div class="edfoot"><button type="button" class="edb" data-ed="addsec">＋ Add section</button></div>':tblHtml();
+ var body=ED.tab==="t"?'<div class="tiny edhelp">Tap any line to type in it. Buttons appear under the line you tapped. <b>Enter</b> = new line below · <b>Tab</b> / <b>Shift+Tab</b> = move in / out · a line with lines inside it becomes a heading · <b>Ctrl+Z</b> = undo, <b>Ctrl+Y</b> = redo (or the ↶ ↷ buttons).</div><div class="nsyl nsylbx">'+((ED.title||ED.ttlOn)?'<input class="edin" data-ttl maxlength="60" placeholder="Title (optional)" value="'+esc(ED.title||"")+'">':'<button type="button" class="edb" data-ed="addttl">＋ Add title</button>')+(ED.W.length?"<ul>"+trHtml(ED.W,[],0)+"</ul>":'<p class="note">Press “Add section” and write what you want.</p>')+'</div><div class="edfoot"><button type="button" class="edb" data-ed="addsec">＋ Add section</button></div>':tblHtml();
  return'<div class="edbar"><b>✏️ Editing '+esc(c.label)+'</b><button type="button" class="s" data-ed="undo" title="Undo (Ctrl+Z)">↶ Undo</button><button type="button" class="s" data-ed="redo" title="Redo (Ctrl+Y)">↷ Redo</button><button type="button" class="p" data-ed="save">💾 Save</button><button type="button" class="s" data-ed="cancel">✖ Cancel</button></div>'+
   '<div class="ntabs"><button type="button" data-ed="tab:t" class="'+(ED.tab==="t"?"on":"")+'">📋 Topics</button><button type="button" data-ed="tab:x" class="'+(ED.tab==="x"?"on":"")+'">⏱️ Table</button></div>'+body+
   '<div class="edfoot"><button type="button" class="s" data-ed="text">📄 Text mode</button><button type="button" class="s" data-ed="reset">↺ Back to original</button></div>'}
@@ -442,18 +539,20 @@ function edOp0(op,k){var r=edAt(k),L=r.list,i=r.i,n=r.node,nk=k;if(!n)return;
  else if(op==="delk"){L.splice.apply(L,[i,1].concat(n.c));nk=n.c.length?r.par.concat(i).join("."):null}   // only this line: the lines inside move up into its place
  else return;
  ED.sel=nk;edRender(nk)}
-function edSave(){var id=ED.id,txt=trTxt(ED.W,0),chg=txt!==ED.t0,td=ED.tdirty,T=ED.T;
+function edSave(){var id=ED.id,ttl=String(ED.title||"").trim(),tt=ED.ttld,txt=trTxt(ED.W,0),chg=txt!==ED.t0||(!txt&&TOPICS[id]!==undefined),td=ED.tdirty,T=ED.T;
  if(!txt&&ED.t0&&!confirm("All topics are empty: go back to the original topics?"))return;
  var tj=td?((T.rows.length||T.note.trim())?JSON.stringify({title:T.title.trim()||"Table",note:T.note.trim(),head:T.head,rows:T.rows}):""):"";
  ED=null;var p=Promise.resolve();
+ if(tt)cfgSave(function(n){n.tt=n.tt||{};if(ttl)n.tt[id]=ttl;else delete n.tt[id]});
  if(chg)p=topicsSave(id,txt);
  if(td)p=p.then(function(){return topicsSave(id+"_tbl",tj)});
- if(!chg&&!td)render()}
+ if(!chg&&!td&&!tt)render()}
 function edCancel(){if(edDirty()&&!confirm("Throw away your changes?"))return;ED=null;render()}
 $("nList").addEventListener("focusin",function(e){var t=e.target;if(!ED||!t.classList||!t.classList.contains("edt"))return;ED.sel=t.getAttribute("data-k");
  $("nList").querySelectorAll("li.sel").forEach(function(x){x.classList.remove("sel")});var li=t.closest("li");if(li)li.classList.add("sel")});
 $("nList").addEventListener("input",function(e){if(!ED)return;var t=e.target;
  if(t.classList.contains("edt")){if(!/^history/.test(e.inputType||""))edTyping("t:"+t.getAttribute("data-k"));var r=edAt(t.getAttribute("data-k"));if(r.node)r.node.t=t.textContent.replace(/\s+/g," ")}
+ else if(t.hasAttribute("data-ttl")){ED.title=t.value;ED.ttld=true}
  else if(t.hasAttribute("data-tf")){if(!/^history/.test(e.inputType||""))edTyping("tf:"+t.getAttribute("data-tf"));ED.T[t.getAttribute("data-tf")]=t.value;ED.tdirty=true}
  else if(t.hasAttribute("data-th")){if(!/^history/.test(e.inputType||""))edTyping("th:"+t.getAttribute("data-th"));ED.T.head[+t.getAttribute("data-th")]=t.value;ED.tdirty=true}
  else if(t.hasAttribute("data-tc")){if(!/^history/.test(e.inputType||""))edTyping("tc:"+t.getAttribute("data-tc"));var a=t.getAttribute("data-tc").split("."),row=ED.T.rows[+a[0]];if(row&&!Array.isArray(row))row.h=t.value;else if(row)row[+a[1]]=t.value;ED.tdirty=true}});
@@ -473,7 +572,7 @@ $("nList").addEventListener("paste",function(e){if(!ED||!e.target.classList||!e.
  if(ls.length>1){var r=edAt(k);r.node.t=e.target.textContent.replace(/\s+/g," ");ls.slice(1).forEach(function(s,j){r.list.splice(r.i+1+j,0,{t:s,c:[]})});ED.sel=r.par.concat(r.i+ls.length-1).join(".");edPush(b0);edRender(ED.sel)}});
 $("nList").addEventListener("click",function(e){var b=e.target.closest&&e.target.closest("[data-ed]");if(!b||!ED)return;var p=b.getAttribute("data-ed").split(":"),op=p[0],k=p[1],T=ED.T,i=+k;
  if(op==="save"){edSave();return}if(op==="cancel"){edCancel();return}
- if(op==="undo"){edUndo();return}if(op==="redo"){edRedo();return}
+ if(op==="addttl"){ED.ttlOn=true;edRender();var ti=$("nList").querySelector("[data-ttl]");if(ti)ti.focus();return}if(op==="undo"){edUndo();return}if(op==="redo"){edRedo();return}
  if(op==="tab"){ED.tab=k;edRender();return}
  if(op==="addsec"){var ba=edStr();ED.W.push({t:"",c:[]});edPush(ba);ED.sel=String(ED.W.length-1);edRender(ED.sel);return}
  if(op==="text"){if(edDirty()&&!confirm("Leave this editor? Unsaved changes are lost."))return;ED=null;render();topicEditorText();return}
@@ -596,11 +695,13 @@ document.head.appendChild(stD);
 function topicEditor(){edStart()}
 syncSources();
 
-function buildSyl(){   // front screen, under the Notes button: one button per topics block; tap = Notes screen opens with those topics first
- var d=$("nSyl"),I=window.NOTES_INFO||[];if(!d){setTimeout(buildSyl,500);return}if(!I.length){d.innerHTML="";return}
- var seen={},L=[];I.forEach(function(e,i){var k=String((e.keys||[e.title])[0]).toLowerCase(),j=seen[k];if(j===undefined){seen[k]=L.length;L.push(i)}else if(/topics/i.test(e.title)&&!/topics/i.test(I[L[j]].title))L[j]=i});   // one button per subject (blocks with the same first key share a button; the Notes screen still shows all of them)
- d.innerHTML='<div class="nlab">📋 Topics (tap to open)</div><div class="nsylrow">'+L.map(function(i){return'<button type="button" class="nsylb" data-i="'+i+'">'+esc(String(I[i].title).replace(/\s*topics?\s*$/i,"")||I[i].title)+" <span>›</span></button>"}).join("")+"</div>";
- d.onclick=function(ev){var b=ev.target.closest(".nsylb");if(!b)return;var e=I[+b.getAttribute("data-i")],c=ALL.filter(function(x){return infoForCat(x.id).indexOf(e)>=0})[0];
+function buildSyl(){   // front screen, under the Notes button: one button per topics block + your own shortcut buttons (edit: ⚙️ Edit buttons, admin only)
+ var d=$("nSyl");if(!d){setTimeout(buildSyl,500);return}
+ var o=org(),B=fbAll().filter(function(x){return o||!x.h});
+ if(!B.length&&!o){d.innerHTML="";return}
+ d.innerHTML='<div class="nlab">📋 Topics (tap to open)'+(o?' <button type="button" class="nlkb" data-sc="edit">⚙️ Edit buttons</button>':"")+'</div><div class="nsylrow">'+B.map(function(x){return'<button type="button" class="nsylb'+(x.h?" nhid":"")+'"'+(x.fs?' style="font-size:'+x.fs+'px"':"")+(x.kind==="t"?' data-i="'+x.ix+'"':' data-sb="'+x.j+'"')+">"+esc((x.i?x.i+" ":"")+x.n)+" <span>›</span></button>"}).join("")+"</div>";
+ d.onclick=function(ev){if(ev.target.closest("[data-sc]")){scDlg();return}var b=ev.target.closest(".nsylb");if(!b)return;var sb=b.getAttribute("data-sb");if(sb!==null){var s0=fbList()[+sb];if(s0)openShortcut(s0);return}
+  var I=window.NOTES_INFO||[],e=I[+b.getAttribute("data-i")];if(!e)return;var c=ALL.filter(function(x){return infoForCat(x.id).indexOf(e)>=0})[0];
   curCat=c?c.id:(curCat||CATS[0].id);curExtra=c?null:e;curTab=e.tab||"syl";curSub=-1;render();show(["sn"])}}
 /* topics: an item is plain text, or {t:"Heading",sub:[items...]} - sub can hold more headings (any depth). Each depth has its own colour */
 function tableHtml(e){var h=e.head||["Name","Time complexity"];
@@ -621,7 +722,7 @@ var stC=document.createElement("style");stC.textContent=".ncp{float:right;margin
 var stI=document.createElement("style");stI.textContent=".ntp{list-style:none;margin:0}.ntd0{margin:14px 0 4px -18px;padding-top:10px;border-top:1px solid color-mix(in srgb,var(--accent2,#8a4dff) 30%,transparent)}ul>.ntd0:first-child{margin-top:2px;padding-top:0;border-top:0}.ntt{font-weight:700}.ntd0>.ntt{color:var(--accent2,#8a4dff);font-size:1.04em}.ntd1>.ntt{color:#d6339a}.ntd2>.ntt{color:#0a8f7a}.ntd1,.ntd2{margin-top:6px}.nsb{list-style:none;margin:3px 0 2px 3px!important;padding-left:14px!important;border-left:2px solid color-mix(in srgb,var(--accent2,#8a4dff) 35%,transparent)}.nsb .nsb{border-left-color:rgba(214,51,154,.45)}.nsb li{font-size:.95em;padding:1px 0}.nsb li:before{content:'\\203A';color:#ff69b4;font-weight:700;margin-right:7px}.nsb .ntp:before{content:none}.nvib .ntd0{border-top-color:rgba(255,255,255,.25)}.nvib .ntd0>.ntt{color:#c9b3ff}.nvib .ntd1>.ntt{color:#ffb3e1}.nvib .ntd2>.ntt{color:#8fe8d4}.nvib .nsb{border-left-color:rgba(201,179,255,.45)}.nvib .nsb .nsb{border-left-color:rgba(255,179,225,.5)}.nvnav{position:absolute;inset:0;pointer-events:none;z-index:5}.nvpg{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);background:rgba(43,37,64,.92);border:2px solid var(--accent3,#ff9acb);color:#fff;padding:4px 14px;border-radius:99px;font-size:15px;font-weight:700;pointer-events:auto;cursor:pointer;transition:transform .15s,background .15s}.nvpg.nvbig{transform:translateX(-50%) scale(1.25);background:linear-gradient(135deg,#ff86bd,var(--accent2,#8a4dff))}.nvtr{position:absolute;right:0;width:30px;pointer-events:none}.nvth{position:absolute;right:0;width:30px;height:60px;pointer-events:auto;touch-action:none;opacity:.4;transition:opacity .25s}.nvth.on{opacity:1}.nvth{background:url('data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2030%2060%27%3E%3Cdefs%3E%3ClinearGradient%20id%3D%27g%27%20x1%3D%270%27%20y1%3D%270%27%20x2%3D%270%27%20y2%3D%271%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%23ff9acb%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%23b58cff%27%2F%3E%3C%2FlinearGradient%3E%3C%2Fdefs%3E%3Cpath%20d%3D%27M4%2012%20L5%201%20L14%208%20Z%27%20fill%3D%27url%28%23g%29%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.5%27%20stroke-linejoin%3D%27round%27%2F%3E%3Cpath%20d%3D%27M26%2012%20L25%201%20L16%208%20Z%27%20fill%3D%27url%28%23g%29%27%20stroke%3D%27%23fff%27%20stroke-width%3D%271.5%27%20stroke-linejoin%3D%27round%27%2F%3E%3Crect%20x%3D%272%27%20y%3D%276%27%20width%3D%2726%27%20height%3D%2752%27%20rx%3D%2713%27%20fill%3D%27url%28%23g%29%27%20stroke%3D%27%23fff%27%20stroke-width%3D%272%27%2F%3E%3Cpath%20d%3D%27M7%2010.5%20L7.6%205%20L12%208.4%20Z%27%20fill%3D%27%23ffd1e6%27%2F%3E%3Cpath%20d%3D%27M23%2010.5%20L22.4%205%20L18%208.4%20Z%27%20fill%3D%27%23ffd1e6%27%2F%3E%3Cellipse%20cx%3D%2710%27%20cy%3D%2725%27%20rx%3D%272.2%27%20ry%3D%273%27%20fill%3D%27%234a2c5a%27%2F%3E%3Cellipse%20cx%3D%2720%27%20cy%3D%2725%27%20rx%3D%272.2%27%20ry%3D%273%27%20fill%3D%27%234a2c5a%27%2F%3E%3Ccircle%20cx%3D%279.3%27%20cy%3D%2723.8%27%20r%3D%27.9%27%20fill%3D%27%23fff%27%2F%3E%3Ccircle%20cx%3D%2719.3%27%20cy%3D%2723.8%27%20r%3D%27.9%27%20fill%3D%27%23fff%27%2F%3E%3Cellipse%20cx%3D%276.3%27%20cy%3D%2731.5%27%20rx%3D%273%27%20ry%3D%272%27%20fill%3D%27%23ff5fa8%27%20opacity%3D%27.6%27%2F%3E%3Cellipse%20cx%3D%2723.7%27%20cy%3D%2731.5%27%20rx%3D%273%27%20ry%3D%272%27%20fill%3D%27%23ff5fa8%27%20opacity%3D%27.6%27%2F%3E%3Cpath%20d%3D%27M12%2031%20Q13.5%2034%2015%2031%20Q16.5%2034%2018%2031%27%20fill%3D%27none%27%20stroke%3D%27%234a2c5a%27%20stroke-width%3D%271.3%27%20stroke-linecap%3D%27round%27%2F%3E%3Cpath%20d%3D%27M15%2051%20C9%2047.5%209%2042%2012%2041.5%20C13.5%2041.3%2014.6%2042.2%2015%2043.2%20C15.4%2042.2%2016.5%2041.3%2018%2041.5%20C21%2042%2021%2047.5%2015%2051%20Z%27%20fill%3D%27%23fff%27%20opacity%3D%27.92%27%2F%3E%3C%2Fsvg%3E') no-repeat center/contain;filter:drop-shadow(0 2px 6px color-mix(in srgb,var(--accent3,#ff69b4) 60%,transparent));transition:opacity .25s,transform .2s}.nvth:hover{opacity:1;transform:scale(1.08)}.nvth.on{animation:nvwig .5s ease-in-out infinite alternate}@keyframes nvwig{from{transform:rotate(-7deg)}to{transform:rotate(7deg)}}.nvth:after,.nvth:before{content:none!important}.nvtr:before{content:'';position:absolute;right:10px;top:0;bottom:0;width:10px;border-radius:99px;background:color-mix(in srgb,var(--accent3,#ff9acb) 16%,transparent)}.nvb::-webkit-scrollbar:vertical{width:0}.nvb::-webkit-scrollbar:horizontal{height:12px}.nvb::-webkit-scrollbar-track{background:color-mix(in srgb,var(--accent3,#ff9acb) 10%,transparent)}.nvb::-webkit-scrollbar-thumb{background:linear-gradient(90deg,var(--accent3,#ff9acb),#b58cff);border-radius:99px;border:2px solid #1b1b1b}.nvb::-webkit-scrollbar-corner{background:transparent}";document.head.appendChild(stI);
 /* mobile fix: bigger Topics panel in the viewer. Portrait: opens tall. Landscape: opens as a left column using the full height. */
 var stM=document.createElement("style");stM.textContent=".nvinfo{font-size:16px;line-height:1.5}@media (orientation:portrait){.nv:has(.nvinfo.open) .nvinfo{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;border-bottom:0}.nv:has(.nvinfo.open) .nvb,.nv:has(.nvinfo.open) .nvnav{display:none!important}.nvinfo.open .nvib{max-height:none;overflow:visible}.nvinfo.open .nvit{position:sticky;top:-8px;background:#2b2540;padding:6px 0;margin-top:-8px}}@media (orientation:landscape) and (max-height:600px){.nv{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr)}.nvh{grid-column:1/-1;grid-row:1}.nvinfo{grid-column:1/-1;grid-row:2}.nvb{grid-column:1/-1;grid-row:3;min-height:0}.nv:has(.nvinfo.open){grid-template-columns:42% minmax(0,1fr)}.nv:has(.nvinfo.open) .nvinfo{grid-column:1;grid-row:2/4;overflow:auto;-webkit-overflow-scrolling:touch;border-bottom:0;border-right:1px solid #444}.nv:has(.nvinfo.open) .nvb{grid-column:2;grid-row:2/4}.nvinfo.open .nvib{max-height:none;overflow:visible}}";document.head.appendChild(stM);
-var stN=document.createElement("style");stN.textContent="@media (orientation:portrait){.nwrap{flex-direction:column;gap:8px}.ncats{flex:none;width:100%;flex-direction:row;gap:5px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}.ncat{flex:1 1 0;min-width:0;white-space:nowrap;padding:7px 2px;display:flex;flex-direction:column;align-items:center;gap:1px;text-align:center;font-size:12px;line-height:1.25}.ncat .nci{font-size:17px;line-height:1.2}.ncat small{font-size:10px}.nlist{width:100%;max-height:none;overflow:visible}}";document.head.appendChild(stN);
+var stN=document.createElement("style");stN.textContent="@media (orientation:portrait){.nwrap{flex-direction:column;gap:8px}.ncats{flex:none;width:100%;flex-direction:row;gap:5px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}.ncat{flex:1 1 0;min-width:0;white-space:nowrap;padding:7px 2px;display:flex;flex-direction:column;align-items:center;gap:1px;text-align:center;font-size:12px;line-height:1.25}.ncat .nci{font-size:17px;line-height:1.2}.ncat small{font-size:10px}.nlist{width:100%;max-height:none;overflow:visible}}";document.head.appendChild(stN);var stM=document.createElement("style");stM.textContent=".ncats .ncat.ncmore{flex:0 0 auto;min-width:0;padding:7px 14px;font-size:20px;line-height:1;text-align:center;align-self:flex-start}.nty{display:inline-block;margin-left:4px;padding:0 5px;border-radius:6px;background:rgba(128,128,128,.22);font-size:.72em;font-weight:700;opacity:1;vertical-align:middle}.edh{cursor:grab;touch-action:none;padding:4px 8px;font-size:18px;user-select:none}.edor span{flex:1}.edor.edrag{opacity:.6;outline:2px dashed var(--accent);border-radius:8px}.nhid{opacity:.5}.npg{position:relative;margin:16px 0 10px;padding:14px 8px 8px;border:2px solid var(--accent,#d8a0c8);border-radius:16px;background:rgba(255,255,255,.35)}.npg .npw{margin:0}.npgh{position:absolute;top:-12px;left:14px;max-width:80%;padding:2px 12px;border-radius:999px;background:var(--accent,#d8a0c8);color:var(--onacc,#fff);font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 2px 6px rgba(0,0,0,.12)}.nnote{margin:0 0 8px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}.nnote b{display:block;margin-bottom:3px}.nnb{white-space:pre-wrap;word-break:break-word;font-size:14px}.nnb a{color:var(--accent2,#8a4dff);text-decoration:underline}.nnc{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}";stM.textContent+="\n@media (orientation:portrait){\n .ncats{flex-wrap:wrap;overflow:visible;gap:6px;padding-bottom:0}\n .ncats .ncat{flex:0 0 auto;flex-direction:row;align-items:center;gap:5px;padding:6px 11px;font-size:13px;line-height:1.2;border-radius:999px;text-align:left}\n .ncats .ncat .nci{font-size:15px;line-height:1}.ncats .ncat small{font-size:11px}\n .ncats .ncat.ncmore{padding:4px 13px}\n}\n/* tabs inside a subject: plain underlined tabs (not boxes) so they do not look like the subject buttons */\n.ntabs{gap:2px;border-bottom:1px solid var(--line);margin:0 0 10px}\n.ntabs button{flex:0 1 auto;min-width:0;padding:7px 10px;font-size:13px;border:0;border-bottom:3px solid transparent;border-radius:8px 8px 0 0;background:none}\n.ntabs button.on{background:none;color:inherit;border-bottom-color:var(--accent)}\n/* organize toolbar: small dashed pills */\n.norgbar{display:flex;gap:5px;flex-wrap:wrap;margin:0 0 10px;padding:6px;border:1px dashed var(--line);border-radius:12px}\n.norgbar .s,.norgbar .edb{width:auto;margin:0;padding:4px 10px;font-size:12px;font-weight:600;border-radius:999px;box-shadow:none;background:transparent;border:1px solid var(--line);color:inherit}\n";document.head.appendChild(stM);
 var stS=document.createElement("style");stS.textContent="@media (orientation:landscape){.nwrap{align-items:stretch}.nlist{max-height:none;overflow:visible}}@media (orientation:landscape){#sn:not(.hidden){display:grid;grid-template-columns:30% minmax(0,1fr);column-gap:10px;align-items:stretch}#sn>*{grid-column:1/-1}#sn .nwrap{display:contents}#sn .ncats{grid-column:1;width:auto;flex:none;margin-top:10px}#sn .nlist{grid-column:2;margin-top:10px}}.nhead{display:contents}.nhead button{position:sticky;top:8px;z-index:20;justify-self:start;width:auto;margin:0 10px 6px 0;box-shadow:0 2px 8px rgba(0,0,0,.2)}@media (max-width:900px){.nsb{padding-left:8px!important;margin-left:0!important}.nsb li:before{margin-right:4px}.ntd1,.ntd2{margin-top:4px}}";document.head.appendChild(stS);   // phones: tall topics list + less nesting indent
 
 function infoFor(p){return(window.NOTES_INFO||[]).filter(function(e){return e.keys&&e.keys.length&&rx(e.keys).test(p)})}
@@ -734,7 +835,7 @@ async function openV(path,name){budSeen={};clearTimeout(budT);
  goFS();   // full screen: hides the browser tabs/address bar (not on iPhone Safari)
  $("nvT").textContent=name;$("nvD").href=url;$("nvD").setAttribute("download",name+(isImg(path)?path.slice(path.lastIndexOf(".")):".pdf"));$("nvO").href=url;$("nvO").style.display=(isImg(path)||navigator.pdfViewerEnabled===true)?"":"none";$("nvD").style.visibility=$("nvO").style.visibility=FILES.some(function(x){return x.p===path&&x.id})?"hidden":"";   // Drive files have no real link until they are downloaded: buttons appear when ready   // "Open" only where the browser can really show PDFs (not phones)
  var inf=infoFor(path),pn=$("nvInfo");
- window.__nvInf=inf;if(inf.length){pn.className="nvinfo";pn.innerHTML='<div class="nvit"><b>📋 '+esc(inf.length===1?inf[0].title:"Topics")+'</b>'+cpBtn('data-cpv="1"')+'<span class="nva">▾</span></div><div class="nvib">'+inf.map(function(e){return(inf.length>1?'<div class="nvst">'+esc(e.title)+"</div>":"")+bodyHtml(e)}).join("")+"</div>"}
+ window.__nvInf=inf;if(inf.length){pn.className="nvinfo";pn.innerHTML='<div class="nvit"><b>📋 '+esc((inf.length===1&&inf[0].title)||"Topics")+'</b>'+cpBtn('data-cpv="1"')+'<span class="nva">▾</span></div><div class="nvib">'+inf.map(function(e){return(inf.length>1&&e.title?'<div class="nvst">'+esc(e.title)+"</div>":"")+bodyHtml(e)}).join("")+"</div>"}
  else{pn.className="nvinfo hidden";pn.innerHTML=""}
  b.innerHTML='<div class="nvld">'+LD_SCENE+'<div class="tx">Bear is fetching your notes<span class="d">.</span><span class="d">.</span><span class="d">.</span></div><a class="nvgo nvopen" role="button" style="display:none"></a></div>';setOpen(b.querySelector(".nvopen"),path);setOpen($("nvOp"),path);$("nvNav").style.display="none";
  try{var buf=await getBuf(path,url);
