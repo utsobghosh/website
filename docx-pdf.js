@@ -33,10 +33,10 @@ async function run(btn,errId,job){var t=btn.textContent;btn.disabled=true;btn.te
 $("dlPdf").onclick=function(){run(this,"errS3",async function(){
  var o=cur.opt,f,name;
  if(o.img){f=await photosToPdf([new File([imgBlob(cur.tab.key)],cur.tab.file,{type:"image/jpeg"})]);name=cur.tab.file.replace(/\.[A-Za-z0-9]+$/,"")+".pdf"}
- else{f=await docxToPdf(await buildDocx([{id:cur.id,name:cur.name,section:cur.section,copies:1}]));name="Math_Cover_Page_"+cur.id+".pdf"}
+ else{f=await docxToPdf(await buildDocx([curRec(1)]));name=coverBase()+"_"+cur.id+".pdf"}
  await save(f,name)})};
 
-$("dlJpg").onclick=function(){run(this,"errS3",async function(){await saveJpgs(await buildDocx([{id:cur.id,name:cur.name,section:cur.section,copies:1}]),"Math_Cover_Page_"+cur.id)})};
+$("dlJpg").onclick=function(){run(this,"errS3",async function(){await saveJpgs(await buildDocx([curRec(1)]),coverBase()+"_"+cur.id)})};
 var _sh=show;show=function(ids){_sh(ids);if(ids[0]==="s3")$("dlJpg").classList.toggle("hidden",!!(cur.opt&&cur.opt.img))};   // photos are already photos
 
 // ----- Upload page: conversions depend on what was uploaded -----

@@ -48,6 +48,7 @@ function prc(f){return hp(f)?" pr":(hl(f.p)?" hl":"")}
 function prs(f,fs){var st=(hp(f)?"--pc:"+pcol(f.pr)+";":"")+(fs?"font-size:"+fs+"px;":"");return(st?' style="'+st+'"':"")+(hp(f)?' data-pr="'+f.pr+'"':"")}
 function cfs(n){return Math.max(9,Math.min(13,Math.round(345/Math.max(1,n.length)*2)/2))}   // long name -> smaller text (13px down to 9px) so it fits the button
 var META={};try{META=JSON.parse(localStorage.getItem("notesMeta")||"{}")||{}}catch(e){}   // pin / subject / archive choices made on the website (saved in the Google Sheet tab FileMeta)
+var VIEW="cmp";try{if(localStorage.getItem("notesView")==="det")VIEW="det"}catch(e){}   // file list: compact (many names at once) or detailed
 var ARCHIVE={icon:"🗄️",label:"Archive"};   // name of the archive button / tab
 var FILES=(window.NOTES_FILES||[]).map(function(f){var pn=parseName(f.p);f.nm=pn.nm;f.pr=pn.pr;f.sj=pn.sj;f.pn=pn.pn;f.c=catFor(f);return f}).sort(function(a,b){function k(f){return hp(f)?f.pr:hl(f.p)?1:1e9}return (k(a)-k(b))||(hp(b)-hp(a))||(b.t-a.t)});   // (full) notes count as priority 1: -2, -1, 0 come before them, 2, 3… after; the rest newest first   // coloured (purple) notes first, then newest first
 var TOPICS={},INFO0=null,CFG={};try{TOPICS=JSON.parse(localStorage.getItem("notesTopics")||"{}")||{}}catch(e){}CFG=parseCfg(TOPICS.cfg);   // topics typed on the website (saved in the Google Sheet tab Topics)
@@ -116,6 +117,7 @@ function orgAct(a){var c=ALL.filter(function(x){return x.id===curCat})[0];
 function count(id){return FILES.filter(function(f){return f.c===id&&!f.ar}).length}
 
 function render(){
+ if(DG){DG.again=1;return}
  buildAll();applyLabels();
  if(curCat&&curCat!=="__ar"&&!ALL.some(function(c){return c.id===curCat})){var fc0=ALL.filter(function(c){return count(c.id)})[0];curCat=fc0?fc0.id:""}
  if(curTab.indexOf("tg:")===0&&tagsOf(curCat).indexOf(curTab.slice(3))<0)curTab="files";
@@ -126,7 +128,7 @@ function render(){
  var chips=SUBS.length?'<div class="nchips"><button type="button" data-s="-1" class="'+(curSub<0?"on":"")+'">All</button>'+SUBS.map(function(s,i){return'<button type="button" data-s="'+i+'" class="'+(i===curSub?"on":"")+'">'+esc(s.label)+"</button>"}).join("")+"</div>":"";
  var ci=infoForCat(curCat);if(curExtra&&ci.indexOf(curExtra)<0)ci=[curExtra].concat(ci);var arN=curCat==="__ar"?0:arCount(curCat),tgs=curCat==="__ar"?[]:tagsOf(curCat),tabs=(curCat!=="__ar"&&(ci.length||arN||tgs.length))?'<div class="ntabs"><button type="button" data-t="files" class="'+(curTab==="files"?"on":"")+'">📄 Notes ('+count(curCat)+')</button>'+(ci.length?'<button type="button" data-t="syl" class="'+(curTab==="syl"?"on":"")+'">📋 Topics</button>':"")+(ci.some(function(e){return e.tab})?'<button type="button" data-t="cx" class="'+(curTab==="cx"?"on":"")+'">⏱️ '+cxLabel(ci)+'</button>':"")+(arN?'<button type="button" data-t="arch" class="'+(curTab==="arch"?"on":"")+'">'+ARCHIVE.icon+" "+ARCHIVE.label+" ("+arN+")</button>":"")+tgs.map(function(t){return'<button type="button" data-t="tg:'+esc(t)+'" class="'+(curTab==="tg:"+t?"on":"")+'">🏷️ '+esc(t)+" ("+tgCount(curCat,t)+")</button>"}).join("")+"</div>":"";
   var box=function(e){return'<div class="nsyl nsylbx"><b>'+(e.tab?"⏱️ ":"📋 ")+esc(e.title)+"</b>"+cpBtn('data-cpi="'+(window.NOTES_INFO||[]).indexOf(e)+'"')+bodyHtml(e)+"</div>"},topics=ci.filter(function(e){return!e.tab}).map(box).join(""),cxb=ci.filter(function(e){return e.tab}).map(box).join("");   // topics are always visible under/over the files; the tab only decides which comes first
- LISTP=list.map(function(f){return f.p});var fh=chips+(list.length?list.map(rowHtml).join("")
+ LISTP=list.map(function(f){return f.p});var fh=chips+(list.length?viewBar(list.length)+'<div class="nflist'+(VIEW==="cmp"?" cmp":"")+(q?" qs":"")+'">'+list.map(rowHtml).join("")+"</div>"
   :'<p class="note" style="margin:8px">'+(q?"No notes match your search 🔍":(curTab==="arch"||curCat==="__ar")?"Nothing in the "+ARCHIVE.label+" yet.":FILES.length?"No files here yet.":"No notes found. Run update-notes.bat, then reload.")+"</p>");
  if(ED&&!q&&ED.id===curCat){$("nList").innerHTML=edHtml();return}
  $("nList").innerHTML=q?fh:orgBar()+tabs+((curCat==="__ar"||curTab==="cx")?"":linksHtml(curCat))+(curTab==="cx"?cxb:curTab==="syl"?topics+fh:(curTab==="arch"||curCat==="__ar"||curTab.indexOf("tg:")===0)?fh:fh+topics)}
@@ -134,7 +136,7 @@ function render(){
 function rowHtml(f){
  var parts=f.p.split("/"),name=(parts.pop(),f.nm),sub=parts.slice(1).join(" / "),o=org();
  var dUrl=f.id?"https://drive.google.com/file/d/"+encodeURIComponent(f.id)+"/view":encodeURI(f.p),dlUrl=f.id?"https://drive.google.com/uc?export=download&id="+encodeURIComponent(f.id):encodeURI(f.p),absUrl=f.id?dUrl:new URL(encodeURI(f.p),document.baseURI).href;
- return'<div class="nfw'+(o?" org":"")+(o&&f.tg.length&&curTab.indexOf("tg:")!==0&&curCat!=="__ar"?" ndone":"")+'">'+(o?(SELMODE?'<button type="button" class="nfm nsel" data-sel="'+esc(f.p)+'">'+(SEL[f.p]?"✅":"☐")+"</button>":'<button type="button" class="nfm" data-mp="'+esc(f.p)+'" title="Organize this file">⋮</button>'):"")+
+ return'<div class="nfw'+(o?" org":"")+(o&&f.tg.length&&curTab.indexOf("tg:")!==0&&curCat!=="__ar"?" ndone":"")+'">'+(o?'<button type="button" class="nfd" data-dg="'+esc(f.p)+'" title="Drag me onto a subject or tab" aria-label="Drag this file">⠿</button>':"")+'<button type="button" class="nft" data-more="1" title="Open / download…" aria-label="Show open and download buttons">⋯</button>'+(o?(SELMODE?'<button type="button" class="nfm nsel" data-sel="'+esc(f.p)+'">'+(SEL[f.p]?"✅":"☐")+"</button>":'<button type="button" class="nfm" data-mp="'+esc(f.p)+'" title="Organize this file">⋮</button>'):"")+
   '<a class="nf'+prc(f)+'"'+prs(f)+' target="_blank" rel="noopener" data-p="'+esc(f.p)+'" data-n="'+esc(name)+'" href="'+esc(f.id?"#":encodeURI(f.p))+'"><b>'+(isImg(f.p)?"🖼️":"📄")+" "+esc(name)+(f.pinned?" 📌":"")+"</b><small>"+fmtDate(f.t)+" · "+fmtSize(f.s)+(sub?" · "+esc(sub):"")+(q?" · "+esc(ALL.filter(function(x){return x.id===f.c})[0].label):"")+(f.ar?" · "+ARCHIVE.icon+" "+ARCHIVE.label:"")+(curTab.indexOf("tg:")!==0?(f.tg.length?" · "+(o?"✅ in tab: ":"🏷️ ")+esc(f.tg.join(", ")):(o&&!q&&curCat!=="__ar"?" · ⬜ no tab yet":"")):"")+"</small></a>"+
   '<div class="nfb">'+(viewable(f.p)?'<a class="nfa nfv" target="_blank" rel="noopener" data-p="'+esc(f.p)+'" data-n="'+esc(name)+'" href="'+esc(f.id?"#":encodeURI(f.p))+'">📖 View here</a>':"")+'<a class="nfa" target="_blank" rel="noopener" href="'+esc(dUrl)+'">↗ New tab</a><a class="nfa" href="'+esc(dlUrl)+'" download="'+esc(name)+'"'+(f.id?' target="_blank" rel="noopener"':"")+'>⬇ Download</a><button type="button" class="nfa" data-cp="'+esc(absUrl)+'">🔗 Copy link</button></div></div>'}
 function renderPins(){   // pinned files: smaller buttons above the big "Notes by utsob" button
@@ -144,7 +146,7 @@ function renderPins(){   // pinned files: smaller buttons above the big "Notes b
  box.innerHTML=h?'<div class="nlab">📌 Pinned</div>'+h:""}
 function renderOrg(){var b=$("nOrg");if(!b)return;var has=false;try{has=!!sessionStorage.getItem("pin")}catch(e){}
  if(!has){b.innerHTML="";return}var on=org();
- b.innerHTML='<div class="norg"><span>🛠 <b>Organize</b> '+(on?"is on: tap ⋮ on a file to pin it, move it to a subject or archive it":"is hidden")+'</span><button type="button" id="nOrgT">'+(on?"Hide":"Show")+"</button></div>"}
+ b.innerHTML='<div class="norg"><span>🛠 <b>Organize</b> '+(on?"is on: drag ⠿ a file onto a subject or a tab (or tap ⋮ for more)":"is hidden")+'</span><button type="button" id="nOrgT">'+(on?"Hide":"Show")+"</button></div>"}
 function refreshAll(){renderPins();renderOrg();var sn=$("sn");if(sn&&!sn.classList.contains("hidden"))render()}
 function rebuildStrip(){var b=$("nStripBox");if(!b)return;b.innerHTML=stripBox();autoScroll(document.querySelector(".nstrip"))}
 // ----- ORGANIZE MENU (only after the admin PIN was typed in this browser tab) -----
@@ -199,6 +201,12 @@ function fetchMeta(){
   try{localStorage.setItem("notesMeta",JSON.stringify(META))}catch(e){}
   if(same)return;buildAll();FILES.forEach(eff);rebuildStrip();refreshAll()}).catch(function(){})}
 renderPins();renderOrg();fetchMeta();fetchTopics();
+/* Drive list arriving AFTER the page was built (slow phone / retry): add the files live, no refresh needed. drive-notes.js calls this. */
+window.__driveLate=function(d){if(!Array.isArray(d))return;var have={};d.forEach(function(f){have[f.p]=1});
+ var keep=FILES.filter(function(f){return!f.dv&&!have[f.p]});
+ d.forEach(function(f){var pn=parseName(f.p);f.nm=pn.nm;f.pr=pn.pr;f.sj=pn.sj;f.pn=pn.pn;f.c=catFor(f);f.dv=1;keep.push(f)});
+ Array.prototype.splice.apply(FILES,[0,FILES.length].concat(keep));sortFiles();FILES.forEach(eff);rebuildStrip();refreshAll()};
+if(window.__driveCheck)window.__driveCheck();
 $("nSearch").oninput=function(){q=this.value.trim().toLowerCase();render()};
 $("nOpen").onclick=function(){if(!curCat){var c=ALL.filter(function(c){return count(c.id)})[0];curCat=c?c.id:CATS[0].id}render();show(["sn"])};
 $("nBack").onclick=function(){show(["s1"])};
@@ -394,13 +402,20 @@ function edTable(id){var b=infoForCat(id).filter(function(e){return e.tab&&e.tab
  if(b)return{title:b.title||"Table",note:b.note||"",head:(b.head||["Name","Time complexity"]).slice(),rows:jcopy(b.table)};
  return{title:"Table",note:"",head:["Name","Value"],rows:[]}}
 function edStart(){var id=curCat,c=ALL.filter(function(x){return x.id===id})[0];if(!c||id==="__ar")return;
- var t=parseTree(topicsText(id));ED={id:id,tab:"t",W:t,t0:trTxt(parseTree(topicsText(id)),0),T:edTable(id),tdirty:false,sel:null};curTab="syl";curSub=-1;q="";var si=$("nSearch");if(si)si.value="";render()}
+ var t=parseTree(topicsText(id));ED={id:id,tab:"t",W:t,t0:trTxt(parseTree(topicsText(id)),0),T:edTable(id),tdirty:false,sel:null,U:[],R:[],tk:null,tt:0};curTab="syl";curSub=-1;q="";var si=$("nSearch");if(si)si.value="";render()}
+// ----- UNDO / REDO (Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z, and the ↶ ↷ buttons): the editor keeps its own history, because the page redraws the lines after every change -----
+function edStr(){return JSON.stringify({W:ED.W,T:ED.T,d:ED.tdirty})}
+function edPush(b){if(!ED)return;if(ED.U.length&&ED.U[ED.U.length-1]===b)return;ED.U.push(b);if(ED.U.length>150)ED.U.shift();ED.R=[];ED.tk=null}
+function edTyping(key){if(!ED)return;var now=Date.now();if(ED.tk!==key||now-ED.tt>900){edPush(edStr())}ED.tk=key;ED.tt=now}   // typing in one box = one undo step (a pause starts a new one)
+function edLoad(str){var o=JSON.parse(str);ED.W=o.W;ED.T=o.T;ED.tdirty=o.d;ED.tk=null;edRender(ED.sel)}
+function edUndo(){if(!ED)return;var cur=edStr(),s;while(ED.U.length&&(s=ED.U.pop())===cur);if(s==null||s===cur){dgToast("Nothing to undo");return}ED.R.push(cur);edLoad(s)}
+function edRedo(){if(!ED)return;var cur=edStr(),s;while(ED.R.length&&(s=ED.R.pop())===cur);if(s==null||s===cur){dgToast("Nothing to redo");return}ED.U.push(cur);edLoad(s)}
 function edDirty(){return ED&&(trTxt(ED.W,0)!==ED.t0||ED.tdirty)}
 function edList(p){var l=ED.W;p.forEach(function(j){l=l[j].c});return l}
 function edAt(k){var p=String(k).split(".").map(Number),i=p.pop(),l=edList(p);return{list:l,i:i,node:l[i],par:p}}
 function trHtml(a,path,d){return a.map(function(n,i){var p=path.concat(i),k=p.join("."),sel=ED.sel===k,hd=n.c.length>0;
  return'<li class="'+(hd?"ntp ntd"+Math.min(d,2):"")+(sel?" sel":"")+'"><span class="'+(hd?"ntt ":"")+'edt" contenteditable="plaintext-only" spellcheck="false" data-k="'+k+'">'+esc(n.t)+"</span>"+
-  '<div class="edc"><button type="button" class="edb" data-ed="up:'+k+'">↑ Up</button><button type="button" class="edb" data-ed="dn:'+k+'">↓ Down</button><button type="button" class="edb" data-ed="out:'+k+'">← Out</button><button type="button" class="edb" data-ed="in:'+k+'">→ In</button><button type="button" class="edb" data-ed="add:'+k+'">＋ Below</button><button type="button" class="edb" data-ed="sub:'+k+'">＋ Inside</button><button type="button" class="edb" data-ed="del:'+k+'">🗑</button></div>'+
+  '<div class="edc"><button type="button" class="edb" data-ed="up:'+k+'">↑ Up</button><button type="button" class="edb" data-ed="dn:'+k+'">↓ Down</button><button type="button" class="edb" data-ed="out:'+k+'">← Out</button><button type="button" class="edb" data-ed="in:'+k+'">→ In</button><button type="button" class="edb" data-ed="add:'+k+'">＋ Below</button><button type="button" class="edb" data-ed="sub:'+k+'">＋ Inside</button>'+(hd?'<button type="button" class="edb" data-ed="delk:'+k+'" title="Delete only this line; the lines inside stay">🗑 This line only</button><button type="button" class="edb" data-ed="del:'+k+'" title="Delete this line and everything inside it">🗑 + inside</button>':'<button type="button" class="edb" data-ed="del:'+k+'">🗑</button>')+'</div>'+
   (hd?'<ul class="nsb">'+trHtml(n.c,p,d+1)+"</ul>":"")+"</li>"}).join("")}
 function tblHtml(){var T=ED.T,h='<div class="edtb"><label>Table title<input class="edin" data-tf="title" value="'+esc(T.title)+'"></label><label>Note under the title (optional)<input class="edin" data-tf="note" value="'+esc(T.note)+'"></label>';
  h+='<div class="ntwrap"><table class="ntbl"><tr>'+T.head.map(function(x,j){return'<th><input class="edin edth" data-th="'+j+'" value="'+esc(x)+'"></th>'}).join("")+"<th></th></tr>";
@@ -409,20 +424,22 @@ function tblHtml(){var T=ED.T,h='<div class="edtb"><label>Table title<input clas
   else h+='<tr class="nth"><td colspan="'+T.head.length+'"><input class="edin" data-tc="'+i+'.0" value="'+esc(r.h||"")+'" placeholder="Heading row"></td>'+ctl+"</tr>"});
  return h+'</table></div><div class="edfoot"><button type="button" class="edb" data-ed="tadd">＋ Row</button><button type="button" class="edb" data-ed="thd">＋ Heading row</button><button type="button" class="edb" data-ed="tcol">＋ Column</button><button type="button" class="edb" data-ed="tdc">− Last column</button></div></div>'}
 function edHtml(){var c=ALL.filter(function(x){return x.id===ED.id})[0]||{label:""};
- var body=ED.tab==="t"?'<div class="tiny edhelp">Tap any line to type in it. Buttons appear under the line you tapped. <b>Enter</b> = new line below · <b>Tab</b> / <b>Shift+Tab</b> = move in / out · a line with lines inside it becomes a heading.</div><div class="nsyl nsylbx"><b>📋 '+esc(c.label)+' topics</b>'+(ED.W.length?"<ul>"+trHtml(ED.W,[],0)+"</ul>":'<p class="note">No topics yet. Press “＋ Add section”.</p>')+'</div><div class="edfoot"><button type="button" class="edb" data-ed="addsec">＋ Add section</button></div>':tblHtml();
- return'<div class="edbar"><b>✏️ Editing '+esc(c.label)+'</b><button type="button" class="p" data-ed="save">💾 Save</button><button type="button" class="s" data-ed="cancel">✖ Cancel</button></div>'+
+ var body=ED.tab==="t"?'<div class="tiny edhelp">Tap any line to type in it. Buttons appear under the line you tapped. <b>Enter</b> = new line below · <b>Tab</b> / <b>Shift+Tab</b> = move in / out · a line with lines inside it becomes a heading · <b>Ctrl+Z</b> = undo, <b>Ctrl+Y</b> = redo (or the ↶ ↷ buttons).</div><div class="nsyl nsylbx"><b>📋 '+esc(c.label)+' topics</b>'+(ED.W.length?"<ul>"+trHtml(ED.W,[],0)+"</ul>":'<p class="note">No topics yet. Press “＋ Add section”.</p>')+'</div><div class="edfoot"><button type="button" class="edb" data-ed="addsec">＋ Add section</button></div>':tblHtml();
+ return'<div class="edbar"><b>✏️ Editing '+esc(c.label)+'</b><button type="button" class="s" data-ed="undo" title="Undo (Ctrl+Z)">↶ Undo</button><button type="button" class="s" data-ed="redo" title="Redo (Ctrl+Y)">↷ Redo</button><button type="button" class="p" data-ed="save">💾 Save</button><button type="button" class="s" data-ed="cancel">✖ Cancel</button></div>'+
   '<div class="ntabs"><button type="button" data-ed="tab:t" class="'+(ED.tab==="t"?"on":"")+'">📋 Topics</button><button type="button" data-ed="tab:x" class="'+(ED.tab==="x"?"on":"")+'">⏱️ Table</button></div>'+body+
   '<div class="edfoot"><button type="button" class="s" data-ed="text">📄 Text mode</button><button type="button" class="s" data-ed="reset">↺ Back to original</button></div>'}
 function edRender(fk){var y=window.pageYOffset;$("nList").innerHTML=edHtml();window.scrollTo(0,y);
  if(fk){var el=$("nList").querySelector('[data-k="'+fk+'"]');if(el){el.focus();try{var s=window.getSelection(),r=document.createRange();r.selectNodeContents(el);r.collapse(false);s.removeAllRanges();s.addRange(r)}catch(e){}}}}
-function edOp(op,k){var r=edAt(k),L=r.list,i=r.i,n=r.node,nk=k;if(!n)return;
+function edOp(op,k){var b=edStr();edOp0(op,k);if(ED&&edStr()!==b)edPush(b)}
+function edOp0(op,k){var r=edAt(k),L=r.list,i=r.i,n=r.node,nk=k;if(!n)return;
  if(op==="up"&&i>0){L.splice(i-1,0,L.splice(i,1)[0]);nk=r.par.concat(i-1).join(".")}
  else if(op==="dn"&&i<L.length-1){L.splice(i+1,0,L.splice(i,1)[0]);nk=r.par.concat(i+1).join(".")}
  else if(op==="in"&&i>0){L.splice(i,1);var pv=L[i-1];pv.c.push(n);nk=r.par.concat(i-1,pv.c.length-1).join(".")}
  else if(op==="out"&&r.par.length){var pk=r.par.slice(),pi=pk.pop(),gl=edList(pk);L.splice(i,1);gl.splice(pi+1,0,n);nk=pk.concat(pi+1).join(".")}
  else if(op==="add"){L.splice(i+1,0,{t:"",c:[]});nk=r.par.concat(i+1).join(".")}
  else if(op==="sub"){n.c.push({t:"",c:[]});nk=k+"."+(n.c.length-1)}
- else if(op==="del"){if(n.c.length&&!confirm("Delete this line and the "+n.c.length+" line(s) inside it?"))return;L.splice(i,1);nk=null}
+ else if(op==="del"){L.splice(i,1);nk=null;if(n.c.length)dgToast("🗑 Deleted with "+n.c.length+" line(s) inside (↶ Undo brings it back)")}
+ else if(op==="delk"){L.splice.apply(L,[i,1].concat(n.c));nk=n.c.length?r.par.concat(i).join("."):null}   // only this line: the lines inside move up into its place
  else return;
  ED.sel=nk;edRender(nk)}
 function edSave(){var id=ED.id,txt=trTxt(ED.W,0),chg=txt!==ED.t0,td=ED.tdirty,T=ED.T;
@@ -436,25 +453,33 @@ function edCancel(){if(edDirty()&&!confirm("Throw away your changes?"))return;ED
 $("nList").addEventListener("focusin",function(e){var t=e.target;if(!ED||!t.classList||!t.classList.contains("edt"))return;ED.sel=t.getAttribute("data-k");
  $("nList").querySelectorAll("li.sel").forEach(function(x){x.classList.remove("sel")});var li=t.closest("li");if(li)li.classList.add("sel")});
 $("nList").addEventListener("input",function(e){if(!ED)return;var t=e.target;
- if(t.classList.contains("edt")){var r=edAt(t.getAttribute("data-k"));if(r.node)r.node.t=t.textContent.replace(/\s+/g," ")}
- else if(t.hasAttribute("data-tf")){ED.T[t.getAttribute("data-tf")]=t.value;ED.tdirty=true}
- else if(t.hasAttribute("data-th")){ED.T.head[+t.getAttribute("data-th")]=t.value;ED.tdirty=true}
- else if(t.hasAttribute("data-tc")){var a=t.getAttribute("data-tc").split("."),row=ED.T.rows[+a[0]];if(row&&!Array.isArray(row))row.h=t.value;else if(row)row[+a[1]]=t.value;ED.tdirty=true}});
+ if(t.classList.contains("edt")){if(!/^history/.test(e.inputType||""))edTyping("t:"+t.getAttribute("data-k"));var r=edAt(t.getAttribute("data-k"));if(r.node)r.node.t=t.textContent.replace(/\s+/g," ")}
+ else if(t.hasAttribute("data-tf")){if(!/^history/.test(e.inputType||""))edTyping("tf:"+t.getAttribute("data-tf"));ED.T[t.getAttribute("data-tf")]=t.value;ED.tdirty=true}
+ else if(t.hasAttribute("data-th")){if(!/^history/.test(e.inputType||""))edTyping("th:"+t.getAttribute("data-th"));ED.T.head[+t.getAttribute("data-th")]=t.value;ED.tdirty=true}
+ else if(t.hasAttribute("data-tc")){if(!/^history/.test(e.inputType||""))edTyping("tc:"+t.getAttribute("data-tc"));var a=t.getAttribute("data-tc").split("."),row=ED.T.rows[+a[0]];if(row&&!Array.isArray(row))row.h=t.value;else if(row)row[+a[1]]=t.value;ED.tdirty=true}});
 $("nList").addEventListener("keydown",function(e){if(!ED||e.isComposing||!e.target.classList||!e.target.classList.contains("edt"))return;var k=e.target.getAttribute("data-k");
  if(e.key==="Enter"){e.preventDefault();edOp("add",k)}
  else if(e.key==="Tab"){e.preventDefault();edOp(e.shiftKey?"out":"in",k)}
- else if(e.key==="Backspace"&&!e.target.textContent){var r=edAt(k);if(r.node&&!r.node.c.length){e.preventDefault();edOp("del",k)}}});
+ else if(e.key==="Backspace"&&!e.target.textContent){var r=edAt(k);if(r.node){e.preventDefault();edOp(r.node.c.length?"delk":"del",k)}}});
+document.addEventListener("keydown",function(e){if(!ED||e.isComposing||!(e.ctrlKey||e.metaKey)||e.altKey)return;var t=e.target;if(t&&t!==document.body&&!$("nList").contains(t))return;
+ var k=String(e.key).toLowerCase(),un=k==="z"&&!e.shiftKey,re=(k==="z"&&e.shiftKey)||k==="y";if(!un&&!re)return;
+ if(t&&t.closest&&t.closest(".edt,.edin")){   // typing in a line / table box: Ctrl+Z works like in any text box (word by word); if it has nothing left to undo, the editor undoes the last change instead
+  var fired=false,h=function(ev){if(/^history/.test(ev.inputType||""))fired=true};document.addEventListener("input",h,true);
+  setTimeout(function(){document.removeEventListener("input",h,true);if(!fired&&ED){if(un)edUndo();else edRedo()}},0);return}
+ e.preventDefault();if(un)edUndo();else edRedo()},true);
 $("nList").addEventListener("paste",function(e){if(!ED||!e.target.classList||!e.target.classList.contains("edt"))return;e.preventDefault();
  var tx=(e.clipboardData||window.clipboardData).getData("text")||"",ls=tx.split(/\r?\n/).map(function(s){return s.replace(/^\s*[-\u2022*]\s+/,"").trim()}).filter(Boolean);if(!ls.length)return;
- var k=e.target.getAttribute("data-k");document.execCommand("insertText",false,ls[0]);
- if(ls.length>1){var r=edAt(k);r.node.t=e.target.textContent.replace(/\s+/g," ");ls.slice(1).forEach(function(s,j){r.list.splice(r.i+1+j,0,{t:s,c:[]})});ED.sel=r.par.concat(r.i+ls.length-1).join(".");edRender(ED.sel)}});
+ var k=e.target.getAttribute("data-k"),b0=edStr();document.execCommand("insertText",false,ls[0]);
+ if(ls.length>1){var r=edAt(k);r.node.t=e.target.textContent.replace(/\s+/g," ");ls.slice(1).forEach(function(s,j){r.list.splice(r.i+1+j,0,{t:s,c:[]})});ED.sel=r.par.concat(r.i+ls.length-1).join(".");edPush(b0);edRender(ED.sel)}});
 $("nList").addEventListener("click",function(e){var b=e.target.closest&&e.target.closest("[data-ed]");if(!b||!ED)return;var p=b.getAttribute("data-ed").split(":"),op=p[0],k=p[1],T=ED.T,i=+k;
  if(op==="save"){edSave();return}if(op==="cancel"){edCancel();return}
+ if(op==="undo"){edUndo();return}if(op==="redo"){edRedo();return}
  if(op==="tab"){ED.tab=k;edRender();return}
- if(op==="addsec"){ED.W.push({t:"",c:[]});ED.sel=String(ED.W.length-1);edRender(ED.sel);return}
+ if(op==="addsec"){var ba=edStr();ED.W.push({t:"",c:[]});edPush(ba);ED.sel=String(ED.W.length-1);edRender(ED.sel);return}
  if(op==="text"){if(edDirty()&&!confirm("Leave this editor? Unsaved changes are lost."))return;ED=null;render();topicEditorText();return}
  if(op==="reset"){if(!confirm("Go back to the ORIGINAL topics and table of this subject?"))return;var id=ED.id,hasT=!!TOPICS[id+"_tbl"];ED=null;topicsSave(id,"");if(hasT)topicsSave(id+"_tbl","");return}
- if(/^(up|dn|out|in|add|sub|del)$/.test(op)){edOp(op,k);return}
+ if(/^(up|dn|out|in|add|sub|del|delk)$/.test(op)){edOp(op,k);return}
+ var b0=edStr();
  if(op==="ru"&&i>0)T.rows.splice(i-1,0,T.rows.splice(i,1)[0]);
  else if(op==="rd"&&i<T.rows.length-1)T.rows.splice(i+1,0,T.rows.splice(i,1)[0]);
  else if(op==="rx"){T.rows.splice(i,1)}
@@ -463,7 +488,7 @@ $("nList").addEventListener("click",function(e){var b=e.target.closest&&e.target
  else if(op==="tcol"){T.head.push("Column");T.rows.forEach(function(r){if(Array.isArray(r))r.push("")})}
  else if(op==="tdc"){if(T.head.length<2)return;T.head.pop();T.rows.forEach(function(r){if(Array.isArray(r))r.pop()})}
  else return;
- ED.tdirty=true;edRender()});
+ edPush(b0);ED.tdirty=true;edRender()});
 function applyTables(I){Object.keys(TOPICS).forEach(function(k){if(!/_tbl$/.test(k))return;var id=k.slice(0,-4),c=ALL.filter(function(x){return x.id===id})[0],j;if(!c)return;
  try{j=JSON.parse(TOPICS[k])}catch(e){return}if(!j||!j.rows)return;
  var tb=I.filter(function(e){return e.tab&&(e.cat===id||(c.keys&&e.keys&&e.keys.some(function(kk){return c.keys.some(function(ck){return ck.toLowerCase()===kk.toLowerCase()})})))})[0];
@@ -507,6 +532,67 @@ function bulkAct(a){var op=a.slice(3),y=window.pageYOffset,n=selPaths().length;
 $("nList").addEventListener("click",function(e){var b=e.target.closest&&e.target.closest("[data-sel]");if(!b)return;e.preventDefault();var p=b.getAttribute("data-sel"),y=window.pageYOffset;if(SEL[p])delete SEL[p];else SEL[p]=1;render();window.scrollTo(0,y)});
 var stB=document.createElement("style");stB.textContent=".nbulk{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:0 0 8px;padding:8px;border:2px solid var(--accent2,#8a4dff);border-radius:12px;position:sticky;top:0;z-index:25;background:var(--panel)}.nbulk b{flex:1 0 100%}.edwide{width:100%;text-align:left;padding:10px}.nfw.ndone{opacity:.55}.nsel{font-size:22px!important;width:36px!important;height:36px!important}.nbtoast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:10010;background:#2b2540;color:#fff;padding:10px 16px;border-radius:99px;font-weight:700}";document.head.appendChild(stB);
 
+// ----- VIEW: compact list (many file names at once) / detailed list. Everybody can switch; the choice is remembered on this phone -----
+function viewBar(n){return'<div class="nview"><b>'+n+' file'+(n===1?"":"s")+'</b><span><button type="button" data-view="cmp" class="'+(VIEW==="cmp"?"on":"")+'">▦ Compact</button><button type="button" data-view="det" class="'+(VIEW==="det"?"on":"")+'">☰ Detailed</button></span></div>'}
+$("nList").addEventListener("click",function(e){var t=e.target.closest&&e.target.closest("[data-view],[data-more]");if(!t)return;e.preventDefault();
+ if(t.hasAttribute("data-more")){var w=t.closest(".nfw");if(w){var on=w.classList.toggle("open");t.textContent=on?"▴":"⋯"}return}
+ var v=t.getAttribute("data-view");if(v===VIEW)return;VIEW=v;try{localStorage.setItem("notesView",v)}catch(x){}var y=window.pageYOffset;render();window.scrollTo(0,y)});
+
+// ----- DRAG AND DROP (organize mode): drag a file by its ⠿ handle (or, with a mouse, by the row) -> subjects pop up on the LEFT, tabs + pin/archive on the RIGHT -> drop it -----
+var DGP=null,DG=null,dgNoClick=0;
+function dgToast(m){var t=document.createElement("div");t.className="nbtoast";t.textContent=m;document.body.appendChild(t);setTimeout(function(){t.remove()},1800)}
+function dgBegin(e){
+ var f=fileOf(DGP.p);if(!f){DGP=null;return}closeMenu();
+ var paths=(SELMODE&&SEL[DGP.p])?selPaths():[DGP.p],tg=[];
+ tagsOf(curCat).concat(allTags()).forEach(function(t){if(tg.indexOf(t)<0)tg.push(t)});   // tabs of this subject first
+ var L='<div class="ndh">📂 Subject</div>'+ALL.map(function(c){return'<button type="button" class="ndt'+(c.id===f.c?" cur":"")+'" data-dz="sj:'+esc(c.id)+'"><i>'+c.icon+"</i> "+esc(c.label)+"</button>"}).join("")+'<button type="button" class="ndt" data-dz="sj:">✨ Automatic</button>',
+ R='<div class="ndh">🏷️ Tab</div>'+tg.map(function(t,i){return'<button type="button" class="ndt'+(f.tg.indexOf(t)>=0?" cur":"")+'" data-dz="tg:'+i+'">🏷️ '+esc(t)+"</button>"}).join("")+'<button type="button" class="ndt" data-dz="newtab">➕ New tab…</button>'+(f.tg.length||paths.length>1?'<button type="button" class="ndt" data-dz="tgclear">✖ Clear tabs</button>':"")+
+  '<div class="ndh">More</div><button type="button" class="ndt" data-dz="pin">📌 Pin</button><button type="button" class="ndt" data-dz="arc">'+(f.ar?"↩ Take out of the "+ARCHIVE.label:ARCHIVE.icon+" "+ARCHIVE.label)+"</button>";
+ var l=document.createElement("div"),r=document.createElement("div"),g=document.createElement("div");
+ l.className="ndz L";l.innerHTML=L;r.className="ndz R";r.innerHTML=R;g.className="ndghost";g.textContent=paths.length>1?"📄 "+paths.length+" files":"📄 "+f.nm;
+ document.body.appendChild(l);document.body.appendChild(r);document.body.appendChild(g);document.body.classList.add("ndrag");
+ DG={p:DGP.p,f:f,paths:paths,tg:tg,l:l,r:r,g:g,hot:null,again:0};dgMove(e)}
+function dgMove(e){var g=DG.g;g.style.left=Math.min(innerWidth-120,e.clientX+14)+"px";g.style.top=(e.clientY+14)+"px";
+ var el=document.elementFromPoint(e.clientX,e.clientY),t=(el&&el.closest)?el.closest(".ndt"):null;
+ if(t!==DG.hot){if(DG.hot)DG.hot.classList.remove("hot");if(t){t.classList.add("hot");if(navigator.vibrate){try{navigator.vibrate(8)}catch(x){}}}DG.hot=t}}
+function dgEnd(drop){var d=DG,a=(drop&&d.hot)?d.hot.getAttribute("data-dz"):null;
+ d.l.remove();d.r.remove();d.g.remove();document.body.classList.remove("ndrag");DG=null;DGP=null;
+ if(a!==null)dgDrop(d,a);else if(d.again)render()}
+function dgDrop(d,a){var fn,msg,many=d.paths.length>1;
+ if(a.indexOf("sj:")===0){var sj=a.slice(3);fn=function(){return{sj:sj}};msg=sj?"📂 Moved to "+labelOf(sj):"✨ Subject is automatic now"}
+ else if(a.indexOf("tg:")===0||a==="newtab"){var t=a==="newtab"?cleanTag(prompt("Name of the new tab (for example: Question)")||""):d.tg[+a.slice(3)];if(!t){if(d.again)render();return}
+  fn=function(f){return f.tg.indexOf(t)>=0?{}:{tg:f.tg.concat(t).join("|")}};msg="🏷️ Added to tab “"+t+"”"}
+ else if(a==="tgclear"){fn=function(){return{tg:""}};msg="✖ Tabs cleared"}
+ else if(a==="pin"){fn=function(){return{pin:1}};msg="📌 Pinned"}
+ else if(a==="arc"){var un=!!d.f.ar;fn=function(){return{ar:un?"":1}};msg=un?"↩ Taken out of the "+ARCHIVE.label:ARCHIVE.icon+" Moved to the "+ARCHIVE.label}
+ else{if(d.again)render();return}
+ if(many){bulkRun(fn);return}
+ var pt=fn(d.f);if(!Object.keys(pt).length){dgToast("Already there ✓");if(d.again)render();return}
+ dgToast(msg);metaSet(d.p,pt)}
+document.addEventListener("pointerdown",function(e){if(DG||!org()||(e.button!=null&&e.button>0))return;
+ var h=e.target.closest&&e.target.closest("[data-dg]"),a=(!h&&e.pointerType==="mouse"&&e.target.closest)?e.target.closest(".nfw.org .nf[data-p]"):null,el=h||a;if(!el)return;
+ var p=el.getAttribute(h?"data-dg":"data-p");if(!fileOf(p))return;DGP={p:p,x:e.clientX,y:e.clientY}},true);
+document.addEventListener("pointermove",function(e){if(DG){e.preventDefault();dgMove(e);return}
+ if(DGP&&Math.abs(e.clientX-DGP.x)+Math.abs(e.clientY-DGP.y)>6)dgBegin(e)},true);
+document.addEventListener("pointerup",function(e){if(DG){dgNoClick=Date.now();dgEnd(true);return}DGP=null},true);
+document.addEventListener("pointercancel",function(){if(DG)dgEnd(false);DGP=null},true);
+window.addEventListener("click",function(e){if(Date.now()-dgNoClick<400){e.preventDefault();e.stopPropagation()}},true);   // letting go of a dragged row must not also open the file
+document.addEventListener("dragstart",function(e){if(DGP||DG)e.preventDefault()},true);   // the browser's own link-dragging must not take over
+document.addEventListener("keydown",function(e){if(e.key==="Escape"&&DG)dgEnd(false)});
+var stD=document.createElement("style");stD.textContent=
+".nfd{position:absolute;left:8px;top:8px;z-index:2;width:30px;height:30px;padding:0;margin:0;border:0;border-radius:8px;background:var(--panel);color:var(--muted);font-size:18px;line-height:1;cursor:grab;box-shadow:0 1px 5px rgba(0,0,0,.25);touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}"+
+".nfw.org .nf{padding-left:46px}.nft{display:none}"+
+".nview{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 6px;font-size:12px;color:var(--muted)}.nview span{display:flex;gap:4px}.nview button{padding:5px 9px;border:1px solid var(--line);border-radius:99px;background:var(--panel);color:inherit;font:inherit;font-size:12px;font-weight:600;cursor:pointer;margin:0;box-shadow:none}.nview button.on{background:var(--accent);border-color:var(--accent);color:var(--onacc,#fff)}"+
+".nflist.cmp{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:4px 6px;align-items:start}"+
+".nflist.cmp .nfw{margin:0;padding:3px;border-width:1px;border-radius:10px}.nflist.cmp .nfw:last-child{margin:0}"+
+".nflist.cmp .nf{padding:5px 36px 5px 8px;border-radius:7px}.nflist.cmp .nf:after{display:none}.nflist.cmp .nf b{font-size:13px;line-height:1.25}.nflist.cmp .nf small{display:none}.nflist.cmp.qs .nf small{display:block;font-size:10.5px}"+
+".nflist.cmp .nft{display:flex;align-items:center;justify-content:center;position:absolute;right:5px;top:5px;z-index:2;width:28px;height:28px;padding:0;margin:0;border:1px solid var(--line);border-radius:50%;background:var(--panel);color:var(--text);font-size:16px;line-height:1;cursor:pointer;box-shadow:none}"+
+".nflist.cmp .nfb{display:none}.nflist.cmp .nfw.open{grid-column:1/-1}.nflist.cmp .nfw.open .nfb{display:grid}.nflist.cmp .nfw.open .nf small{display:block}"+
+".nflist.cmp .nfw.org .nf{padding-left:38px;padding-right:68px}.nflist.cmp .nfd{left:5px;top:5px;width:26px;height:26px;font-size:16px}.nflist.cmp .nfm{right:5px;top:5px;width:28px;height:28px;font-size:17px}.nflist.cmp .nfw.org .nft{right:38px}"+
+".ndz{position:fixed;top:8px;bottom:8px;z-index:10005;width:min(36vw,160px);box-sizing:border-box;overflow-y:auto;padding:8px;border-radius:14px;background:color-mix(in srgb,var(--panel) 94%,transparent);border:2px dashed var(--accent2,#8a4dff);box-shadow:0 8px 28px rgba(0,0,0,.3);display:flex;flex-direction:column;gap:6px;touch-action:none;animation:ndin .15s ease-out}.ndz.L{left:6px}.ndz.R{right:6px}@keyframes ndin{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}"+
+".ndh{font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;margin:2px 0 0}.ndt{padding:10px 8px;margin:0;border:2px solid var(--line);border-radius:12px;background:var(--panel);color:inherit;font:inherit;font-size:13px;font-weight:700;text-align:left;word-break:break-word;box-shadow:none;transition:transform .08s}.ndt i{font-style:normal}.ndt.cur{border-color:var(--accent)}.ndt.hot{background:var(--accent);border-color:var(--accent);color:var(--onacc,#fff);transform:scale(1.05)}"+
+".ndghost{position:fixed;z-index:10010;pointer-events:none;max-width:230px;padding:8px 12px;border-radius:12px;background:var(--accent2,#8a4dff);color:#fff;font-weight:700;font-size:13px;box-shadow:0 6px 18px rgba(0,0,0,.35);transform:rotate(-2deg);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}body.ndrag{user-select:none;-webkit-user-select:none;cursor:grabbing}";
+document.head.appendChild(stD);
 function topicEditor(){edStart()}
 syncSources();
 

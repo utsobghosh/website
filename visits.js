@@ -26,15 +26,17 @@ var box=document.createElement("div");
 box.innerHTML='<h2 class="h2">👀 Visitors</h2><div class="card" style="overflow-x:auto">'+
  '<div id="vSum" class="tiny" style="margin:0 0 8px"></div>'+
  '<button class="s" id="vRef" style="margin:0 0 10px">🔄 Refresh visitors</button>'+
- '<table><thead><tr><th>ID</th><th>Name</th><th>Visits</th><th>Devices</th><th>Last visit</th></tr></thead><tbody id="vRows"></tbody></table>'+
+ '<table><thead><tr><th>ID</th><th>Name</th><th>Visits</th><th>Devices</th><th>Last visit</th><th>Today</th></tr></thead><tbody id="vRows"></tbody></table>'+
  '<p class="note" id="vNone"></p>'+
  '<div class="tiny" style="margin:12px 0 4px;font-weight:600">Last days</div>'+
- '<table><thead><tr><th>Day</th><th>Visits</th><th>Guest visits</th></tr></thead><tbody id="vDays"></tbody></table>'+
+ '<table><thead><tr><th>Day</th><th>All visits</th><th>ID visits</th><th>Guest visits</th></tr></thead><tbody id="vDays"></tbody></table>'+
  '<p class="tiny" style="margin-top:10px">A visit = one browser opening the site (counted once per tab session). "Devices" = different phones/computers that used that ID. Guest = no ID known.</p></div>';
 ad.appendChild(box);
 function $(i){return document.getElementById(i)}
 function nameOf(id){try{if(typeof STUDENTS!=="undefined"&&STUDENTS[id])return STUDENTS[id]}catch(e){}return ls("askNm:"+id)||""}
 function msg(t){$("vSum").textContent=t}
+var TODAY="";
+function isToday(ts){try{return!!ts&&new Date(ts).toLocaleDateString("en-CA",{timeZone:"Asia/Dhaka"})===TODAY}catch(e){return false}}
 async function loadV(askPin){
  var pin=ss("pin");
  if(!pin){if(!askPin){msg("Press “Refresh visitors” (it asks for the admin PIN).");return}pin=prompt("Admin PIN")||"";if(!pin)return;ss("pin",pin)}
@@ -43,12 +45,12 @@ async function loadV(askPin){
   var r=await (await fetch(SCRIPT_URL+"?"+new URLSearchParams({visits:1,pin:pin}))).json();
   if(r&&r.error==="pin"){ss("pin",null);msg("Wrong PIN. Press Refresh visitors to try again.");return}
   if(!r||!r.ok){msg("The Apps Script does not have the visitor part yet (Code-visits.gs + New version).");return}
-  var td=(r.days&&r.days[0]&&r.days[0].d===r.today)?r.days[0]:{v:0,g:0};
-  msg("Total visits: "+r.total+" · Today: "+td.v+" · Different devices: "+r.devices+" · IDs seen: "+r.ids.length+" · Guest visits: "+r.guest.visits+" ("+r.guest.devices+" device"+(r.guest.devices===1?"":"s")+")");
-  var h=r.ids.map(function(o){return"<tr><td>"+esc(o.id)+"</td><td>"+esc(nameOf(o.id))+"</td><td><b>"+o.visits+"</b></td><td>"+o.devices+"</td><td>"+esc(o.last)+"</td></tr>"}).join("");
-  h+='<tr><td>👤 Guest</td><td>no ID</td><td><b>'+r.guest.visits+"</b></td><td>"+r.guest.devices+"</td><td>"+esc(r.guest.last)+"</td></tr>";
+  TODAY=r.today;var td=(r.days&&r.days[0]&&r.days[0].d===r.today)?r.days[0]:{v:0,g:0};
+  msg("Total visits: "+r.total+" · Today: "+td.v+" (🪪 ID "+(td.v-td.g)+" · 👤 guest "+td.g+")"+" · Different devices: "+r.devices+" · IDs seen: "+r.ids.length+" · Guest visits: "+r.guest.visits+" ("+r.guest.devices+" device"+(r.guest.devices===1?"":"s")+")");
+  var h=r.ids.map(function(o){return"<tr><td>"+esc(o.id)+"</td><td>"+esc(nameOf(o.id))+"</td><td><b>"+o.visits+"</b></td><td>"+o.devices+"</td><td>"+esc(o.last)+"</td><td>"+(isToday(o.ts)?"✅":"")+"</td></tr>"}).join("");
+  h+='<tr><td>👤 Guest</td><td>no ID</td><td><b>'+r.guest.visits+"</b></td><td>"+r.guest.devices+"</td><td>"+esc(r.guest.last)+"</td><td>"+(isToday(r.guest.ts)?"✅":"")+"</td></tr>";
   $("vRows").innerHTML=h;$("vNone").textContent=r.ids.length?"":"No student ID has visited yet.";
-  $("vDays").innerHTML=(r.days||[]).map(function(d){return"<tr><td>"+esc(d.d)+"</td><td>"+d.v+"</td><td>"+d.g+"</td></tr>"}).join("")||'<tr><td colspan="3">No visits yet.</td></tr>'
+  $("vDays").innerHTML=(r.days||[]).map(function(d){return"<tr><td>"+esc(d.d)+"</td><td>"+d.v+"</td><td><b>"+(d.v-d.g)+"</b></td><td>"+d.g+"</td></tr>"}).join("")||'<tr><td colspan="4">No visits yet.</td></tr>'
  }catch(e){msg("Could not load visitors: "+(e.message||e))}}
 $("vRef").onclick=function(){loadV(true)};
 function maybe(){if(location.hash==="#admin")setTimeout(function(){loadV(false)},900)}

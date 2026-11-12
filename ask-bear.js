@@ -151,9 +151,9 @@ function captureShot(question) {   // {text: visible text (instant), img: promis
 
 // ---------- Gemini: the SAME kind of request the bear's messages and quiz already use (one user turn; the text comes from the transcript) ----------
 var SYS = "You are Teddy, a friendly kawaii teddy bear AI assistant on a student's notes website (a 2nd-year CSE class at a university). The student can ask you ANYTHING: studies, coding, maths, writing, advice, ideas or just curious questions. Answer correctly, clearly and in a short friendly way; use simple steps when it helps. Plain text only: no markdown headings or tables (short '-' lists and **bold** are fine). Reply in the language the student writes (English, Bangla or mixed). If you are not sure, say so. ALWAYS end your reply with at least one fitting emoji as the very last character.";
-function buildPrompt(hist, text, note, img, pageText) {
+function buildPrompt(hist, text, note, img, pageText, mine) {
   var t = SYS;
-  if (img || pageText) t += "\nYou can also see the page the student is looking at right now" + (img ? " (a screenshot is attached)" : "") + (pageText ? " and this is the text visible on it:\n<<<\n" + pageText + "\n>>>" : "") + "\nUse this ONLY if the question is about that page (for example 'this', 'here', 'what is on my screen', 'explain this page'); otherwise ignore it completely and just answer the question. Do not mention it unless it matters.";
+  if (mine) t += "\nThe student attached " + (mine > 1 ? mine + " photos" : "a photo") + " to this message (the FIRST " + (mine > 1 ? mine + " images" : "image") + " attached). Look at " + (mine > 1 ? "them" : "it") + " carefully and answer their message about " + (mine > 1 ? "them" : "it") + "."; if (img || pageText) t += "\nYou can also see the page the student is looking at right now" + (img ? (mine ? " (a screenshot of it is attached as the LAST image)" : " (a screenshot is attached)") : "") + (pageText ? " and this is the text visible on it:\n<<<\n" + pageText + "\n>>>" : "") + "\nUse this ONLY if the question is about that page (for example 'this', 'here', 'what is on my screen', 'explain this page'); otherwise ignore it completely and just answer the question. Do not mention it unless it matters.";
   if (note) t += "\n(Background only, ignore it if the question is about something else: the student currently has " + note + " open.)";
   if (hist.length) t += "\n\nConversation so far:\n" + hist.map(function (m) { return (m.role === "user" ? "Student: " : "Teddy: ") + String(m.text).slice(0, 1000); }).join("\n");
   return t + "\n\nStudent: " + text + "\nTeddy:";
@@ -172,8 +172,8 @@ function geminiOnce(g, key, prompt, shotP, voice, onText) {
       var d = ev.data; if (d instanceof Blob) d = await d.text(); var m; try { m = JSON.parse(d); } catch (e) { return; }
       if (m.error) { fin(null, new Error((m.error.message || JSON.stringify(m.error)).slice(0, 120))); return; }
       if (m.setupComplete) {
-        var img = ""; try { img = shotP ? await Promise.race([shotP, sleep(2500).then(function () { return ""; })]) : ""; } catch (e) {}
-        var parts = [{ text: prompt }]; if (img) parts.push({ inlineData: { mimeType: "image/jpeg", data: img } });
+        var imgs = []; if (shotP) { imgs = (shotP.u || []).slice(); try { var pg = shotP.p ? await Promise.race([shotP.p, sleep(2500).then(function () { return ""; })]) : ""; if (pg) imgs.push(pg); } catch (e) {} }
+        var parts = [{ text: prompt }]; imgs.forEach(function (im) { parts.push({ inlineData: { mimeType: "image/jpeg", data: im } }); });
         if (!done) ws.send(JSON.stringify({ clientContent: { turns: [{ role: "user", parts: parts }], turnComplete: true } }));
       }
       var sc = m.serverContent; if (!sc) return;
@@ -189,17 +189,17 @@ function geminiOnce(g, key, prompt, shotP, voice, onText) {
   });
 }
 async function gemini(hist, text, note, shot, onText) {
-  var shotP = shot && shot.img, pageText = shot ? shot.text : "";
+  var shotP = shot && shot.img, pageText = shot ? shot.text : "", ui = (shot && shot.imgs) || [], mine = ui.length;
   if (window.__askMock) { var mr = await window.__askMock(hist, text, note, shot); if (S.sound) speakTTS(mr); return mr; }   // (test hook)
   var g = (window.__gem && window.__gem()) || {}, key = g.k;
   if (!key && g.u) key = (await (await fetch(g.u)).text()).trim();
   if (!key) throw new Error("no Gemini key");
   stopVoice(); if (S.sound) audioUnlock();
   // if the server refuses the picture or the voice setting, the next try drops it, so a question never fails only because of an extra
-  var tries = []; if (shotP) tries.push({ img: true, voice: S.sound }); tries.push({ img: false, voice: S.sound }); if (S.sound) tries.push({ img: false, voice: false });
+  var tries = []; if (shotP || mine) tries.push({ img: true, voice: S.sound }); if (mine) { if (S.sound) tries.push({ img: true, voice: false }); } else { tries.push({ img: false, voice: S.sound }); if (S.sound) tries.push({ img: false, voice: false }); }
   var last;
   for (var i = 0; i < tries.length; i++) {
-    try { return await geminiOnce(g, key, buildPrompt(hist, text, note, tries[i].img, pageText), tries[i].img ? shotP : null, tries[i].voice, onText); }
+    try { return await geminiOnce(g, key, buildPrompt(hist, text, note, tries[i].img && !!shotP, pageText, mine), tries[i].img ? { u: ui, p: shotP } : null, tries[i].voice, onText); }
     catch (e) { last = e; if (/timeout/.test(e.message)) break; }
   }
   throw last || new Error("no reply");
@@ -284,6 +284,12 @@ var CSS = [
   ".ab-pop .ak-row button,#askBar .ak-row button{width:auto;height:auto;border-radius:11px;padding:7px 11px;font-size:12px;background:var(--accent);color:var(--onacc,#fff)}.ab-pop .ak-row button.alt,#askBar .ak-row button.alt{background:transparent;color:var(--text);border:1px solid var(--line)}",
   ".ak-f button.snd{background:var(--line);color:var(--text)}.ak-f button.snd.on{background:var(--accent);color:var(--onacc,#fff)}",
   "@media (max-width:430px){.kpbox{width:min(236px,calc(100vw - 20px));padding:10px}.kpbox input,.su-id{font-size:13px;padding:6px 8px}.kpbox .kp-top b{font-size:13px}.ab-pop,.ak-pop{font-size:11.5px}.ak-row button{padding:6px 9px;font-size:11.5px}}",
+  ".pk{border:0;border-radius:50%;width:32px;height:32px;flex:none;background:var(--line);color:var(--text);font-size:15px;cursor:pointer;align-self:flex-end;padding:0}.pk:disabled{opacity:.45}.ak-f button.pk{background:var(--line);color:var(--text)}.pk.rec,.ak-f button.pk.rec{background:#e5484d;color:#fff;animation:pkrec 1s ease-in-out infinite}@keyframes pkrec{50%{opacity:.55}}",
+  ".ak-ph{display:flex;align-items:center;gap:8px;padding:6px 8px;background:var(--panel,#fff);border-top:1px solid var(--line);border-radius:14px}.ak-ph img{height:46px;width:46px;object-fit:cover;border-radius:8px}.ak-ph b{cursor:pointer;font-size:14px;padding:4px 8px}.ak-ph.hidden{display:none}.ak-pic{display:block;max-width:100%;max-height:160px;border-radius:10px;margin-bottom:4px}",
+  ".ak-ph{flex-wrap:wrap}.ak-ph .ph1{position:relative;display:inline-block}.ak-ph .ph1 b{position:absolute;top:-6px;right:-6px;width:20px;height:20px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#e5484d;color:#fff;font-size:11px}",
+  ".ab-row{flex-wrap:wrap;align-items:center;gap:4px 6px;padding:8px 8px 6px 12px}.ab-row textarea{order:0;flex:1 1 100%;min-height:46px;max-height:140px;font-size:14px;line-height:1.4;padding:6px 0}.ab-row #abPic{order:1}.ab-row #abMic{order:2}.ab-row #abSnd{order:3}.ab-row #abCv{order:4}.ab-row #abGo{order:5;margin-left:auto;width:56px;height:34px;border-radius:17px}",
+  ".ak-f{flex-wrap:wrap;gap:6px}.ak-f textarea{order:0;flex:1 1 100%;min-height:46px;max-height:140px;font-size:14px;line-height:1.4}.ak-f #akPic{order:1}.ak-f #akMic{order:2}.ak-f #akSnd{order:3}.ak-f #akSend{order:5;margin-left:auto;width:60px;border-radius:17px}",
+  ".pk{display:flex;align-items:center;justify-content:center}.pk svg{display:block}",
   ".ios .ab-row textarea,.ios .ak-f textarea,.ios .kpbox input,.ios .su-id,.ios .kqid input{font-size:16px}"
 ].join("");
 var stEl = document.createElement("style"); stEl.textContent = CSS; document.head.appendChild(stEl);
@@ -350,7 +356,7 @@ function ctxNote() {
   return "";
 }
 function fmt(s) { return esc(s).replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>").replace(/\n/g, "<br>"); }
-function bubble(m) { return '<div class="ak-b ' + (m.role === "user" ? "u" : "b") + '"><div class="ak-x">' + fmt(m.text) + "</div><i>" + esc(showT(m.t)) + "</i></div>"; }
+function bubble(m) { return '<div class="ak-b ' + (m.role === "user" ? "u" : "b") + '"><div class="ak-x">' + (m.imgs ? m.imgs.map(function (u) { return '<img class="ak-pic" src="' + esc(u) + '" alt="">'; }).join("") : m.img ? '<img class="ak-pic" src="' + esc(m.img) + '" alt="">' : "") + fmt(m.text) + "</div><i>" + esc(showT(m.t)) + "</i></div>"; }
 function M() { return $("akM"); }
 function greet() { return '<div class="ak-st">🧸 Hi! Ask me anything: notes, code, maths, or just something you are curious about.</div>'; }
 
@@ -416,18 +422,19 @@ function setupCard(pop, done) {
 }
 
 // ---------- the compact ask bar: opened by the bear's "💬 AI" button. A text box beside the bear (not a full window); the answer appears above it ----------
+var MICSVG = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="12" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0"></path><path d="M12 18v4"></path><path d="M8 22h8"></path></svg>';
 var bar = null, barOpen = false, barTimer = 0, lastRun = null;
 function buildBar() {
   if (bar) return;
   bar = document.createElement("div"); bar.id = "askBar"; bar.className = "hidden";
   bar.innerHTML = '<div class="ab-pop hidden" id="abPop"></div><div class="ab-ans hidden" id="abAns"><div class="ab-h"><b>🧸 Teddy</b><span id="abAx" title="Hide the answer">✕</span></div><div class="ab-t" id="abTxt"></div></div>' +
-    '<div class="ab-row"><button type="button" class="ab-x" id="abX" title="Close">✕</button><textarea id="abIn" rows="1" maxlength="1500" placeholder="Ask me anything…" enterkeyhint="send"></textarea><button type="button" id="abSnd">🔇</button><button type="button" id="abCv" title="Show the conversation">💬</button><button type="button" class="go" id="abGo" title="Send">➤</button></div>';
+    '<div class="ak-ph hidden" id="abPh"><img alt=""><b title="Remove">✕</b></div><div class="ab-row"><button type="button" class="ab-x" id="abX" title="Close">✕</button><textarea id="abIn" rows="1" maxlength="1500" placeholder="Ask me anything…" enterkeyhint="send"></textarea><button type="button" class="pk" id="abMic" title="Speak (hold to switch English / বাংলা)">' + MICSVG + '</button><button type="button" class="pk" id="abPic" title="Add a photo">📷</button><button type="button" id="abSnd">🔇</button><button type="button" id="abCv" title="Show the conversation">💬</button><button type="button" class="go" id="abGo" title="Send">➤</button></div>';
   host().appendChild(bar);
   var t = $("abIn");
   t.addEventListener("keydown", function (e) { if (enterSends(e)) { e.preventDefault(); barSend(); } });
   t.addEventListener("input", function () { autosize(t, 110); placeBar(); });
   $("abGo").onclick = barSend; $("abX").onclick = closeBar; $("abAx").onclick = function () { $("abAns").classList.add("hidden"); placeBar(); };
-  $("abSnd").onclick = function () { setSound(!S.sound); }; $("abCv").onclick = function () { openWindow({}); };
+  $("abSnd").onclick = function () { setSound(!S.sound); }; $("abCv").onclick = function () { openWindow({}); }; wirePk("abIn", "abMic", "abPic", "abPh");
   document.addEventListener("keydown", function (e) { if (e.key === "Escape" && barOpen) closeBar(); });
   document.addEventListener("fullscreenchange", function () { if (bar && bar.parentNode !== host()) host().appendChild(bar); });
   if (window.visualViewport) { window.visualViewport.addEventListener("resize", placeBar); window.visualViewport.addEventListener("scroll", placeBar); }
@@ -451,7 +458,7 @@ function placeBar() {
   bar.style.width = Math.round(W) + "px"; bar.style.left = Math.round(x) + "px"; bar.style.bottom = Math.round(b + (innerHeight - (vv.y + vv.h))) + "px";
 }
 function paintBar() {
-  if (!bar) return; var ok = S.setup; $("abIn").disabled = !ok; $("abIn").placeholder = ok ? "Ask me anything…" : "Answer above first ☝️"; $("abGo").disabled = !ok || pending; paintSound();
+  if (!bar) return; var ok = S.setup; $("abIn").disabled = !ok; $("abIn").placeholder = ok ? "Ask me anything…" : "Answer above first ☝️"; $("abGo").disabled = !ok || pending; paintSound(); micPicOk();
 }
 function openBar() {
   buildBar(); if (!conv) newConv(); if (bar.parentNode !== host()) host().appendChild(bar); if (winVisible()) closeAsk();
@@ -465,7 +472,56 @@ function freezeBear(on) {   // while the ask bar is open the bear stands still (
 }
 function focusBar() { setTimeout(function () { try { $("abIn").focus({ preventScroll: true }); } catch (e) {} }, 60); }
 function showAns(html) { if (!barOpen) return; var a = $("abAns"); a.classList.remove("hidden"); $("abTxt").innerHTML = html; a.scrollTop = 0; placeBar(); }
-function barSend() { var t = $("abIn"), text = (t.value || "").trim(); if (!text || pending || !S.setup) return; t.value = ""; t.style.height = "auto"; sendText(text); }
+// ---------- voice to text (🎤) and photo (📷) ----------
+var MAXPH = 4, photo = [], SR = window.SpeechRecognition || window.webkitSpeechRecognition, rec = null;
+function micLang() { return ls("askLang") === "bn-BD" ? "bn-BD" : "en-US"; }
+function note2(ta, msg) { var old = ta.placeholder; ta.placeholder = msg; setTimeout(function () { if (ta.placeholder === msg) ta.placeholder = old; }, 1800); }
+function micPaint() { ["akMic", "abMic"].forEach(function (id) { var b = $(id); if (b) b.classList.toggle("rec", !!rec); }); }
+function stopMic() { if (rec) { try { rec.stop(); } catch (e) {} } }
+function micToggle(ta) {
+  if (rec) { stopMic(); return; }
+  var r = new SR(), base = ta.value ? ta.value.replace(/\s+$/, "") + " " : "";
+  r.lang = micLang(); r.interimResults = true; r.continuous = false;
+  r.onresult = function (e) { var t = ""; for (var i = 0; i < e.results.length; i++) t += e.results[i][0].transcript; ta.value = (base + t).slice(0, 1500); autosize(ta, 110); if (barOpen) placeBar(); };
+  r.onerror = function (e) { if (e.error === "not-allowed" || e.error === "service-not-allowed") note2(ta, "Allow the microphone 🎤"); else if (e.error === "no-speech") note2(ta, "Did not hear anything 🎤"); else if (e.error !== "aborted") note2(ta, "Voice did not work (" + e.error + ")"); };
+  r.onend = function () { rec = null; micPaint(); };
+  rec = r; micPaint(); note2(ta, micLang() === "bn-BD" ? "🎤 বলুন…" : "🎤 Listening…");
+  try { r.start(); } catch (e) { rec = null; micPaint(); }
+}
+function resizePhoto(file) {   // small JPEG (max 1280 px) so weak phones and the connection cope
+  return new Promise(function (ok, bad) {
+    var u = URL.createObjectURL(file), im = new Image();
+    im.onload = function () {
+      var w = im.naturalWidth, h = im.naturalHeight, k = Math.min(1, 1280 / Math.max(w, h)), c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(w * k)); c.height = Math.max(1, Math.round(h * k));
+      var x = c.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, c.width, c.height); x.drawImage(im, 0, 0, c.width, c.height); URL.revokeObjectURL(u);
+      c.toBlob(function (b) { if (!b) return bad(new Error("photo")); var fr = new FileReader(); fr.onload = function () { ok({ b64: String(fr.result).split(",")[1], url: URL.createObjectURL(b) }); }; fr.onerror = bad; fr.readAsDataURL(b); }, "image/jpeg", 0.82);
+    };
+    im.onerror = function () { URL.revokeObjectURL(u); bad(new Error("photo")); };
+    im.src = u;
+  });
+}
+function paintPhoto() { ["akPh", "abPh"].forEach(function (id) { var el = $(id); if (!el) return; el.classList.toggle("hidden", !photo.length); el.innerHTML = photo.map(function (p, i) { return '<span class="ph1"><img alt="" src="' + p.url + '"><b data-i="' + i + '" title="Remove">✕</b></span>'; }).join(""); }); if (barOpen) placeBar(); }
+function fileInput() {
+  var f = $("akFile"); if (f) return f;
+  f = document.createElement("input"); f.type = "file"; f.accept = "image/*"; f.multiple = true; f.id = "akFile"; f.style.display = "none";
+  f.onchange = function () { var fl = Array.prototype.slice.call(f.files || []).slice(0, MAXPH - photo.length); f.value = ""; var tt = $(barOpen ? "abIn" : "akIn"); if (!fl.length) { if (tt && photo.length >= MAXPH) note2(tt, "Up to " + MAXPH + " photos"); return; } Promise.all(fl.map(function (file) { return resizePhoto(file).catch(function () { return null; }); })).then(function (ps) { var okp = ps.filter(Boolean); if (okp.length < fl.length && tt) note2(tt, "Could not open some photos (try JPG or PNG)"); photo = photo.concat(okp).slice(0, MAXPH); paintPhoto(); }); };
+  document.body.appendChild(f); return f;
+}
+function micPicOk() { ["akMic", "abMic", "akPic", "abPic"].forEach(function (id) { var b = $(id); if (b) b.disabled = !S.setup || pending; }); }
+function wirePk(inId, micId, picId, phId) {
+  var ta = $(inId), mic = $(micId), pic = $(picId), ph = $(phId);
+  if (!SR) mic.style.display = "none";
+  else {
+    var lp = 0, long = false;
+    mic.addEventListener("pointerdown", function () { long = false; clearTimeout(lp); lp = setTimeout(function () { long = true; ls("askLang", micLang() === "en-US" ? "bn-BD" : "en-US"); note2(ta, micLang() === "bn-BD" ? "🎤 বাংলা" : "🎤 English"); }, 700); });
+    ["pointerup", "pointerleave", "pointercancel"].forEach(function (ev) { mic.addEventListener(ev, function () { clearTimeout(lp); }); });
+    mic.addEventListener("click", function () { if (long) { long = false; return; } micToggle(ta); });
+  }
+  pic.addEventListener("click", function () { fileInput().click(); });
+  ph.addEventListener("click", function (e) { var b = e.target.closest && e.target.closest("b[data-i]"); if (b) { photo.splice(+b.getAttribute("data-i"), 1); paintPhoto(); } });
+}
+function barSend() { var t = $("abIn"), text = (t.value || "").trim(); if ((!text && !photo.length) || pending || !S.setup) return; t.value = ""; t.style.height = "auto"; sendText(text); }
 function setSound(v) { S.sound = v; ls("askSound", v ? "1" : "0"); if (v) audioUnlock(); else stopVoice(); paintSound(); }
 function paintSound() { ["abSnd", "akSnd"].forEach(function (id) { var b = $(id); if (!b) return; b.textContent = S.sound ? "🔊" : "🔇"; b.classList.toggle("on", S.sound); b.title = S.sound ? "Voice is on (tap to turn it off)" : "Voice is off (tap to turn it on)"; }); }
 
@@ -475,7 +531,7 @@ function build() {
   win = document.createElement("div"); win.id = "askWin"; win.className = "hidden"; win.setAttribute("role", "dialog"); win.setAttribute("aria-label", "Ask AI");
   win.innerHTML = '<div class="ak-in"><div class="ak-h" title="Drag to move"><button type="button" class="ak-pf" id="akPf" title="Your profile"><span id="akAv"></span></button><div class="ak-t"><b>Ask AI 🧸</b><small id="akWho"></small></div><button type="button" class="ak-ib" id="akNew" title="New chat">＋</button><button type="button" class="ak-ib" id="akHist" title="Chat history">🕘</button><button type="button" class="ak-ib" id="akCl" title="Delete this chat">🗑</button><button type="button" class="ak-ib" id="akX" title="Close">✕</button></div>' +
     '<div class="ak-m" id="akM"></div><div class="ak-pop hidden" id="akPop"></div>' +
-    '<div class="ak-stat" id="akStat"></div><div class="ak-f" id="akF"><textarea id="akIn" rows="1" maxlength="1500" placeholder="Ask me anything…" enterkeyhint="send"></textarea><button type="button" class="snd" id="akSnd">🔇</button><button type="button" id="akSend" title="Send">➤</button></div></div>' +
+    '<div class="ak-stat" id="akStat"></div><div class="ak-ph hidden" id="akPh"><img alt=""><b title="Remove">✕</b></div><div class="ak-f" id="akF"><textarea id="akIn" rows="1" maxlength="1500" placeholder="Ask me anything…" enterkeyhint="send"></textarea><button type="button" class="pk" id="akMic" title="Speak (hold to switch English / বাংলা)">' + MICSVG + '</button><button type="button" class="pk" id="akPic" title="Add a photo">📷</button><button type="button" class="snd" id="akSnd">🔇</button><button type="button" id="akSend" title="Send">➤</button></div></div>' +
     ["n", "s", "e", "w", "ne", "nw", "se", "sw"].map(function (d) { return '<div class="ak-rz" data-d="' + d + '"></div>'; }).join("");
   host().appendChild(win); loadGeo(); applyGeo(); wireGeo();
   $("akX").onclick = closeAsk;
@@ -483,7 +539,7 @@ function build() {
   $("akNew").onclick = function () { if (!S.setup) return; if (view === "hist" || conv.msgs.length) { newConv(); setView("chat"); render(true); paintStat(); try { $("akIn").focus({ preventScroll: true }); } catch (e) {} } };
   $("akHist").onclick = function () { if (!S.setup) return; if (view === "hist") { setView("chat"); render(true); } else showHist(); };
   $("akCl").onclick = deleteCurrent; $("akSend").onclick = send; $("akSnd").onclick = function () { setSound(!S.sound); };
-  var inp = $("akIn");
+  var inp = $("akIn"); wirePk("akIn", "akMic", "akPic", "akPh");
   inp.addEventListener("keydown", function (e) { if (enterSends(e)) { e.preventDefault(); send(); } });
   inp.addEventListener("input", function () { autosize(inp, 110); });
   M().addEventListener("click", histClick);
@@ -651,13 +707,13 @@ async function run(cv, um, note, h, shotP) {
   } finally { pending = false; setInputOk(); }
 }
 function sendText(text) {
-  if (!text || pending || !S.setup) return;
+  if ((!text && !photo.length) || pending || !S.setup) return;
   stopVoice(); if (S.sound) audioUnlock();   // the tap / key press is what allows the phone to play sound
-  var um = { role: "user", text: text, t: ts() }; if (!conv.title) conv.title = titleOf(text);
+  var phs = photo.slice(); if (phs.length) { photo = []; paintPhoto(); text = text || (phs.length > 1 ? "Please look at my photos and help me." : "Please look at my photo and help me."); } stopMic(); var um = { role: "user", text: (phs.length ? "📷 " + (phs.length > 1 ? "×" + phs.length + " " : "") : "") + text, t: ts() }; if (phs.length) { Object.defineProperty(um, "img", { value: phs[0].url, enumerable: false, writable: true }); Object.defineProperty(um, "imgs", { value: phs.map(function (p) { return p.url; }), enumerable: false, writable: true }); } if (!conv.title) conv.title = titleOf(text);
   var h = conv.msgs.slice(-HIST_TURNS); conv.msgs.push(um); if (winVisible() && view === "chat") append(um);
-  run(conv, um, ctxNote(), h, captureShot(text));   // the screenshot is taken right now, while the page is still as the student sees it
+  run(conv, um, ctxNote(), h, phs.length ? (function () { var sh = captureShot(text); sh.img = pagePicture(); sh.imgs = phs.map(function (p) { return p.b64; }); sh.user = true; return sh; })() : captureShot(text));   // the screenshot is taken right now, while the page is still as the student sees it
 }
-function send() { var inp = $("akIn"), text = (inp.value || "").trim(); if (!text || pending || view !== "chat" || !S.setup) return; inp.value = ""; inp.style.height = "auto"; sendText(text); }
+function send() { var inp = $("akIn"), text = (inp.value || "").trim(); if ((!text && !photo.length) || pending || view !== "chat" || !S.setup) return; inp.value = ""; inp.style.height = "auto"; sendText(text); }
 
 // ---------- the bear's "Ask AI" button (tiny, outside the bear so it covers nothing) ----------
 function addBadge() {

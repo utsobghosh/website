@@ -19,7 +19,7 @@ window.__assetsReady=(function(){
   var x=document.createElement("button");x.textContent="✕";x.style.cssText="margin-left:8px";x.onclick=function(){d.remove()};d.appendChild(x);document.body.appendChild(d)})})();
 
 /* ===== Main code. You do not need to edit anything below. ===== */
-window.__assetsReady.then(function(){
+window.__appReady=Promise.all([window.__assetsReady,window.__frontReady||0]).then(function(){
 var $=function(i){return document.getElementById(i)};
 function buzz(p){if(VIBRATE_ON&&navigator.vibrate){try{navigator.vibrate(p)}catch(e){}}}
 document.addEventListener("click",function(e){var t=e.target.closest&&e.target.closest("button,.opt,.tab");if(t&&!t.disabled)buzz(BUTTON_BUZZ_MS)});   // buttons buzz, typing boxes do not
@@ -317,14 +317,16 @@ updateSky();setInterval(updateSky,300000);
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
 
 // Builds a real Word file from your own template: one page per person (repeated per copy).
+function curRec(n){return{id:cur.id,name:cur.name,section:cur.section,copies:n,dyn:(cur.opt&&cur.opt.kind==="cover")?cur.opt:null,vals:cur.vals||null}}
+function coverBase(o){o=o||cur.opt;return o&&o.kind==="cover"?(String(o.title).replace(/[^\w]+/g,"_").replace(/^_+|_+$/g,"")||"Cover_Page"):"Math_Cover_Page"}
 async function buildDocx(list){
- var zip=await JSZip.loadAsync(TEMPLATE_DOCX,{base64:true});
+ var d0=list[0]&&list[0].dyn,zip=await JSZip.loadAsync(d0&&d0.tpl?d0.tpl:TEMPLATE_DOCX,{base64:true});
  var xml=await zip.file("word/document.xml").async("string");
- var a=xml.indexOf("<w:body>")+8,b=xml.indexOf("<w:sectPr");
- var head=xml.slice(0,a),block=xml.slice(a,b).replace("<w:t>A</w:t>","<w:t>{{SEC}}</w:t>"),tail=xml.slice(b),pages=[];
+ var a=xml.indexOf("<w:body>")+8,b=d0?xml.lastIndexOf("<w:sectPr"):xml.indexOf("<w:sectPr");if(b<0)b=xml.indexOf("</w:body>");
+ var head=xml.slice(0,a),block=d0?xml.slice(a,b):xml.slice(a,b).replace("<w:t>A</w:t>","<w:t>{{SEC}}</w:t>"),tail=xml.slice(b),pages=[];
  list.forEach(function(o){for(var c=0;c<(+o.copies||1);c++)pages.push(o)});
  var out=pages.map(function(o,i){
-  var blk=block.replace("{{NAME}}",function(){return esc(o.name)}).replace("{{REG}}",function(){return esc(o.id)}).replace("{{SEC}}",function(){return esc(o.section||"A")});
+  var blk=o.dyn?CoverFields.fill(block,function(k){var r=CoverFields.role(k);if(r==="name")return o.name;if(r==="id")return o.id;if(r==="sec")return o.section||"";var v=o.vals&&o.vals[CoverFields.nk(k)];return v==null?"":v}):block.replace("{{NAME}}",function(){return esc(o.name)}).replace("{{REG}}",function(){return esc(o.id)}).replace("{{SEC}}",function(){return esc(o.section||"A")});
   if(i<pages.length-1){var k=blk.lastIndexOf("</w:p>");blk=blk.slice(0,k)+'<w:r><w:br w:type="page"/></w:r>'+blk.slice(k)}
   return blk}).join("");
  zip.file("word/document.xml",head+out+tail);
@@ -398,7 +400,7 @@ async function dlFile(o,rec,tab){if(o.upload){   // uploaded file: fetch it from
    var bs=atob(r.data),u8=new Uint8Array(bs.length);for(var q=0;q<bs.length;q++)u8[q]=bs.charCodeAt(q);
    await save(new Blob([u8],{type:r.mime||"application/octet-stream"}),(rec.id&&rec.id!=="-"?rec.id+"_":"")+fn)}
   catch(e){var lk=linkOf(rec.option);if(lk&&confirm("Could not download it here ("+(e.message||e)+"). Open it in Google Drive instead?"))window.open(lk,"_blank")}
-  return}if(o.img)save(imgBlob(tab.key),tab.file);else save(await buildDocx([rec]),"Math_Cover_Page_"+rec.id+".docx")}
+  return}if(o.kind==="cover"){await window.__frontTpl(o);var fv=rec.vals||(rec.option?window.__frontParse(o,noteOf(rec.option)):null)||{};save(await buildDocx([Object.assign({},rec,{dyn:o,vals:fv})]),coverBase(o)+"_"+rec.id+".docx");return}if(o.img)save(imgBlob(tab.key),tab.file);else save(await buildDocx([rec]),"Math_Cover_Page_"+rec.id+".docx")}
 function renderPic(){$("stage").innerHTML='<div class="tabs" style="margin:0 0 10px">'+cur.opt.tabs.map(function(t,i){return '<button class="tab'+(t===cur.tab?' on':'')+'" data-t="'+i+'">'+esc(t.label)+'</button>'}).join("")+'</div><img src="'+IMAGES[cur.tab.key]+'" alt="'+esc(cur.opt.title+" - "+cur.tab.label)+'" style="display:block;width:100%;height:auto">';
  Array.prototype.forEach.call($("stage").querySelectorAll("[data-t]"),function(bt){bt.onclick=function(){cur.tab=cur.opt.tabs[+bt.getAttribute("data-t")];renderPic()}})}
 function fileWord(o){return o&&o.img?"photo":"docs file"}
@@ -406,10 +408,10 @@ function show(ids){["s1","su","sp","s2","s3","c1"].forEach(function(i){$(i).clas
 function fit(){var w=$("stage").querySelector(".docx-wrapper");if(!w)return;w.style.zoom=1;var sec=w.querySelector("section.docx");if(!sec)return;w.style.zoom=Math.min(1,($("stage").clientWidth-4)/(sec.offsetWidth+4))}
 window.addEventListener("resize",fit);
 
-var optN=0;OPTIONS.forEach(function(o){if(o.upload)return;var n=optN++,b=document.createElement("button");b.className="opt";b.innerHTML='<img class="thumb" data-t="'+esc(o.id)+'" alt="" hidden><span class="tx"><b class="n">'+(n+1)+'.</b> '+esc(o.title)+'<small>'+esc(o.desc)+'</small></span>';
- b.onclick=function(){cur.opt=o;cur.tab=o.tabs?o.tabs[0]:null;cur.file=null;cur.pages=1;$("note").value="";if(o.img&&mode==="dl"){cur.skip=true;proceed("-","-");return}   // photo + Download only: no personal info needed -> skip "About you"
+function renderOpts(){$("opts").innerHTML="";var optN=0;OPTIONS.forEach(function(o){if(o.upload||o.hid)return;var n=optN++,b=document.createElement("button");b.className="opt";b.setAttribute("data-oid",o.id);b.innerHTML='<img class="thumb" data-t="'+esc(o.id)+'" alt="" hidden><span class="tx"><b class="n">'+(n+1)+'.</b> '+esc(o.title)+'<small>'+esc(o.desc)+'</small></span>';
+ b.onclick=function(){if(o.kind==="file"){window.__frontDl&&window.__frontDl(o,b);return}cur.opt=o;if(window.__frontFields)window.__frontFields(o);if(o.kind==="cover"&&window.__frontTpl)window.__frontTpl(o).catch(function(){});cur.tab=o.tabs?o.tabs[0]:null;cur.file=null;cur.pages=1;$("note").value="";if(o.img&&mode==="dl"){cur.skip=true;proceed("-","-");return}   // photo + Download only: no personal info needed -> skip "About you"
   cur.skip=false;
-  show(["s2"]);$("sid").focus()};$("opts").appendChild(b)});
+  show(["s2"]);$("sid").focus()};$("opts").appendChild(b)});if(window.__frontAdmin)window.__frontAdmin($("opts"))}renderOpts();
 $("back1").onclick=function(){show([cur.opt&&cur.opt.upload?"su":"s1"])};
 $("suBack").onclick=function(){show(["s1"])};
 $("suNext").onclick=function(){if(!cur.file){say("errSu","Please choose your file first.");return}say("errSu","");show(["s2"]);$("sid").focus()};$("back2").onclick=function(){show([cur.skip?"s1":"s2"])};
@@ -432,19 +434,19 @@ var secTouched=false,autoSec="",acceptedName="",acceptedSec="",autoName="",nameT
 $("sname").addEventListener("input",function(){nameTouched=this.value!==autoName;say("errS2","");$("mism").classList.add("hidden")});
 $("sid").addEventListener("input",function(){var id=this.value.trim(),n=STUDENTS[id]||"";say("errS2","");$("mism").classList.add("hidden");
  if(!nameTouched||$("sname").value===autoName){$("sname").value=n;autoName=n;nameTouched=false}      // fills the known name (still editable)
- var ns=STUDENTS[id]?LIST_SECTION:"";                                                       // listed students are in the list section; others type theirs
+ var ns=SECTION_OF[id]||"";                                                       // listed students are in the list section; others type theirs
  if(!secTouched||$("ssec").value===autoSec){$("ssec").value=ns;autoSec=ns;secTouched=false}
  if(IDLEN&&id.length<IDLEN)sidDone=false;
  if(IDLEN&&id.length>=IDLEN&&!sidDone){sidDone=true;goNext($("sname"))}});
 $("sid").addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();goNext($("sname"))}});
 $("sname").addEventListener("keydown",function(e){if(e.key==="Enter"){e.preventDefault();$("sname").blur();$("next").click()}});
 async function proceed(id,name){
-  $("mism").classList.add("hidden");cur.id=id;cur.name=name;cur.section=cur.skip?"-":$("ssec").value.trim().toUpperCase();if(!cur.skip){try{localStorage.setItem("me",JSON.stringify({id:id,name:name,sec:cur.section}))}catch(e){}}
+  $("mism").classList.add("hidden");cur.id=id;cur.name=name;cur.vals=(cur.opt&&cur.opt.kind==="cover"&&window.__frontCollect)?window.__frontCollect(cur.opt):null;if(window.__frontSaveName&&!cur.skip)window.__frontSaveName(id,name);cur.section=cur.skip?"-":$("ssec").value.trim().toUpperCase();if(!cur.skip){try{localStorage.setItem("me",JSON.stringify({id:id,name:name,sec:cur.section}))}catch(e){}}
   /* Download only on a photo: nothing is saved about the person */
   show(["s3"]);$("stage").innerHTML='<p class="note" style="padding:16px">Loading preview…</p>';
   $("dlMain").textContent="📥 Download "+fileWord(cur.opt);$("dlPrev").textContent="📥 Download "+fileWord(cur.opt);$("warnDl").textContent="📥 No, just download the "+fileWord(cur.opt);
   if(cur.opt.img){renderPic();return}
-  try{var blob=await buildDocx([{id:id,name:name,section:cur.section,copies:1}]);$("stage").innerHTML="";
+  try{if(cur.opt.kind==="cover"&&window.__frontTpl)await window.__frontTpl(cur.opt);var blob=await buildDocx([curRec(1)]);$("stage").innerHTML="";
    await docx.renderAsync(blob,$("stage"),null,{className:"docx",inWrapper:true,ignoreLastRenderedPageBreak:true});fit()}
   catch(e){$("stage").innerHTML='<p class="note" style="padding:16px">Preview could not load ('+esc(e.message||e)+'). You can still send it to print.</p>'}}
 function warn(msg,a,b){choices={a:a,b:b};var m=$("mism");m.className="banner err";
@@ -477,11 +479,11 @@ $("sid").addEventListener("focus",renderSugg);$("sid").addEventListener("input",
 $("sid").addEventListener("blur",function(){setTimeout(function(){$("sugg").classList.add("hidden")},200)});
 $("sugg").addEventListener("pointerdown",function(e){e.preventDefault()});     // keeps the keyboard open while you scroll the list
 $("sugg").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;var k=b.getAttribute("data-i");
-  $("sid").value=k;$("sname").value=STUDENTS[k];$("ssec").value=LIST_SECTION;autoName=STUDENTS[k];autoSec=LIST_SECTION;nameTouched=secTouched=false;sidDone=true;
+  $("sid").value=k;$("sname").value=STUDENTS[k];$("ssec").value=SECTION_OF[k]||"";autoName=STUDENTS[k];autoSec=SECTION_OF[k]||"";nameTouched=secTouched=false;sidDone=true;
   $("mism").classList.add("hidden");say("errS2","");$("sugg").classList.add("hidden");if(document.activeElement&&document.activeElement.blur)document.activeElement.blur()});
 // ----- Remember me: the phone keeps your last ID, name and section -----
 try{var me=JSON.parse(localStorage.getItem("me")||"null");if(me&&me.id){$("sid").value=me.id;$("sname").value=me.name||"";$("ssec").value=me.sec||"";
-  autoName=STUDENTS[me.id]||"";nameTouched=$("sname").value!==autoName;autoSec=STUDENTS[me.id]?LIST_SECTION:"";secTouched=$("ssec").value!==autoSec;sidDone=true;
+  autoName=STUDENTS[me.id]||"";nameTouched=$("sname").value!==autoName;autoSec=SECTION_OF[me.id]||"";secTouched=$("ssec").value!==autoSec;sidDone=true;
   if(!sessionStorage.getItem("myid"))sessionStorage.setItem("myid",me.id)}}catch(e){}
 $("forget").onclick=function(e){e.preventDefault();try{localStorage.removeItem("me")}catch(x){}["sid","sname","ssec"].forEach(function(i){$(i).value=""});autoName=autoSec="";nameTouched=secTouched=sidDone=false;$("mism").classList.add("hidden");$("sid").focus()};
 $("next").onclick=function(){
@@ -496,7 +498,7 @@ $("next").onclick=function(){
    return warn("ID "+id+" is “"+idName+"” in our list, but you typed “"+name+"”. Which one do you want to keep?",{label:"Keep “"+idName+"”",id:id,name:idName},{label:"Keep “"+name+"”",id:id,name:name})}
   if(!skipName&&!idName&&nameId)return warn("“"+name+"” is ID "+nameId+" in our list, but you typed ID "+id+". Which one do you want to keep?",{label:"Keep ID "+nameId,id:nameId,name:STUDENTS[nameId]},{label:"Keep ID "+id,id:id,name:name});
   var sec=secNow.toUpperCase();$("ssec").value=sec;
-  if(idName&&sec!==LIST_SECTION&&acceptedSec!==id+"|"+sec)return warn("ID "+id+" is on our Section "+LIST_SECTION+" list, but you typed Section "+sec+". Which one do you want to keep?",{label:"Keep Section "+LIST_SECTION,id:id,sec:LIST_SECTION},{label:"Keep Section "+sec,id:id,sec:sec});
+  if(idName&&SECTION_OF[id]&&sec!==SECTION_OF[id]&&acceptedSec!==id+"|"+sec)return warn("ID "+id+" is on our Section "+SECTION_OF[id]+" list, but you typed Section "+sec+". Which one do you want to keep?",{label:"Keep Section "+SECTION_OF[id],id:id,sec:SECTION_OF[id]},{label:"Keep Section "+sec,id:id,sec:sec});
   if(cur.opt.upload){cur.id=id;cur.name=idName||name;cur.section=sec;try{localStorage.setItem("me",JSON.stringify({id:cur.id,name:cur.name,sec:sec}))}catch(e){}openWarn();return}
   proceed(id,idName||name)};
 var PRICE=PRICE_PER_PAGE;
@@ -793,8 +795,8 @@ var mine=[];
 function showMine(id,msg){show(["c1"]);$("cid").value=id||"";banner(msg);if(id)findOrders(false,!!msg);else $("clist").innerHTML=""}
 $("tabNew").onclick=function(){mode="print";show(["s1"])};
 $("tabMine").onclick=function(){showMine($("cid").value.trim()||cur.id||sessionStorage.getItem("myid")||"")};
-$("dlPrev").onclick=async function(){var b=this,t=b.textContent;await dlFile(cur.opt,{id:cur.id,name:cur.name,section:cur.section,copies:copiesNow()},cur.tab);b.textContent="✅ Downloaded. Look in your Downloads folder (or the Files app)";setTimeout(function(){b.textContent=t},2500)};
-$("dlMain").onclick=async function(){await dlFile(cur.opt,{id:cur.id,name:cur.name,section:cur.section,copies:1},cur.tab);$("dlOk").classList.remove("hidden");bearReact("cheer")};
+$("dlPrev").onclick=async function(){var b=this,t=b.textContent;await dlFile(cur.opt,curRec(copiesNow()),cur.tab);b.textContent="✅ Downloaded. Look in your Downloads folder (or the Files app)";setTimeout(function(){b.textContent=t},2500)};
+$("dlMain").onclick=async function(){await dlFile(cur.opt,curRec(1),cur.tab);$("dlOk").classList.remove("hidden");bearReact("cheer")};
 function uploadFail(detail){
  var box=$("errS2");box.classList.remove("hidden");
  box.innerHTML='<div class="fail"><b>⚠️ Upload failed</b><div class="frow"><button type="button" class="p" id="fTry">🔁 Try again</button>'+
@@ -813,7 +815,7 @@ async function sendOrder(){
    var up;try{startProg();up=await post({action:"upload",name:cur.file.name,mime:cur.file.mime,data:cur.file.b64,thumb:cur.file.thumb||"",id:cur.id})}catch(err){throw new Error(err&&err.message==="Failed to fetch"?"No connection to Google (no internet, or the file is too big)":(err&&err.message)||"No answer from Google")}
    if(!up||!up.ok||!up.url)throw new Error(up&&up.error==="type"?"File type not allowed by the script":up&&up.error==="size"?"File too big for the script":up&&up.error&&up.error!=="action"?String(up.error):"The Google script has no upload code yet, or it was not re-deployed as a New version");
    o.option="Upload: "+cur.file.name.replace(/[|\r\n]/g," ").slice(0,80)+(cur.exact?" ("+cur.pages+" page"+(cur.pages>1?"s":"")+")":"")+" | "+up.url+(up.thumb?" | "+up.thumb:"")}
-  var nt=($(cur.opt.upload?"suNote":"note").value||"").replace(/[\r\n|]+/g," ").replace(/✎/g,"").trim().slice(0,200);if(nt)o.option+=NOTESEP+nt;
+  var nt=($(cur.opt.upload?"suNote":"note").value||"").replace(/[\r\n|]+/g," ").replace(/✎/g,"").trim().slice(0,200);if(cur.opt.kind==="cover"&&cur.vals){var fv2=window.__frontFv(cur.opt,cur.vals).replace(/[\r\n|]+/g," ").replace(/✎/g,"");if(fv2)nt=("Fields: "+fv2+(nt?" · "+nt:"")).slice(0,500)}if(nt)o.option+=NOTESEP+nt;
   var r=await post({action:"add",order:o});if(!r.ok)throw new Error(r.error||"failed");
   sessionStorage.setItem("myid",cur.id);showMine(cur.id,"✅ Sent to "+OWNER_NAME+" to print! "+OWNER_NAME+" will give you the printed copy "+HANDOVER_TEXT+". You can see the progress below.");celebrate();bearReact("cheer");buzz([90,50,90,50,250])}
  catch(e){if(cur.opt.upload)uploadFail(e&&e.message||String(e));else say(EID,"Could not send to print: "+(e.message||e),btn)}
@@ -978,5 +980,6 @@ bridgeLink("renderUpload",function(){return renderUpload},function(f){renderUplo
 bridgeLink("readUpload",function(){return readUpload},function(f){readUpload=f});
 bridgeLink("extras",function(){return extras},function(f){extras=f});
 window.__bearK={DUR:DUR,BW:BW,BH:BH,bsay:bsay,get bear(){return bear},get cheering(){return cheering},act:act,sparkleBurst:sparkleBurst,bearReact:bearReact};
+window.curRec=curRec;window.coverBase=coverBase;window.__renderOpts=renderOpts;
 window.addEventListener("hashchange",function(){route();guide(100)});show(["s1"]);route();guide(900);
 });
