@@ -26,39 +26,45 @@ var box=document.createElement("div");
 box.innerHTML='<h2 class="h2">👀 Visitors</h2><div class="card" style="overflow-x:auto">'+
  '<div id="vSum" class="tiny" style="margin:0 0 8px"></div>'+
  '<button class="s" id="vRef" style="margin:0 0 10px">🔄 Refresh visitors</button> <button class="s" id="vMine" style="margin:0 0 10px">📵 Don’t count this device</button>'+
- '<label class="tiny" style="display:flex;align-items:center;gap:8px;margin:0 0 8px"><input type="checkbox" id="vTd" style="width:18px;height:18px;min-width:18px;padding:0;margin:0;flex:none"> Only IDs that visited today</label>'+
+ '<button class="s" id="vTd" style="margin:0 0 10px">📅 Only IDs that visited today: off</button>'+
  '<table><thead id="vHead"><tr><th data-k="id">ID</th><th data-k="name">Name</th><th data-k="visits">Visits</th><th data-k="devices">Devices</th><th data-k="ts">Last visit</th><th data-k="today">Today</th><th data-k="ai">🤖 AI</th><th data-k="aiToday">🤖 Today</th></tr></thead><tbody id="vRows"></tbody></table>'+
  '<p class="note" id="vNone"></p>'+
  '<div class="tiny" style="margin:12px 0 4px;font-weight:600">Last days</div>'+
  '<table><thead><tr><th>Day</th><th>All visits</th><th>ID visits</th><th>Guest visits</th></tr></thead><tbody id="vDays"></tbody></table>'+
  '<div class="tiny" style="margin:14px 0 4px;font-weight:600">📱 My devices</div><div class="tiny" id="vMyN"></div><table><thead><tr><th>Device</th><th>ID</th><th>Visits</th><th>Last visit</th><th>Mine</th></tr></thead><tbody id="vMy"></tbody></table>'+
  '<div class="tiny" style="margin:14px 0 4px;font-weight:600">⏰ Busy hours (last 14 days, Dhaka time)</div><div id="vHr"></div>'+
- '<p class="tiny" style="margin-top:10px">A visit = one browser opening the site (counted once per tab session). "Devices" = different phones/computers that used that ID. Guest = no ID known. Tick “Mine” for your own devices so they are not counted. Tap a column title to sort, tap an ID to see the days it visited.</p></div>';
+ '<p class="tiny" style="margin-top:10px">A visit = one browser opening the site (counted once per tab session). "Devices" = different phones/computers that used that ID. Guest = no ID known. Tap “Mark as mine” on your own devices so they are not counted. Tap a column title to sort, tap an ID to see the days it visited.</p></div>';
 ad.appendChild(box);
 function $(i){return document.getElementById(i)}
 function nameOf(id){try{if(typeof STUDENTS!=="undefined"&&STUDENTS[id])return STUDENTS[id]}catch(e){}return ls("askNm:"+id)||""}
 function msg(t){$("vSum").textContent=t}
-var TODAY="",R=null,SK="id",SD=1,HIST={},MINE=false;
+var holdOn=false;
+// keeps the panel as tall as it was while the lists redraw, so the page does not jump up; released on the next scroll/touch
+function hold(){var c=box.querySelector(".card");
+ if(!holdOn){c.style.minHeight=c.offsetHeight+"px";holdOn=true;var rel=function(){c.style.minHeight="";holdOn=false;["wheel","touchstart","keydown"].forEach(function(e){window.removeEventListener(e,rel)})};["wheel","touchstart","keydown"].forEach(function(e){window.addEventListener(e,rel,{passive:true})})}
+ return window.pageYOffset}
+var TDONLY=false,TODAY="",R=null,SK="id",SD=1,HIST={},MINE=false;
 function mineBtn(){$("vMine").textContent=MINE?"✅ This device is not counted (tap to count again)":"📵 Don’t count this device"}
 function renderRows(){
- if(!R)return;var td=(R.days&&R.days[0]&&R.days[0].d===R.today)?R.days[0]:{v:0,g:0},only=$("vTd").checked;
+ if(!R)return;var y0=hold(),td=(R.days&&R.days[0]&&R.days[0].d===R.today)?R.days[0]:{v:0,g:0},only=TDONLY;
  var a=R.ids.filter(function(o){return!only||o.today>0});
  a.sort(function(x,y){var p,q;if(SK==="name"){p=nameOf(x.id).toLowerCase();q=nameOf(y.id).toLowerCase()}else{p=x[SK];q=y[SK]}
   return(p<q?-1:p>q?1:(x.id<y.id?-1:1))*SD});
  var h=a.map(function(o){return'<tr data-id="'+esc(o.id)+'" style="cursor:pointer"><td>'+esc(o.id)+"</td><td>"+esc(nameOf(o.id))+"</td><td><b>"+o.visits+"</b></td><td>"+o.devices+"</td><td>"+esc(o.last)+"</td><td>"+(o.today?"<b>"+o.today+"</b>":"")+"</td><td>"+(o.ai||"")+"</td><td>"+(o.aiToday?"<b>"+o.aiToday+"</b>":"")+"</td></tr>"}).join("");
  if(!only||td.g>0)h+='<tr><td>👤 Guest</td><td>no ID</td><td><b>'+R.guest.visits+"</b></td><td>"+R.guest.devices+"</td><td>"+esc(R.guest.last)+"</td><td>"+(td.g?"<b>"+td.g+"</b>":"")+"</td><td>"+(R.guest.ai||"")+"</td><td>"+(R.guest.aiToday?"<b>"+R.guest.aiToday+"</b>":"")+"</td></tr>";
  $("vRows").innerHTML=h;$("vNone").textContent=a.length?"":(only?"No student ID has visited today.":"No student ID has visited yet.");
- Array.from($("vHead").querySelectorAll("th")).forEach(function(t){var k=t.getAttribute("data-k");t.style.cursor="pointer";t.textContent=t.textContent.replace(/ [▲▼]$/,"")+(k===SK?(SD>0?" ▲":" ▼"):"")})}
+ Array.from($("vHead").querySelectorAll("th")).forEach(function(t){var k=t.getAttribute("data-k");t.style.cursor="pointer";t.textContent=t.textContent.replace(/ [▲▼]$/,"")+(k===SK?(SD>0?" ▲":" ▼"):"")});
+ window.scrollTo(0,y0)}
 function renderMy(){var a=R.mydevs||[];
- $("vMyN").textContent=a.length?"Devices marked as mine (not counted) or that typed my ID. Untick a device to count it again; tick a stranger's device that is not mine only if you are sure.":"No device yet. Open Admin on your phone/computer once and it is added here.";
- $("vMy").innerHTML=a.map(function(o){return"<tr><td>"+esc(o.dev.slice(0,6))+(o.dev===DEV?" (this one)":"")+"</td><td>"+esc(o.id||"guest")+"</td><td>"+o.visits+"</td><td>"+esc(o.last)+'</td><td><input type="checkbox" data-dev="'+esc(o.dev)+'"'+(o.mine?" checked":"")+' style="width:20px;height:20px;min-width:20px;padding:0;margin:0"></td></tr>'}).join("")}
+ $("vMyN").textContent=a.length?"Devices marked as mine (not counted) or that typed my ID. Tap “✅ Mine” to count a device again. Mark a device as mine only if you are sure it is yours.":"No device yet. Open Admin on your phone/computer once and it is added here.";
+ $("vMy").innerHTML=a.map(function(o){return"<tr><td>"+esc(o.dev.slice(0,6))+(o.dev===DEV?" (this one)":"")+"</td><td>"+esc(o.id||"guest")+"</td><td>"+o.visits+"</td><td>"+esc(o.last)+'</td><td><button type="button" class="s" data-dev="'+esc(o.dev)+'" data-on="'+(o.mine?"1":"0")+'">'+(o.mine?"✅ Mine":"Mark as mine")+'</button></td></tr>'}).join("")}
 function renderHours(hs){var mx=Math.max.apply(null,hs.concat([1])),b="",l="";
  hs.forEach(function(n,i){b+='<div title="'+i+':00 – '+n+' visit'+(n===1?"":"s")+'" style="flex:1;min-width:0;height:'+(n?Math.max(3,Math.round(n/mx*100)):0)+'%;background:currentColor;opacity:.55;border-radius:3px 3px 0 0"></div>';l+='<div style="flex:1;text-align:center">'+(i%3===0?i:"")+"</div>"});
  $("vHr").innerHTML='<div style="display:flex;align-items:flex-end;gap:2px;height:70px;border-bottom:1px solid var(--line)">'+b+'</div><div class="tiny" style="display:flex;gap:2px">'+l+"</div>"+(mx>1||hs.some(Boolean)?"":'<div class="tiny">No visits yet.</div>')}
 async function loadV(askPin){
  var pin=ss("pin");
  if(!pin){if(!askPin){msg("Press “Refresh visitors” (it asks for the admin PIN).");return}pin=prompt("Admin PIN")||"";if(!pin)return;ss("pin",pin)}
- msg("⏳ Loading…");
+var y1=hold();msg("⏳ Loading…");window.scrollTo(0,y1);
  try{
   var r=await (await fetch(SCRIPT_URL+"?"+new URLSearchParams({visits:1,pin:pin,dev:DEV}))).json();
   if(r&&r.error==="pin"){ss("pin",null);ntfOff();msg("Wrong PIN. Press Refresh visitors to try again.");return}
@@ -66,10 +72,11 @@ async function loadV(askPin){
   R=r;HIST={};MINE=!!r.mine;mineBtn();TODAY=r.today;var td=(r.days&&r.days[0]&&r.days[0].d===r.today)?r.days[0]:{v:0,g:0};
   msg("Total visits: "+r.total+" · Today: "+td.v+" visits (🪪 ID "+(td.v-td.g)+" · 👤 guest "+td.g+") from "+(r.todayDevices||0)+" device"+(r.todayDevices===1?"":"s")+" and "+(r.todayIds||0)+" ID"+(r.todayIds===1?"":"s")+" · 🤖 AI today: "+(r.aiToday||0)+" from "+(r.aiUsersToday||0)+" ID"+(r.aiUsersToday===1?"":"s")+" (total "+(r.aiTotal||0)+") · 🧑 My visits (not in the total): "+(r.myVisits||0)+" · All devices: "+r.devices+" · IDs seen: "+r.ids.length+" · Guest visits: "+r.guest.visits+" ("+r.guest.devices+" device"+(r.guest.devices===1?"":"s")+")");
   renderRows();renderMy();renderHours(r.hours||[]);
-  if(!ls("mineAuto")&&!MINE){ls("mineAuto","1");setMine(DEV,true)}
+  if(!ls("mineAuto2")&&!MINE)setMine(DEV,true);
+  window.scrollTo(0,y1);
   $("vDays").innerHTML=(r.days||[]).map(function(d){return"<tr><td>"+esc(d.d)+"</td><td>"+d.v+"</td><td><b>"+(d.v-d.g)+"</b></td><td>"+d.g+"</td></tr>"}).join("")||'<tr><td colspan="4">No visits yet.</td></tr>';ntfBtn()
  }catch(e){msg("Could not load visitors: "+(e.message||e))}}
-$("vTd").onchange=renderRows;
+$("vTd").onclick=function(){TDONLY=!TDONLY;this.textContent="📅 Only IDs that visited today: "+(TDONLY?"✅ on":"off");renderRows()};
 $("vHead").onclick=function(e){var t=e.target.closest("th");if(!t)return;var k=t.getAttribute("data-k");if(k===SK)SD=-SD;else{SK=k;SD=(k==="id"||k==="name")?1:-1}renderRows()};
 $("vRows").onclick=async function(e){var tr=e.target.closest("tr[data-id]");if(!tr)return;var nx=tr.nextElementSibling;
  if(nx&&nx.className==="vD"){nx.remove();return}
@@ -82,9 +89,9 @@ $("vRows").onclick=async function(e){var tr=e.target.closest("tr[data-id]");if(!
 async function setMine(dev,on){var pin=ss("pin");if(!pin){loadV(true);return}
  try{var r=await (await fetch(SCRIPT_URL,{method:"POST",body:JSON.stringify({action:"mydev",pin:pin,dev:dev,on:on})})).json();
   if(r&&r.error==="pin"){ss("pin",null);ntfOff();msg("Wrong PIN. Press Refresh visitors to try again.");return}
-  if(r&&r.ok){if(dev===DEV){MINE=!!r.mine;mineBtn()}loadV(false)}else msg("Update Code.gs and deploy a New version.")}catch(e){msg("Could not save: "+(e.message||e))}}
+  if(r&&r.ok){if(dev===DEV){MINE=!!r.mine;mineBtn();ls("mineAuto2","1")}loadV(false)}else msg("Update Code.gs and deploy a New version.")}catch(e){msg("Could not save: "+(e.message||e))}}
 $("vMine").onclick=function(){setMine(DEV,!MINE)};
-$("vMy").onchange=function(e){var c=e.target;if(c.getAttribute("data-dev"))setMine(c.getAttribute("data-dev"),c.checked)};
+$("vMy").onclick=function(e){var b=e.target.closest("button[data-dev]");if(b)setMine(b.getAttribute("data-dev"),b.getAttribute("data-on")!=="1")};
 // ----- alert settings: the little 🔔 button is only created AFTER the server accepted the admin PIN, so students never see it -----
 var NM=[["off","🔕 Off"],["all","👀 Every visit"],["id","🪪 Only students with an ID"],["new","🆕 Only first-time devices"],["guest","👤 Only guests (no ID)"],["watch","⭐ Only people on my list"]],ntfLoaded=false;
 function ntfOff(){var x=$("vNtf");if(x)x.remove();ntfLoaded=false}
