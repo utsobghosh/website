@@ -77,7 +77,7 @@ const STUDENTS = {
   "24201041": "Fardin Rahaman",
   "24201101": "Sheikh Ahammadul Hoque",
   "25101001": "Riana Iftekhar",
-  "25101003": "Utsob Ghosh",
+  "25101000": "Utsob Ghosh",
   "25101004": "Priangona Bhowmik",
   "25101005": "Prakas Saha",
   "25101006": "Mohammad Sadnan Hossain Sakib",
@@ -251,7 +251,7 @@ const SECTION_OF = {
   "24201041": "B",
   "24201101": "B",
   "25101001": "A",
-  "25101003": "A",
+  "25101000": "A",
   "25101004": "A",
   "25101005": "A",
   "25101006": "A",
@@ -492,7 +492,7 @@ const ASSET_FILES = {
   <div class="errmsg hidden" id="errSu"></div>
   <div style="margin-top:10px"><button class="s" id="suNext">🖨️ Print it</button> <button class="s" id="suBack">Back</button></div></div>
  <div class="card hidden" id="s2"><b>About you</b>
-   <div class="row2"><div><label for="sid">Registration number</label><input id="sid" inputmode="numeric" enterkeyhint="next" placeholder="e.g. 25101003"></div><div><label for="ssec">Section</label><input id="ssec" placeholder="e.g. A" maxlength="3" autocapitalize="characters" enterkeyhint="next"></div><div class="sugg hidden" id="sugg"></div></div>
+   <div class="row2"><div><label for="sid">Registration number</label><input id="sid" inputmode="numeric" enterkeyhint="next" placeholder="e.g. 25101000"></div><div><label for="ssec">Section</label><input id="ssec" placeholder="e.g. A" maxlength="3" autocapitalize="characters" enterkeyhint="next"></div><div class="sugg hidden" id="sugg"></div></div>
    <div id="extra"><label for="sname">Full name</label><input id="sname" enterkeyhint="done" placeholder="Your full name"></div>
    <div id="mism" class="hidden"></div>
    <div class="tiny"><a href="#" id="forget">Not you? Clear my details</a></div>
@@ -508,7 +508,7 @@ const ASSET_FILES = {
    <button class="s wide" id="confirm">🖨️ Confirm and send to print</button></div>
    <div id="dlOnly" class="hidden"><button class="p big" id="dlMain">📥 Download docs file</button><div class="ok hidden" id="dlOk" style="margin-top:8px">✅ Downloaded. Look in your Downloads folder (or the Files app)</div></div>
    <div><button class="s" id="back2">Back</button></div></div>
- <div class="card hidden" id="c1"><div id="banner" class="hidden"></div><b>Print status</b><div class="tiny" style="margin:2px 0 0">See if your pages are waiting, being printed, or done.</div><label for="cid">Registration number</label><input id="cid" inputmode="numeric" placeholder="e.g. 25101003"><button class="p" id="find">Show my prints</button><div id="clist" style="margin-top:12px"></div></div>
+ <div class="card hidden" id="c1"><div id="banner" class="hidden"></div><b>Print status</b><div class="tiny" style="margin:2px 0 0">See if your pages are waiting, being printed, or done.</div><label for="cid">Registration number</label><input id="cid" inputmode="numeric" placeholder="e.g. 25101000"><button class="p" id="find">Show my prints</button><div id="clist" style="margin-top:12px"></div></div>
  <p class="tiny"><a href="#admin">Admin</a></p>
 </div>
 <div id="admin" class="hidden">
@@ -524,17 +524,18 @@ const ASSET_FILES = {
    1) the extra scripts are PRELOADED in parallel (same ?v= stamp as the loader below, so they are still fresh on every visit)
    2) drive-notes.js starts its Google Drive request right away, so the Notes button no longer waits for Drive after the pictures. */
 window.__V=Date.now();
-["notes-list.js","drive-notes.js","notes.js","notes-info.js","photos-pdf.js","pdf-edit.js","docx-pdf.js","kawaii-extras.js","ask-bear.js"].forEach(function(f){var l=document.createElement("link");l.rel="preload";l.as="script";l.href=f+"?v="+window.__V;document.head.appendChild(l)});
+["notes-list.js","drive-notes.js","notes.js","notes-admin.js","notes-info.js","photos-pdf.js","pdf-edit.js","docx-pdf.js","kawaii-extras.js","ask-bear.js","auth.js"].forEach(function(f){var l=document.createElement("link");l.rel="preload";l.as="script";l.href=f+"?v="+window.__V;document.head.appendChild(l)});
 var __d=document.createElement("script");__d.src="drive-notes.js?v="+window.__V;document.head.appendChild(__d);
 </script>
 <script src="front-items.js?v=1"></script>
 <script src="app.js?v=4"></script>
+<script src="viewer-mode.js?v=1"></script>
 <script>
 /* app.js builds the page only after the pictures have loaded, and these extra scripts need what it builds (see the
    "Bridge" block at the end of app.js). So they are loaded here, one after the other and in this order, AFTER that.
    A missing file is reported in the console and skipped. */
 window.__appReady.then(function(){
- ["notes-list.js","notes.js","photos-pdf.js","pdf-edit.js","docx-pdf.js","kawaii-extras.js","ask-bear.js","visits.js"].reduce(function(p,f){return p.then(function(){return new Promise(function(done){
+ ["notes-list.js","notes.js","notes-admin.js","photos-pdf.js","pdf-edit.js","docx-pdf.js","kawaii-extras.js","ask-bear.js","auth.js","visits.js"].reduce(function(p,f){return p.then(function(){return new Promise(function(done){
   var s=document.createElement("script");s.src=f+"?v="+window.__V;s.onload=function(){(f==="notes-list.js"&&window.__driveMerge?window.__driveMerge():Promise.resolve()).then(done)};s.onerror=function(){console.error("Could not load "+f);done()};document.body.appendChild(s)})})},Promise.resolve())});
 </script>
 </body></html>

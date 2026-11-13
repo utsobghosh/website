@@ -15,7 +15,7 @@ function myId(){var v=ls("askId")||"";if(/^\d{8}$/.test(v))return v;
 function send(id,add){try{fetch(SCRIPT_URL,{method:"POST",body:JSON.stringify({action:"visit",dev:DEV,id:id,add:add?1:0})}).catch(function(){})}catch(e){}}
 
 // ----- counting -----
-var isAdmin=function(){return location.hash==="#admin"||!!ss("pin")};
+var isAdmin=function(){return location.hash==="#admin"||(!!ss("pin")&&ss("role")!=="viewer")};
 if(!isAdmin()&&ss("visitSent")!=="1"){var id0=myId();ss("visitSent","1");ss("visitId",id0);send(id0,1)}
 // the ID is often typed later in the same visit: tell the sheet once (does not count a second visit)
 setInterval(function(){if(isAdmin()||ss("visitSent")!=="1")return;var id=myId();if(id&&id!==ss("visitId")){ss("visitId",id);send(id,0)}},15000);
@@ -72,7 +72,7 @@ var y1=hold();msg("⏳ Loading…");window.scrollTo(0,y1);
   R=r;HIST={};MINE=!!r.mine;mineBtn();TODAY=r.today;var td=(r.days&&r.days[0]&&r.days[0].d===r.today)?r.days[0]:{v:0,g:0};
   msg("Total visits: "+r.total+" · Today: "+td.v+" visits (🪪 ID "+(td.v-td.g)+" · 👤 guest "+td.g+") from "+(r.todayDevices||0)+" device"+(r.todayDevices===1?"":"s")+" and "+(r.todayIds||0)+" ID"+(r.todayIds===1?"":"s")+" · 🤖 AI today: "+(r.aiToday||0)+" from "+(r.aiUsersToday||0)+" ID"+(r.aiUsersToday===1?"":"s")+" (total "+(r.aiTotal||0)+") · 🧑 My visits (not in the total): "+(r.myVisits||0)+" · All devices: "+r.devices+" · IDs seen: "+r.ids.length+" · Guest visits: "+r.guest.visits+" ("+r.guest.devices+" device"+(r.guest.devices===1?"":"s")+")");
   renderRows();renderMy();renderHours(r.hours||[]);
-  if(!ls("mineAuto2")&&!MINE)setMine(DEV,true);
+  if(!ls("mineAuto2")&&!MINE&&ss("role")!=="viewer")setMine(DEV,true);
   window.scrollTo(0,y1);
   $("vDays").innerHTML=(r.days||[]).map(function(d){return"<tr><td>"+esc(d.d)+"</td><td>"+d.v+"</td><td><b>"+(d.v-d.g)+"</b></td><td>"+d.g+"</td></tr>"}).join("")||'<tr><td colspan="4">No visits yet.</td></tr>';ntfBtn()
  }catch(e){msg("Could not load visitors: "+(e.message||e))}}
@@ -99,7 +99,7 @@ function ntfIds(ta){return Array.from(new Set((ta.value.match(/\d+/g)||[]).filte
 function chanHtml(p,t,note){return'<div style="margin:0 0 12px;padding:8px;border:1px solid var(--line);border-radius:10px"><b class="tiny">'+t+'</b>'+(note?'<div class="tiny" id="'+p+'Note"></div>':'')+
  '<label style="display:flex;align-items:center;gap:8px;margin:8px 0;font-weight:600"><input type="checkbox" id="'+p+'Ord" style="width:20px;height:20px;min-width:20px;padding:0;margin:0;flex:none"> 🧸 New print orders</label>'+
  '<select id="'+p+'Mode" style="display:block;width:100%;margin:8px 0;padding:8px">'+NM.map(function(m){return'<option value="'+m[0]+'">'+m[1]+'</option>'}).join("")+'</select>'+
- '<div class="tiny">IDs on my list (8 digits, one per line):</div><textarea id="'+p+'Ids" rows="3" style="width:100%;margin:6px 0;padding:8px;box-sizing:border-box" placeholder="e.g. 25101003"></textarea><div class="tiny" id="'+p+'Names"></div></div>'}
+ '<div class="tiny">IDs on my list (8 digits, one per line):</div><textarea id="'+p+'Ids" rows="3" style="width:100%;margin:6px 0;padding:8px;box-sizing:border-box" placeholder="e.g. 25101000"></textarea><div class="tiny" id="'+p+'Names"></div></div>'}
 function ntfBtn(){
  if($("vNtf"))return;var w=document.createElement("div");w.id="vNtf";w.style.cssText="margin-top:10px;text-align:right";
  w.innerHTML='<button type="button" class="s" id="lB" title="Logins" aria-label="Logins" style="padding:2px 8px;font-size:13px;opacity:.5;margin-right:4px">🔑</button><button type="button" class="s" id="nB" title="Alert settings" aria-label="Alert settings" style="padding:2px 8px;font-size:13px;opacity:.5">🔔</button>'+

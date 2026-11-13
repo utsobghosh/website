@@ -43,8 +43,9 @@ function nameOf(id) { try { var c = typeof STUDENTS !== "undefined" && STUDENTS[
 window.__askId = getId;
 
 // ---------- Apps Script ----------
-function api(q) { return fetch(URL_ + "?" + Object.keys(q).map(function (k) { return k + "=" + encodeURIComponent(q[k]); }).join("&")).then(function (r) { return r.json(); }); }
-function post(b) { return fetch(URL_, { method: "POST", body: JSON.stringify(b) }).then(function (r) { return r.json(); }); }
+function tokOf(id) { return ls("askTok:" + id) || ""; }   // login token of an ID that has a password
+function api(q) { if (q.id && !q.tok) q.tok = tokOf(q.id); return fetch(URL_ + "?" + Object.keys(q).map(function (k) { return k + "=" + encodeURIComponent(q[k]); }).join("&")).then(function (r) { return r.json(); }).then(function (r) { if (r && r.error === "auth" && q.id) ls("askTok:" + q.id, null); return r; }); }
+function post(b) { if (b.id && !b.tok && String(b.action || "").indexOf("auth_") !== 0) b.tok = tokOf(b.id); return fetch(URL_, { method: "POST", body: JSON.stringify(b) }).then(function (r) { return r.json(); }).then(function (r) { if (r && r.error === "auth" && b.id) ls("askTok:" + b.id, null); return r; }); }
 function aiCount(kind) { if (!URL_) return; try { post({ action: "ai", kind: kind, id: getId(), dev: ls("visitDev") || "" }).catch(function () {}); } catch (e) {} }   // counts one AI use in the Admin Visitors panel (guests too)
 
 // ---------- profile picture: class picture if it can be fetched, otherwise a cute placeholder ----------
@@ -237,7 +238,7 @@ var CSS = [
   ".kpbox{z-index:10006;width:min(270px,calc(100vw - 20px));box-sizing:border-box;padding:12px;border-radius:16px;border:1px solid var(--line);background:var(--panel);color:var(--text);box-shadow:0 8px 24px var(--shadow,rgba(0,0,0,.3));font:13px/1.35 system-ui,-apple-system,sans-serif}.kpbox.fx{position:fixed;top:52px;right:10px}.kpbox.ab{position:absolute;top:46px;left:8px;z-index:9}",
   ".kpbox .kp-top{display:flex;align-items:center;gap:10px;margin-bottom:9px}.kpbox .kp-top div{min-width:0}.kpbox b{display:block;font-size:14px}.kpbox small{display:block;color:var(--muted);font-size:11.5px}",
   ".kpbox input{width:100%;box-sizing:border-box;border:1.5px solid var(--line);border-radius:10px;padding:8px 10px;font:inherit;font-size:15px;letter-spacing:1px;background:var(--panel);color:var(--text);outline:0}.kpbox input:focus{border-color:var(--accent)}",
-  ".kpbox .ak-n{min-height:15px;font-size:11.5px;margin:4px 0 0;color:var(--muted)}.kpbox .kp-row{display:flex;gap:6px;margin-top:8px}.kpbox .kp-row button{border:0;border-radius:10px;padding:7px 12px;font:inherit;font-size:12.5px;cursor:pointer;background:var(--accent);color:var(--onacc)}.kpbox .kp-voice{display:flex;gap:6px;margin-top:8px}.kpbox .kp-voice select{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:6px 6px;font:inherit;font-size:12.5px;background:var(--panel);color:var(--text)}.kpbox .kp-voice button{flex:none;border:0;border-radius:10px;padding:6px 10px;background:var(--accent);color:var(--onacc);font:inherit;font-size:12px;cursor:pointer}.ios .kpbox select{font-size:16px}.kpbox .kp-hist{width:100%;margin-top:8px;border:1px solid var(--line);border-radius:10px;padding:8px 12px;font:inherit;font-size:12.5px;cursor:pointer;background:var(--bg,transparent);color:var(--text);text-align:left}.kpbox .kp-row button.alt{background:transparent;color:var(--text);border:1px solid var(--line)}",
+  ".kpbox .ak-n{min-height:15px;font-size:11.5px;margin:4px 0 0;color:var(--muted)}.kpbox .kp-row{display:flex;gap:6px;margin-top:8px}.kpbox .kp-row button{border:0;border-radius:10px;padding:7px 12px;font:inherit;font-size:12.5px;cursor:pointer;background:var(--accent);color:var(--onacc)}.kpbox .kp-voice{display:flex;gap:6px;margin-top:8px}.kpbox .kp-voice select{flex:1;min-width:0;border:1px solid var(--line);border-radius:10px;padding:6px 6px;font:inherit;font-size:12.5px;background:var(--panel);color:var(--text)}.kpbox .kp-voice button{flex:none;border:0;border-radius:10px;padding:6px 10px;background:var(--accent);color:var(--onacc);font:inherit;font-size:12px;cursor:pointer}.ios .kpbox select{font-size:16px}.kpbox .kp-hist{width:100%;margin-top:8px;border:1px solid var(--line);border-radius:10px;padding:8px 12px;font:inherit;font-size:12.5px;cursor:pointer;background:var(--bg,transparent);color:var(--text);text-align:left}.kpbox .kp-row button.alt{background:transparent;color:var(--text);border:1px solid var(--line)}.kpbox .kp-row button.alt{border:2px solid var(--accent);background:color-mix(in srgb,var(--accent) 16%,#fff);font-weight:700;box-shadow:0 2px 0 var(--accent)}.kpbox #kpPwRow button{flex:1;padding:9px 8px}",
   ".kpbox .kp-size{display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12.5px}.kpbox .kp-size input{flex:1;min-width:0;padding:0;border:0;letter-spacing:0}.kpbox .kp-size button{border:0;border-radius:10px;padding:5px 9px;background:var(--accent);color:var(--onacc);cursor:pointer}",
   "#askWin button,.kpbox button,#kProf{margin:0;font-family:inherit}#askWin button,.kpbox button{box-shadow:none;transform:none}",
   ".ak-av{display:inline-flex;align-items:center;justify-content:center;border-radius:50%;overflow:hidden;color:#3b2f45;font-weight:700;flex:none;vertical-align:middle}.ak-av.g{background:var(--line,#e6dcf5)}.ak-av img{width:100%;height:100%;object-fit:cover}",
@@ -297,20 +298,28 @@ var CSS = [
 ].join("");
 var stEl = document.createElement("style"); stEl.textContent = CSS; document.head.appendChild(stEl);
 
+
+// ---------- optional password: all of it lives in auth.js (this file only calls it) ----------
+function idGate(v, cont) { if (window.__auth) window.__auth.idGate(v, cont); else cont(); }
+function googleLogin() { if (window.__auth) window.__auth.googleLogin(); }
+function pwPanel(mode) { if (window.__auth) window.__auth.pwPanel(mode); }
+function paintPw(box) { if (window.__auth) window.__auth.paintPw(box); }
+window.__askCore = { ls: ls, api: api, post: post, getId: getId, setId: setId, tokOf: tokOf };   // what auth.js is allowed to use
+
 // ---------- profile button (top-right of the page: picture + name + ID) + small profile box ----------
 function host() { return document.fullscreenElement || document.body; }   // inside the PDF viewer's full screen, windows must live INSIDE the full-screen element or they stay hidden
 function closeProfile() { var b = document.querySelector(".kpbox"); if (b) b.remove(); }
 function showProfile(parent, cls) {
   var had = document.querySelector(".kpbox"); if (had) { var same = had.parentNode === parent; had.remove(); if (same) return; }
   var id = getId(), box = document.createElement("div"); box.className = "kpbox " + cls;
-  box.innerHTML = '<div class="kp-top"><span id="kpAv"></span><div><b id="kpName"></b><small id="kpSub"></small></div></div><input id="kpId" inputmode="numeric" maxlength="8" placeholder="e.g. 25101003" value="' + esc(rememberedId()) + '" autocomplete="off"><div class="ak-n" id="kpN"></div><div class="kp-row"><button type="button" id="kpSave">Save</button><button type="button" class="alt" id="kpClear" title="Forget the ID on this phone. Nothing saved is deleted.">Log out</button></div><div class="kp-voice"><select id="kpVoice" title="Voice of the bear">' + VOICES.map(function (v) { return '<option value="' + v[0] + '"' + (v[0] === voiceName() ? " selected" : "") + ">" + v[0] + " · " + v[1] + "</option>"; }).join("") + '</select><button type="button" id="kpPlay">▶ Hear</button></div><div class="kp-size"><span>🐻 Size</span><input type="range" id="kpSize" min="0.3" max="3" step="0.05" aria-label="Bear size"><button type="button" id="kpSizeReset" title="Back to normal size">↺</button></div><button type="button" class="kp-hist" id="kpHist">💬 Chat history</button>';
+  box.innerHTML = '<div class="kp-top"><span id="kpAv"></span><div><b id="kpName"></b><small id="kpSub"></small></div></div><input id="kpId" inputmode="numeric" maxlength="8" placeholder="e.g. 25101000" value="' + esc(rememberedId()) + '" autocomplete="off"><div class="ak-n" id="kpN"></div><div class="kp-row"><button type="button" id="kpSave">Save</button><button type="button" class="alt" id="kpClear" title="Forget the ID on this phone. Nothing saved is deleted.">Log out</button></div><div class="kp-row" id="kpPwRow"></div><div class="kp-voice"><select id="kpVoice" title="Voice of the bear">' + VOICES.map(function (v) { return '<option value="' + v[0] + '"' + (v[0] === voiceName() ? " selected" : "") + ">" + v[0] + " · " + v[1] + "</option>"; }).join("") + '</select><button type="button" id="kpPlay">▶ Hear</button></div><div class="kp-size"><span>🐻 Size</span><input type="range" id="kpSize" min="0.3" max="3" step="0.05" aria-label="Bear size"><button type="button" id="kpSizeReset" title="Back to normal size">↺</button></div><button type="button" class="kp-hist" id="kpHist">💬 Chat history</button>';
   parent.appendChild(box);
   var inp = box.querySelector("#kpId"), note = box.querySelector("#kpN");
-  function top() { var cur = getId(); paintAvatar(box.querySelector("#kpAv"), cur, 44); box.querySelector("#kpName").textContent = cur ? (nameOf(cur) || "ID " + cur) : "Guest"; box.querySelector("#kpSub").textContent = cur ? "ID " + cur + " · remembered on this device" : "Add your ID to save your chats and quiz answers"; }
+  function top() { paintPw(box); var cur = getId(); paintAvatar(box.querySelector("#kpAv"), cur, 44); box.querySelector("#kpName").textContent = cur ? (nameOf(cur) || "ID " + cur) : "Guest"; box.querySelector("#kpSub").textContent = cur ? "ID " + cur + " · remembered on this device" : "Add your ID to save your chats and quiz answers"; }
   function hint() { var v = inp.value.replace(/\D/g, ""); inp.value = v; if (/^\d{8}$/.test(v)) fetchName(v); note.textContent = /^\d{8}$/.test(v) ? (nameOf(v) ? "👋 Hi, " + nameOf(v) + "!" : "Not in the class list, but that is fine 🙂") : (v ? "The ID has 8 digits" : ""); }
-  function save() { var v = inp.value.replace(/\D/g, ""); if (!v) { setId(""); box.remove(); return; } if (!/^\d{8}$/.test(v)) { note.textContent = "Please type your 8-digit ID"; return; } setId(v, cls === "ab" ? "ai-window-profile" : "profile-icon"); box.remove(); }
+  function save() { var v = inp.value.replace(/\D/g, ""); if (!v) { setId(""); box.remove(); return; } if (!/^\d{8}$/.test(v)) { note.textContent = "Please type your 8-digit ID"; return; } var via = cls === "ab" ? "ai-window-profile" : "profile-icon"; if (v !== rememberedId() || S.guest) idGate(v, function () { setId(v, via); box.remove(); }); else { setId(v, via); box.remove(); } }
   inp.addEventListener("input", hint); inp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); save(); } });
-  box.querySelector("#kpSave").onclick = save; box.querySelector("#kpClear").onclick = function () { setId(""); box.remove(); };
+  box.querySelector("#kpSave").onclick = save; box.querySelector("#kpClear").onclick = function () { var cu = getId(); if (cu) ls("askTok:" + cu, null); setId(""); box.remove(); };
   box.querySelector("#kpVoice").onchange = function () { ls("askVoice", this.value); previewVoice(this.value, box.querySelector("#kpPlay")); };
   box.querySelector("#kpPlay").onclick = function () { previewVoice(box.querySelector("#kpVoice").value, this); };
   var sz = box.querySelector("#kpSize");   // bear size slider (functions live in app.js)
@@ -474,10 +483,10 @@ function setupCard(pop, done) {
   pop.classList.remove("hidden"); var rem = rememberedId();
   function step1() {
     pop.onclick = null;
-    pop.innerHTML = '<b>👋 Who is asking?</b><input class="su-id" inputmode="numeric" maxlength="8" placeholder="e.g. 25101003" value="' + esc(rem) + '" autocomplete="off"><div class="ak-n" id="suN"></div><div class="ak-row"><button type="button" id="suGo">Continue</button><button type="button" class="alt" id="suGuest">Continue as guest</button></div>';
+    pop.innerHTML = '<b>👋 Who is asking?</b><input class="su-id" inputmode="numeric" maxlength="8" placeholder="e.g. 25101000" value="' + esc(rem) + '" autocomplete="off"><div class="ak-n" id="suN"></div><div class="ak-row"><button type="button" id="suGo">Continue</button><button type="button" class="alt" id="suGuest">Continue as guest</button></div>';
     var inp = pop.querySelector(".su-id"), note = pop.querySelector("#suN");
-    function hint() { var v = inp.value.replace(/\D/g, ""); inp.value = v; if (/^\d{8}$/.test(v)) fetchName(v); note.textContent = /^\d{8}$/.test(v) ? (nameOf(v) ? "👋 Hi, " + nameOf(v) + "!" : "") : (v ? "e.g. 25101003" : ""); }
-    function go() { var v = inp.value.replace(/\D/g, ""); if (!/^\d{8}$/.test(v)) { note.textContent = v ? "e.g. 25101003" : "Type your ID, or tap Continue as guest"; return; } if (v !== rememberedId() || S.guest) setId(v, "ai-button"); step2(); }
+    function hint() { var v = inp.value.replace(/\D/g, ""); inp.value = v; if (/^\d{8}$/.test(v)) fetchName(v); note.textContent = /^\d{8}$/.test(v) ? (nameOf(v) ? "👋 Hi, " + nameOf(v) + "!" : "") : (v ? "e.g. 25101000" : ""); }
+    function go() { var v = inp.value.replace(/\D/g, ""); if (!/^\d{8}$/.test(v)) { note.textContent = v ? "e.g. 25101000" : "Type your ID, or tap Continue as guest"; return; } if (v !== rememberedId() || S.guest) idGate(v, function () { setId(v, "ai-button"); step2(); }); else step2(); }
     inp.addEventListener("input", hint); inp.addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); go(); } }); hint();
     pop.querySelector("#suGo").onclick = go; pop.querySelector("#suGuest").onclick = function () { setGuest(); step2(); };
     setTimeout(function () { try { inp.focus({ preventScroll: true }); if (rem) inp.select(); } catch (e) {} }, 60);
@@ -487,7 +496,7 @@ function setupCard(pop, done) {
       '<div class="ak-row"><button type="button" data-v="1">💾 Save my chat</button><button type="button" class="alt" data-v="0">🙈 Don\'t save my chat</button></div>';
     pop.onclick = function (e) { var b = e.target.closest && e.target.closest("button[data-v]"); if (!b) return; S.save = b.getAttribute("data-v"); S.setup = true; pop.onclick = null; pop.classList.add("hidden"); paintStat(); setInputOk(); if (done) done(); };
   }
-  step1();
+  if (rem && !S.guest) step2(); else step1();   // already logged in with an ID: do not ask "who is asking / guest" again
 }
 
 // ---------- the compact ask bar: opened by the bear's "💬 AI" button. A text box beside the bear (not a full window); the answer appears above it ----------
@@ -812,8 +821,8 @@ window.__askQuizRow = function (box) {
       box.innerHTML = '<span class="ak-av" id="kqAv"></span><span>' + esc(nameOf(id) || "ID " + id) + ' · answers are saved</span><span class="ed">change</span>';
       paintAvatar(box.querySelector("#kqAv"), id, 18); box.querySelector(".ed").onclick = function () { showProfile(host(), "fx"); };
     } else {
-      box.innerHTML = '<input inputmode="numeric" maxlength="8" placeholder="Your ID, e.g. 25101003">';
-      var inp = box.querySelector("input"); inp.addEventListener("input", function () { inp.value = inp.value.replace(/\D/g, ""); if (/^\d{8}$/.test(inp.value)) setId(inp.value, "quiz"); });
+      box.innerHTML = '<input inputmode="numeric" maxlength="8" placeholder="Your ID, e.g. 25101000">';
+      var inp = box.querySelector("input"); inp.addEventListener("input", function () { inp.value = inp.value.replace(/\D/g, ""); var q8 = inp.value; if (/^\d{8}$/.test(q8)) { if (q8 !== rememberedId()) idGate(q8, function () { setId(q8, "quiz"); }); else setId(q8, "quiz"); } });
     }
   };
   box.__draw();

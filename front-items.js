@@ -179,7 +179,7 @@ function openHidden(){var hs=OPTIONS.filter(function(o){return o.hid}),m=modal('
 // "Edit list" only appears after the admin page was opened in this tab (the PIN is then remembered); it re-checks when you come back
 window.addEventListener("hashchange",function(){if(window.__renderOpts)window.__renderOpts()});
 window.__frontAdmin=function(box){
- var hp="";try{hp=sessionStorage.getItem("pin")||""}catch(e){}
+ var hp="";try{hp=sessionStorage.getItem("role")==="viewer"?"":(sessionStorage.getItem("pin")||"")}catch(e){}
  if(!adm&&!hp)return;
  var bar=document.createElement("div");bar.style.cssText="margin:8px 0 0;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end";
  bar.appendChild(btn(adm?"✔ Done editing":"✏️ Edit list",function(){if(!adm&&!pin())return;adm=!adm;window.__renderOpts()}));
