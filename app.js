@@ -515,7 +515,7 @@ $("next").onclick=function(){
   if(!skipName&&!idName&&nameId)return warn("“"+name+"” is ID "+nameId+" in our list, but you typed ID "+id+". Which one do you want to keep?",{label:"Keep ID "+nameId,id:nameId,name:STUDENTS[nameId]},{label:"Keep ID "+id,id:id,name:name});
   var sec=secNow.toUpperCase();$("ssec").value=sec;
   if(idName&&SECTION_OF[id]&&sec!==SECTION_OF[id]&&acceptedSec!==id+"|"+sec)return warn("ID "+id+" is on our Section "+SECTION_OF[id]+" list, but you typed Section "+sec+". Which one do you want to keep?",{label:"Keep Section "+SECTION_OF[id],id:id,sec:SECTION_OF[id]},{label:"Keep Section "+sec,id:id,sec:sec});
-  if(cur.opt.upload){cur.id=id;cur.name=idName||name;cur.section=sec;try{localStorage.setItem("me",JSON.stringify({id:cur.id,name:cur.name,sec:sec}))}catch(e){}openWarn();return}
+  if(cur.opt.upload){cur.id=id;cur.name=idName||name;cur.section=sec;try{var _m=JSON.parse(localStorage.getItem("me")||"null");if((!_m||_m.id!==id)&&window.__askCore)__askCore.post({action:"login",id:id,via:"print-form"}).catch(function(){})}catch(e){}try{localStorage.setItem("me",JSON.stringify({id:cur.id,name:cur.name,sec:sec}))}catch(e){}openWarn();return}
   proceed(id,idName||name)};
 var PRICE=PRICE_PER_PAGE;
 function money(o,n,pg){return Math.round(PRICE*(pg||o.pages||1)*n*100)/100}

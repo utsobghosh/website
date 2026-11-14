@@ -37,7 +37,7 @@ var S = { setup: false, guest: false, save: null, sound: ls("askSound") === "1",
 if (/iPad|iPhone|iPod/.test(navigator.userAgent)) document.documentElement.classList.add("ios");   // iPhones zoom into small text boxes, so those keep a bigger font
 function rememberedId() { var v = ls("askId") || ""; return /^\d{8}$/.test(v) ? v : ""; }
 function getId() { return S.guest ? "" : rememberedId(); }
-function setId(v, via) { var was = rememberedId(); ls("askId", v || null); if (v && v !== was && via) try { post({ action: "login", id: v, via: via }).catch(function () {}); } catch (e) {} S.guest = false; document.dispatchEvent(new CustomEvent("askid")); }
+function setId(v, via) { var was = rememberedId(), wasGuest = S.guest; ls("askId", v || null); if (v && (v !== was || wasGuest) && via) try { post({ action: "login", id: v, via: via }).catch(function () {}); } catch (e) {} S.guest = false; document.dispatchEvent(new CustomEvent("askid")); }
 function setGuest() { S.guest = true; document.dispatchEvent(new CustomEvent("askid")); }
 function nameOf(id) { try { var c = typeof STUDENTS !== "undefined" && STUDENTS[id]; if (c) return c; } catch (e) {} return ls("askNm:" + id) || ""; }   // class list first, otherwise the name Apps Script found (kept on this phone)
 window.__askId = getId;

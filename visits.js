@@ -104,7 +104,7 @@ function ntfBtn(){
  if($("vNtf"))return;var w=document.createElement("div");w.id="vNtf";w.style.cssText="margin-top:10px;text-align:right";
  w.innerHTML='<button type="button" class="s" id="lB" title="Logins" aria-label="Logins" style="padding:2px 8px;font-size:13px;opacity:.5;margin-right:4px">🔑</button><button type="button" class="s" id="nB" title="Alert settings" aria-label="Alert settings" style="padding:2px 8px;font-size:13px;opacity:.5">🔔</button>'+
   '<div id="lP" class="hidden" style="text-align:left;margin-top:8px;padding:10px;border:2px dashed var(--line);border-radius:12px;overflow-x:auto"><div class="tiny" id="lSum"></div>'+
-  '<table><thead><tr><th>ID</th><th>Name</th><th>Logins</th></tr></thead><tbody id="lIds"></tbody></table>'+
+  '<table><thead><tr><th>ID</th><th>Name</th><th>Logins</th><th>Last way</th></tr></thead><tbody id="lIds"></tbody></table>'+
   '<div class="tiny" style="margin:10px 0 4px;font-weight:600">Latest logins</div>'+
   '<table><thead><tr><th>Time</th><th>ID</th><th>Name</th><th>How</th></tr></thead><tbody id="lRows"></tbody></table></div>'+
   '<div id="nP" class="hidden" style="text-align:left;margin-top:8px;padding:10px;border:2px dashed var(--line);border-radius:12px">'+
@@ -129,7 +129,8 @@ function ntfBtn(){
    if(r&&r.error==="pin"){ss("pin",null);ntfOff();return}
    if(!r||!r.ok){$("lSum").textContent="Update Code.gs (logins part) and deploy a New version.";return}
    $("lSum").textContent="Total logins: "+r.total+" · Different IDs: "+r.ids.length;
-   $("lIds").innerHTML=r.ids.map(function(o){return"<tr><td>"+esc(o.id)+"</td><td>"+esc(nameOf(o.id))+"</td><td><b>"+o.n+"</b></td></tr>"}).join("")||'<tr><td colspan="3">No logins yet.</td></tr>';
+   var lw={};r.rows.forEach(function(o){if(!lw[o.id])lw[o.id]=o.via});
+   $("lIds").innerHTML=r.ids.map(function(o){return"<tr><td>"+esc(o.id)+"</td><td>"+esc(nameOf(o.id))+"</td><td><b>"+o.n+"</b></td><td>"+esc(lw[o.id]||"older")+"</td></tr>"}).join("")||'<tr><td colspan="4">No logins yet.</td></tr>';
    $("lRows").innerHTML=r.rows.map(function(o){return"<tr><td>"+esc(o.t)+"</td><td>"+esc(o.id)+"</td><td>"+esc(nameOf(o.id))+"</td><td>"+esc(o.via)+"</td></tr>"}).join("")||'<tr><td colspan="4">No logins yet.</td></tr>'}
   catch(e){$("lSum").textContent="Could not load: "+(e.message||e)}};
  function testAlert(only){return async function(){M.textContent="⏳ Sending…";
