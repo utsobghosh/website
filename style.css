@@ -277,8 +277,8 @@ body::before,body::after{will-change:transform}
 @media (max-width:640px){
  .wrap{padding-left:max(6px,env(safe-area-inset-left));padding-right:max(6px,env(safe-area-inset-right))}
  .card{padding:8px}
- body .npg{padding:12px 4px 4px}
- body .npin{padding:8px 10px}
+ body .npg{padding:6px 4px 4px}
+ body .npin{padding:6px 8px}
  .opt{padding:10px}
  .dz{padding:12px 8px}
 }
@@ -287,5 +287,5 @@ body::before,body::after{will-change:transform}
 /* file options and pinned notes: several in one row when there is room (still one per row on phones) */
 #opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:0 10px}
 #opts>:not(.opt){grid-column:1/-1}
-body :has(>.npw){display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:0 8px}
+body :has(>.npw){display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:0 6px}
 body :has(>.npw)>:not(.npw){grid-column:1/-1}
