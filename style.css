@@ -1,5 +1,5 @@
 :root{--bg:#fff3f8;--grad:linear-gradient(160deg,#fff0f6 0%,#f3edff 55%,#e9f6ff 100%);--panel:#fff;--text:#3b2f45;--muted:#85748f;--line:#f1d9e7;--accent:#c9307f;--onacc:#fff;--ok:#1f8a54;--shadow:rgba(201,48,127,.15)}
-@media (prefers-color-scheme:dark){:root{--bg:#1d1626;--grad:linear-gradient(160deg,#241a2f 0%,#1c1a33 60%,#172433 100%);--panel:#2b2037;--text:#f4eaf8;--muted:#bba9c9;--line:#443552;--accent:#ff86bd;--onacc:#2a0f1f;--ok:#6fdc9c;--shadow:rgba(0,0,0,.35)}}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#1d1626;--grad:linear-gradient(160deg,#241a2f 0%,#1c1a33 60%,#172433 100%);--panel:#2b2037;--text:#f4eaf8;--muted:#bba9c9;--line:#443552;--accent:#ff86bd;--onacc:#2a0f1f;--ok:#6fdc9c;--shadow:rgba(0,0,0,.35)}}:root[data-theme=dark]{--bg:#1d1626;--grad:linear-gradient(160deg,#241a2f 0%,#1c1a33 60%,#172433 100%);--panel:#2b2037;--text:#f4eaf8;--muted:#bba9c9;--line:#443552;--accent:#ff86bd;--onacc:#2a0f1f;--ok:#6fdc9c;--shadow:rgba(0,0,0,.35);color-scheme:dark}:root[data-theme=light]{color-scheme:light}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
 .wrap{max-width:860px;margin:0 auto;padding:20px 16px 60px}h1{font-size:22px;margin:0 0 4px}.sub{color:var(--muted);margin:0 0 18px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
@@ -43,7 +43,7 @@ input{border-radius:12px;border-width:2px}input:focus{border-color:var(--accent)
 .banner.shine{background:linear-gradient(110deg,rgba(31,138,84,.12) 30%,rgba(255,255,255,.55) 50%,rgba(31,138,84,.12) 70%);background-size:250% 100%;animation:pop .4s ease both,shine 1.6s ease .2s 1}
 @keyframes shine{from{background-position:200% 0}to{background-position:-100% 0}}
 
-:root{--bad:#d64545}@media (prefers-color-scheme:dark){:root{--bad:#ff8a8a}}
+:root{--bad:#d64545}@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bad:#ff8a8a}}:root[data-theme=dark]{--bad:#ff8a8a}
 .errmsg{color:var(--bad);font-size:14px;margin-top:8px;font-weight:600}
 .bad{animation:shake .45s ease,redflash 1.3s ease}
 @keyframes shake{20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}

@@ -30,14 +30,14 @@ function boardDlg(sid,xid){
   LAST=p;draw()});
  // pointer-based drag (mouse / pen): works the same every time, no browser drag-and-drop
  var dg=null,NOCLK=0,hz=null;
- function recolor(){D.querySelectorAll("[data-fp]").forEach(function(x){x.style.background=SELB[x.getAttribute("data-fp")]?"#ffd1e3":"rgba(0,0,0,.05)"})}
+ function recolor(){D.querySelectorAll("[data-fp]").forEach(function(x){x.style.background=SELB[x.getAttribute("data-fp")]?"color-mix(in srgb,var(--accent) 30%,var(--panel))":"color-mix(in srgb,var(--text) 8%,transparent)"})}
  function zoneAt(e){var el=document.elementFromPoint(e.clientX,e.clientY);return el&&el.closest?el.closest("[data-dz]"):null}
  D.addEventListener("pointerdown",function(e){if(e.pointerType==="touch"||e.button!==0)return;var c=e.target.closest("[data-fp]");if(!c)return;dg={p:c.getAttribute("data-fp"),x:e.clientX,y:e.clientY,on:0,g:null}});
  function mv(e){if(!document.body.contains(ov)){fin(1);return}if(!dg)return;
   if(!dg.on){if(Math.abs(e.clientX-dg.x)+Math.abs(e.clientY-dg.y)<6)return;dg.on=1;if(!SELB[dg.p]){SELB={};SELB[dg.p]=1;recolor()}
    dg.g=document.createElement("div");dg.g.textContent="📄 "+Object.keys(SELB).length+" file(s)";dg.g.style.cssText="position:fixed;z-index:99999;pointer-events:none;background:#d6336c;color:#fff;font:600 12px system-ui;padding:4px 8px;border-radius:8px;opacity:.9";document.body.appendChild(dg.g)}
   dg.g.style.left=(e.clientX+10)+"px";dg.g.style.top=(e.clientY+10)+"px";
-  var z=zoneAt(e);if(hz&&hz!==z)hz.style.outline="";if(z)z.style.outline="3px dashed #d6336c";hz=z}
+  var z=zoneAt(e);if(hz&&hz!==z)hz.style.outline="";if(z)z.style.outline="3px dashed var(--accent,#d6336c)";hz=z}
  function fin(cancel,e){document.removeEventListener("pointermove",mv);document.removeEventListener("pointerup",up);document.removeEventListener("pointercancel",up);if(hz){hz.style.outline="";hz=null}if(dg&&dg.g)dg.g.remove();dg=null}
  function up(e){var d=dg,z=d&&d.on&&e&&e.type==="pointerup"?zoneAt(e):null;fin(0,e);if(d&&d.on){NOCLK=Date.now();if(z){var ps=Object.keys(SELB);if(ps.length)go(ps,z.getAttribute("data-dz"),COPY||e.altKey)}}
   document.addEventListener("pointermove",mv);document.addEventListener("pointerup",up);document.addEventListener("pointercancel",up)}
@@ -52,14 +52,14 @@ function boardDlg(sid,xid){
  D.addEventListener("pointermove",function(e){if(!mq)return;var l=Math.min(sx,e.clientX),t=Math.min(sy,e.clientY),w=Math.abs(e.clientX-sx),h=Math.abs(e.clientY-sy);
   mq.style.left=l+"px";mq.style.top=t+"px";mq.style.width=w+"px";mq.style.height=h+"px";
   D.querySelectorAll("[data-fp]").forEach(function(c){var r=c.getBoundingClientRect(),p=c.getAttribute("data-fp"),hit=!(r.right<l||r.left>l+w||r.bottom<t||r.top>t+h);
-   if(hit)SELB[p]=1;else if(!base[p])delete SELB[p];c.style.background=SELB[p]?"#ffd1e3":"rgba(0,0,0,.05)"})});
+   if(hit)SELB[p]=1;else if(!base[p])delete SELB[p];c.style.background=SELB[p]?"color-mix(in srgb,var(--accent) 30%,var(--panel))":"color-mix(in srgb,var(--text) 8%,transparent)"})});
  function endMq(){if(!mq)return;mq.remove();mq=null;draw()}
  D.addEventListener("pointerup",endMq);D.addEventListener("pointercancel",endMq);
  function draw(){var fl=FILES.filter(function(f){return f.fk===k}),box={};
   fl.forEach(function(f){var g=f.hd?"hide":f.ar?"arc":f.c;(box[g]=box[g]||[]).push(f)});
   var cols=ALL.map(function(c){return{id:c.id,t:c.icon+" "+c.label}}).concat([{id:"arc",t:"📦 Archive"},{id:"hide",t:"🚫 Hidden"}]);
   D.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;align-items:start;min-height:100%">'+cols.map(function(c){var L=box[c.id]||[];
-   return'<div data-dz="'+c.id+'" style="border:2px solid rgba(0,0,0,.15);border-radius:4px 14px 10px 10px;padding:5px;min-height:60px"><button type="button" class="s" data-m="to:'+c.id+'" style="width:100%;margin-bottom:3px;padding:4px 6px;font-size:13px">'+esc(c.t)+" ("+L.length+')</button>'+L.map(function(f){return'<div data-fp="'+esc(KEY(f))+'" style="font-size:12px;padding:2px 4px;margin:2px 0;border-radius:6px;cursor:grab;touch-action:pan-y;background:'+(SELB[KEY(f)]?"#ffd1e3":"rgba(0,0,0,.05)")+'">'+(f.cl?"📑 ":"")+esc(f.nm)+"</div>"}).join("")+"</div>"}).join("")+"</div>";
+   return'<div data-dz="'+c.id+'" style="border:2px solid color-mix(in srgb,var(--text) 24%,transparent);border-radius:4px 14px 10px 10px;padding:5px;min-height:60px"><button type="button" class="s" data-m="to:'+c.id+'" style="width:100%;margin-bottom:3px;padding:4px 6px;font-size:13px">'+esc(c.t)+" ("+L.length+')</button>'+L.map(function(f){return'<div data-fp="'+esc(KEY(f))+'" style="font-size:12px;padding:2px 4px;margin:2px 0;border-radius:6px;cursor:grab;touch-action:pan-y;background:'+(SELB[KEY(f)]?"color-mix(in srgb,var(--accent) 30%,var(--panel))":"color-mix(in srgb,var(--text) 8%,transparent)")+'">'+(f.cl?"📑 ":"")+esc(f.nm)+"</div>"}).join("")+"</div>"}).join("")+"</div>";
   var n=Object.keys(SELB).length,el=ov.querySelector("#edBn");if(el)el.textContent=n?n+" selected":""}
  draw()}
 function drvDlg(){
@@ -73,7 +73,7 @@ function drvDlg(){
  function draw(){var h="";
   Object.keys(CFG.src||{}).forEach(function(sid){(CFG.src[sid]||[]).forEach(function(x,i){
    var k=sid+"|"+x.id,fl=FILES.filter(function(f){return f.fk===k}),cnt={};fl.forEach(function(f){var l=labelOf(f.c)||"?";cnt[l]=(cnt[l]||0)+1});
-   h+='<div style="border:1px solid rgba(0,0,0,.12);border-radius:10px;padding:8px;margin:8px 0"><div><b>📥 '+esc(x.t||IMPNAME[x.id]||"Drive folder")+'</b> <small>added under “'+esc(labelOf(sid)||"a removed subject")+'” · '+esc(IMP_ST[x.id]||"loading…")+'</small></div>'
+   h+='<div style="border:1px solid color-mix(in srgb,var(--text) 24%,transparent);border-radius:10px;padding:8px;margin:8px 0"><div><b>📥 '+esc(x.t||IMPNAME[x.id]||"Drive folder")+'</b> <small>added under “'+esc(labelOf(sid)||"a removed subject")+'” · '+esc(IMP_ST[x.id]||"loading…")+'</small></div>'
    +'<div class="tiny"><a href="'+esc(x.u||"#")+'" target="_blank" rel="noopener">'+esc((x.u||"").slice(0,70))+'</a></div>'
    +'<div class="tiny">Files went to: '+(Object.keys(cnt).map(function(l){return esc(l)+" "+cnt[l]}).join(" · ")||"none yet")+'</div>'
    +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px"><button type="button" class="s" data-m="op:srcE:'+sid+':'+i+'">✏️ Edit link</button><button type="button" class="s" data-m="op:srcN:'+sid+':'+i+'">🔤 Sort by name: '+["off","into subjects","into tabs"][x.an||0]+'</button><button type="button" class="s" data-m="op:srcR:'+sid+':'+i+'">🔄 Reload</button><button type="button" class="s" data-m="rv:'+sid+':'+x.id+'">🔎 Review ('+fl.length+')</button><button type="button" class="s" data-m="op:srcD:'+sid+':'+i+'">🗑 Remove link</button></div>';
