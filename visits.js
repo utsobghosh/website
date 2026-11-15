@@ -25,13 +25,12 @@ var ad=document.getElementById("admin");if(!ad)return;
 var box=document.createElement("div");
 box.innerHTML='<h2 class="h2">👀 Visitors</h2><div class="card" style="overflow-x:auto">'+
  '<div id="vSum" class="tiny" style="margin:0 0 8px"></div>'+
- '<button class="s" id="vRef" style="margin:0 0 10px">🔄 Refresh visitors</button> <button class="s" id="vMine" style="margin:0 0 10px">📵 Don’t count this device</button>'+
+ '<button class="s" id="vRef" style="margin:0 0 10px">🔄 Refresh visitors</button>'+
  '<button class="s" id="vTd" style="margin:0 0 10px">📅 Only IDs that visited today: off</button>'+
  '<table><thead id="vHead"><tr><th data-k="id">ID</th><th data-k="name">Name</th><th data-k="visits">Visits</th><th data-k="devices">Devices</th><th data-k="ts">Last visit</th><th data-k="today">Today</th><th data-k="ai">🤖 AI</th><th data-k="aiToday">🤖 Today</th></tr></thead><tbody id="vRows"></tbody></table>'+
  '<p class="note" id="vNone"></p>'+
  '<div class="tiny" style="margin:12px 0 4px;font-weight:600">Last days</div>'+
  '<table><thead><tr><th>Day</th><th>All visits</th><th>ID visits</th><th>Guest visits</th></tr></thead><tbody id="vDays"></tbody></table>'+
- '<div class="tiny" style="margin:14px 0 4px;font-weight:600">📱 My devices</div><div class="tiny" id="vMyN"></div><table><thead><tr><th>Device</th><th>ID</th><th>Visits</th><th>Last visit</th><th>Mine</th></tr></thead><tbody id="vMy"></tbody></table>'+
  '<div class="tiny" style="margin:14px 0 4px;font-weight:600">⏰ Busy hours (last 14 days, Dhaka time)</div><div id="vHr"></div>'+
  '<p class="tiny" style="margin-top:10px">A visit = one browser opening the site (counted once per tab session). "Devices" = different phones/computers that used that ID. Guest = no ID known. Tap “Mark as mine” on your own devices so they are not counted. Tap a column title to sort, tap an ID to see the days it visited.</p></div>';
 ad.appendChild(box);
@@ -43,8 +42,7 @@ var holdOn=false;
 function hold(){var c=box.querySelector(".card");
  if(!holdOn){c.style.minHeight=c.offsetHeight+"px";holdOn=true;var rel=function(){c.style.minHeight="";holdOn=false;["wheel","touchstart","keydown"].forEach(function(e){window.removeEventListener(e,rel)})};["wheel","touchstart","keydown"].forEach(function(e){window.addEventListener(e,rel,{passive:true})})}
  return window.pageYOffset}
-var TDONLY=false,TODAY="",R=null,SK="id",SD=1,HIST={},MINE=false;
-function mineBtn(){$("vMine").textContent=MINE?"✅ This device is not counted (tap to count again)":"📵 Don’t count this device"}
+var TDONLY=false,TODAY="",R=null,SK="id",SD=1,HIST={};
 function renderRows(){
  if(!R)return;var y0=hold(),td=(R.days&&R.days[0]&&R.days[0].d===R.today)?R.days[0]:{v:0,g:0},only=TDONLY;
  var a=R.ids.filter(function(o){return!only||o.today>0});
@@ -55,9 +53,6 @@ function renderRows(){
  $("vRows").innerHTML=h;$("vNone").textContent=a.length?"":(only?"No student ID has visited today.":"No student ID has visited yet.");
  Array.from($("vHead").querySelectorAll("th")).forEach(function(t){var k=t.getAttribute("data-k");t.style.cursor="pointer";t.textContent=t.textContent.replace(/ [▲▼]$/,"")+(k===SK?(SD>0?" ▲":" ▼"):"")});
  window.scrollTo(0,y0)}
-function renderMy(){var a=R.mydevs||[];
- $("vMyN").textContent=a.length?"Devices marked as mine (not counted) or that typed my ID. Tap “✅ Mine” to count a device again. Mark a device as mine only if you are sure it is yours.":"No device yet. Open Admin on your phone/computer once and it is added here.";
- $("vMy").innerHTML=a.map(function(o){return"<tr><td>"+esc(o.dev.slice(0,6))+(o.dev===DEV?" (this one)":"")+"</td><td>"+esc(o.id||"guest")+"</td><td>"+o.visits+"</td><td>"+esc(o.last)+'</td><td><button type="button" class="s" data-dev="'+esc(o.dev)+'" data-on="'+(o.mine?"1":"0")+'">'+(o.mine?"✅ Mine":"Mark as mine")+'</button></td></tr>'}).join("")}
 function renderHours(hs){var mx=Math.max.apply(null,hs.concat([1])),b="",l="";
  hs.forEach(function(n,i){b+='<div title="'+i+':00 – '+n+' visit'+(n===1?"":"s")+'" style="flex:1;min-width:0;height:'+(n?Math.max(3,Math.round(n/mx*100)):0)+'%;background:currentColor;opacity:.55;border-radius:3px 3px 0 0"></div>';l+='<div style="flex:1;text-align:center">'+(i%3===0?i:"")+"</div>"});
  $("vHr").innerHTML='<div style="display:flex;align-items:flex-end;gap:2px;height:70px;border-bottom:1px solid var(--line)">'+b+'</div><div class="tiny" style="display:flex;gap:2px">'+l+"</div>"+(mx>1||hs.some(Boolean)?"":'<div class="tiny">No visits yet.</div>')}
@@ -69,10 +64,9 @@ var y1=hold();msg("⏳ Loading…");window.scrollTo(0,y1);
   var r=await (await fetch(SCRIPT_URL+"?"+new URLSearchParams({visits:1,pin:pin,dev:DEV}))).json();
   if(r&&r.error==="pin"){ss("pin",null);ntfOff();msg("Wrong PIN. Press Refresh visitors to try again.");return}
   if(!r||!r.ok){msg("The Apps Script does not have the visitor part yet (Code.gs + New version).");return}
-  R=r;HIST={};MINE=!!r.mine;mineBtn();TODAY=r.today;var td=(r.days&&r.days[0]&&r.days[0].d===r.today)?r.days[0]:{v:0,g:0};
-  msg("Total visits: "+r.total+" · Today: "+td.v+" visits (🪪 ID "+(td.v-td.g)+" · 👤 guest "+td.g+") from "+(r.todayDevices||0)+" device"+(r.todayDevices===1?"":"s")+" and "+(r.todayIds||0)+" ID"+(r.todayIds===1?"":"s")+" · 🤖 AI today: "+(r.aiToday||0)+" from "+(r.aiUsersToday||0)+" ID"+(r.aiUsersToday===1?"":"s")+" (total "+(r.aiTotal||0)+") · 🧑 My visits (not in the total): "+(r.myVisits||0)+" · All devices: "+r.devices+" · IDs seen: "+r.ids.length+" · Guest visits: "+r.guest.visits+" ("+r.guest.devices+" device"+(r.guest.devices===1?"":"s")+")");
-  renderRows();renderMy();renderHours(r.hours||[]);
-  if(!ls("mineAuto2")&&!MINE&&ss("role")!=="viewer")setMine(DEV,true);
+  R=r;HIST={};TODAY=r.today;var td=(r.days&&r.days[0]&&r.days[0].d===r.today)?r.days[0]:{v:0,g:0};
+  msg("Total visits: "+r.total+" · Today: "+td.v+" visits (🪪 ID "+(td.v-td.g)+" · 👤 guest "+td.g+") from "+(r.todayDevices||0)+" device"+(r.todayDevices===1?"":"s")+" and "+(r.todayIds||0)+" ID"+(r.todayIds===1?"":"s")+" · 🤖 AI today: "+(r.aiToday||0)+" from "+(r.aiUsersToday||0)+" ID"+(r.aiUsersToday===1?"":"s")+" (total "+(r.aiTotal||0)+")  · All devices: "+r.devices+" · IDs seen: "+r.ids.length+" · Guest visits: "+r.guest.visits+" ("+r.guest.devices+" device"+(r.guest.devices===1?"":"s")+")");
+  renderRows();renderHours(r.hours||[]);
   window.scrollTo(0,y1);
   $("vDays").innerHTML=(r.days||[]).map(function(d){return"<tr><td>"+esc(d.d)+"</td><td>"+d.v+"</td><td><b>"+(d.v-d.g)+"</b></td><td>"+d.g+"</td></tr>"}).join("")||'<tr><td colspan="4">No visits yet.</td></tr>';ntfBtn()
  }catch(e){msg("Could not load visitors: "+(e.message||e))}}
@@ -86,20 +80,14 @@ $("vRows").onclick=async function(e){var tr=e.target.closest("tr[data-id]");if(!
    if(!r||!r.ok){d.firstChild.textContent="Update Code.gs and deploy a New version.";return}HIST[id]=r.rows}
   d.firstChild.innerHTML=HIST[id].length?"<b>Days (visits · 🤖 AI):</b> "+HIST[id].map(function(o){return esc(o.d)+" (<b>"+o.n+"</b>"+(o.a?" · 🤖 "+o.a:"")+")"}).join(" · "):"No day history yet (it starts from the update)."}
  catch(x){d.firstChild.textContent="Could not load: "+(x.message||x)}};
-async function setMine(dev,on){var pin=ss("pin");if(!pin){loadV(true);return}
- try{var r=await (await fetch(SCRIPT_URL,{method:"POST",body:JSON.stringify({action:"mydev",pin:pin,dev:dev,on:on})})).json();
-  if(r&&r.error==="pin"){ss("pin",null);ntfOff();msg("Wrong PIN. Press Refresh visitors to try again.");return}
-  if(r&&r.ok){if(dev===DEV){MINE=!!r.mine;mineBtn();ls("mineAuto2","1")}loadV(false)}else msg("Update Code.gs and deploy a New version.")}catch(e){msg("Could not save: "+(e.message||e))}}
-$("vMine").onclick=function(){setMine(DEV,!MINE)};
-$("vMy").onclick=function(e){var b=e.target.closest("button[data-dev]");if(b)setMine(b.getAttribute("data-dev"),b.getAttribute("data-on")!=="1")};
 // ----- alert settings: the little 🔔 button is only created AFTER the server accepted the admin PIN, so students never see it -----
-var NM=[["off","🔕 Off"],["all","👀 Every visit"],["id","🪪 Only students with an ID"],["new","🆕 Only first-time devices"],["guest","👤 Only guests (no ID)"],["watch","⭐ Only people on my list"]],ntfLoaded=false;
+var NM=[["off","🔕 Off"],["all","👀 Every visit"],["id","🪪 Only students with an ID"],["new","🆕 Only first-time devices"],["guest","👤 Only guests (no ID)"],["watch","⭐ Only people on my list"],["except","🚫 Everyone except people on my list"]],ntfLoaded=false;
 function ntfOff(){var x=$("vNtf");if(x)x.remove();ntfLoaded=false}
 function ntfIds(ta){return Array.from(new Set((ta.value.match(/\d+/g)||[]).filter(function(x){return x.length===8})))}
 function chanHtml(p,t,note){return'<div style="margin:0 0 12px;padding:8px;border:1px solid var(--line);border-radius:10px"><b class="tiny">'+t+'</b>'+(note?'<div class="tiny" id="'+p+'Note"></div>':'')+
  '<label style="display:flex;align-items:center;gap:8px;margin:8px 0;font-weight:600"><input type="checkbox" id="'+p+'Ord" style="width:20px;height:20px;min-width:20px;padding:0;margin:0;flex:none"> 🧸 New print orders</label>'+
  '<select id="'+p+'Mode" style="display:block;width:100%;margin:8px 0;padding:8px">'+NM.map(function(m){return'<option value="'+m[0]+'">'+m[1]+'</option>'}).join("")+'</select>'+
- '<div class="tiny">IDs on my list (8 digits, one per line):</div><textarea id="'+p+'Ids" rows="3" style="width:100%;margin:6px 0;padding:8px;box-sizing:border-box" placeholder="e.g. 25101000"></textarea><div class="tiny" id="'+p+'Names"></div></div>'}
+ '<div class="tiny">IDs on my list (8 digits, one per line). Used by the two “list” choices above:</div><textarea id="'+p+'Ids" rows="3" style="width:100%;margin:6px 0;padding:8px;box-sizing:border-box" placeholder="e.g. 25101000"></textarea><div class="tiny" id="'+p+'Names"></div></div>'}
 function ntfBtn(){
  if($("vNtf"))return;var w=document.createElement("div");w.id="vNtf";w.style.cssText="margin-top:10px;text-align:right";
  w.innerHTML='<button type="button" class="s" id="lB" title="Logins" aria-label="Logins" style="padding:2px 8px;font-size:13px;opacity:.5;margin-right:4px">🔑</button><button type="button" class="s" id="nB" title="Alert settings" aria-label="Alert settings" style="padding:2px 8px;font-size:13px;opacity:.5">🔔</button>'+
