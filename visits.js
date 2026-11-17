@@ -16,8 +16,26 @@ function send(id,add){try{fetch(SCRIPT_URL,{method:"POST",body:JSON.stringify({a
 
 // ----- counting -----
 var isAdmin=function(){return location.hash==="#admin"||(!!ss("pin")&&ss("role")!=="viewer")};
-if(!isAdmin()&&ss("visitSent")!=="1"){var id0=myId();ss("visitSent","1");ss("visitId",id0);send(id0,1)}
-// the ID is often typed later in the same visit: tell the sheet once (does not count a second visit)
+// a page opened INSIDE another app (Messenger, Instagram...) only counts after it stayed visible for WAIT seconds, so people who are bounced out to their real browser are not counted from the mini browser. Normal browsers count at once.
+var UA0=navigator.userAgent||"",IAB0=/FBAN|FBAV|FB_IAB|Messenger|Instagram|Line\/|Snapchat|TikTok|WhatsApp|Telegram|Twitter|LinkedInApp|MicroMessenger|; wv\)/i.test(UA0)||(/iPhone|iPad|iPod/i.test(UA0)&&!/Safari\//i.test(UA0));
+var WAIT=10;
+var lastIn=Date.now(),lastBeat=0;
+["pointerdown","keydown","wheel","touchstart","scroll","mousemove"].forEach(function(e){window.addEventListener(e,function(){lastIn=Date.now()},{passive:true,capture:true})});
+function vis(){return document.visibilityState!=="hidden"}
+// "I am here" signal (every ~40 s) for the Admin list "Active now / time used today": only while the page is visible and the person touched / scrolled / typed in the last 5 minutes
+function beat(){
+ if(isAdmin()||ss("visitSent")!=="1"||!vis()||Date.now()-lastIn>300000){lastBeat=0;return}
+ var now=Date.now(),dt=lastBeat&&now-lastBeat<75000?Math.round((now-lastBeat)/1000):0;lastBeat=now;
+ try{fetch(SCRIPT_URL+"?"+new URLSearchParams({hb:1,dev:DEV,id:myId(),dt:dt,iab:IAB0?1:0}),{mode:"no-cors",keepalive:true}).catch(function(){})}catch(e){}}
+function counted(){var id0=myId();ss("visitSent","1");ss("visitId",id0);send(id0,1);beat()}
+if(!isAdmin()){
+ if(ss("visitSent")==="1")setTimeout(beat,1500);   // tab reopened (Ctrl+Shift+T) or reloaded: already counted, just report that this person is here
+ else if(!IAB0)counted();
+ else{var seen=0,w=setInterval(function(){if(isAdmin()){clearInterval(w);return}if(vis())seen++;if(seen>=WAIT){clearInterval(w);if(ss("visitSent")!=="1")counted()}},1000)}
+}
+setInterval(beat,40000);
+document.addEventListener("visibilitychange",function(){if(vis())beat()});
+// the ID is often typed later in the same visit: tell the sheet once (does not count a second visit; the server may send the alert if your alert setting now matches)
 setInterval(function(){if(isAdmin()||ss("visitSent")!=="1")return;var id=myId();if(id&&id!==ss("visitId")){ss("visitId",id);send(id,0)}},15000);
 
 // ----- admin panel -----
@@ -27,16 +45,38 @@ box.innerHTML='<h2 class="h2">👀 Visitors</h2><div class="card" style="overflo
  '<div id="vSum" class="tiny" style="margin:0 0 8px"></div>'+
  '<button class="s" id="vRef" style="margin:0 0 10px">🔄 Refresh visitors</button>'+
  '<button class="s" id="vTd" style="margin:0 0 10px">📅 Only IDs that visited today: off</button>'+
+ '<div class="tiny" style="margin:2px 0 4px;font-weight:600">🟢 Active now · ⏱ time used today <span id="vLiveN"></span></div><div style="overflow-x:auto;margin-bottom:12px"><table><thead><tr><th>Status</th><th>ID</th><th>Name</th><th>Time today</th><th>First seen</th><th>Note</th></tr></thead><tbody id="vLive"></tbody></table><p class="note" id="vLiveNone"></p></div>'+
  '<table><thead id="vHead"><tr><th data-k="id">ID</th><th data-k="name">Name</th><th data-k="visits">Visits</th><th data-k="devices">Devices</th><th data-k="ts">Last visit</th><th data-k="today">Today</th><th data-k="ai">🤖 AI</th><th data-k="aiToday">🤖 Today</th></tr></thead><tbody id="vRows"></tbody></table>'+
  '<p class="note" id="vNone"></p>'+
+ '<details id="vMulti" style="display:none;margin:8px 0"><summary class="tiny" style="cursor:pointer;font-weight:600"></summary><div style="overflow-x:auto"><table><thead><tr><th>Device</th><th>IDs used (in order)</th><th>Visits</th><th>Last visit</th></tr></thead><tbody id="vMultiRows"></tbody></table><div class="tiny">Only switches seen after this update are listed. All of a device’s visits are counted under the last ID it used.</div></div></details>'+
  '<div class="tiny" style="margin:12px 0 4px;font-weight:600">Last days</div>'+
  '<table><thead><tr><th>Day</th><th>All visits</th><th>ID visits</th><th>Guest visits</th></tr></thead><tbody id="vDays"></tbody></table>'+
  '<div class="tiny" style="margin:14px 0 4px;font-weight:600">⏰ Busy hours (last 14 days, Dhaka time)</div><div id="vHr"></div>'+
- '<p class="tiny" style="margin-top:10px">A visit = one browser opening the site (counted once per tab session). "Devices" = different phones/computers that used that ID. Guest = no ID known. Tap “Mark as mine” on your own devices so they are not counted. Tap a column title to sort, tap an ID to see the days it visited.</p></div>';
+ '<p class="tiny" style="margin-top:10px">A visit = one browser opening the site (counted once per tab session). "Devices" = different phones/computers that used that ID. Guest = no ID known. “Active now” = a visible page where the person touched, scrolled or typed in the last 5 minutes; “Time today” counts only that active time. Pages opened inside Messenger and similar apps (📲 in-app) are counted after 10 seconds. Tap a column title to sort, tap an ID to see the days it visited.</p></div>';
 ad.appendChild(box);
 function $(i){return document.getElementById(i)}
 function nameOf(id){try{if(typeof STUDENTS!=="undefined"&&STUDENTS[id])return STUDENTS[id]}catch(e){}return ls("askNm:"+id)||""}
 function msg(t){$("vSum").textContent=t}
+var LIVE=null;
+function renderMulti(m){var d=$("vMulti");if(!m.length){d.style.display="none";return}d.style.display="";d.querySelector("summary").textContent="🔀 Devices that used more than one ID ("+m.length+")";
+ $("vMultiRows").innerHTML=m.map(function(x){return"<tr><td>"+esc(String(x.dev).slice(0,4))+"</td><td>"+x.ids.map(function(i){return esc(i)+(nameOf(i)?" <small>"+esc(nameOf(i))+"</small>":"")}).join(" → ")+"</td><td>"+x.visits+"</td><td>"+esc(x.last)+"</td></tr>"}).join("")}
+function shared(id){var o={};((R&&R.multi)||[]).forEach(function(m){if(m.ids.indexOf(id)>=0)m.ids.forEach(function(x){if(x!==id)o[x]=1})});var k=Object.keys(o);
+ return k.length?'<div style="margin-top:4px">🔀 Also used on a device that logged in as: '+k.map(function(x){return esc(x)+(nameOf(x)?" ("+esc(nameOf(x))+")":"")}).join(", ")+"</div>":""}
+function fmtT(s){s=Math.round(s||0);if(s<60)return s+" s";var m=Math.floor(s/60);return m<60?m+" min":Math.floor(m/60)+" h "+("0"+m%60).slice(-2)+" min"}
+function hm(ts){try{return new Date(ts).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",timeZone:"Asia/Dhaka"})}catch(e){return""}}
+function renderLive(){
+ if(!LIVE)return;var y0=hold(),by={},now=LIVE.now;
+ (LIVE.list||[]).forEach(function(d){var k=d.id||"g:"+d.dev,o=by[k]=by[k]||{id:d.id,devs:0,secs:0,first:d.first||now,last:0,active:false,inapp:false,dev:d.dev};
+  o.devs++;o.secs+=d.secs;if(d.first&&d.first<o.first)o.first=d.first;if(d.last>o.last)o.last=d.last;if(d.active)o.active=true;if(d.inapp)o.inapp=true});
+ var a=Object.keys(by).map(function(k){return by[k]}).sort(function(x,y){return(y.active-x.active)||(y.secs-x.secs)});
+ var n=a.filter(function(o){return o.active}).length;
+ $("vLiveN").textContent="· "+n+" active now · "+a.length+" used the site today";
+ $("vLive").innerHTML=a.map(function(o){var ago=Math.max(0,Math.round((now-o.last)/60000));
+  return"<tr><td>"+(o.active?"🟢 now":"⚪ "+(ago<1?"just now":ago<60?ago+" min ago":Math.floor(ago/60)+" h ago"))+"</td><td>"+(o.id?esc(o.id):"👤 Guest")+"</td><td>"+(o.id?esc(nameOf(o.id)):"device "+esc(String(o.dev).slice(0,4)))+"</td><td><b>"+fmtT(o.secs)+"</b></td><td>"+hm(o.first)+"</td><td>"+(o.devs>1?o.devs+" devices ":"")+(o.inapp?"📲 in-app":"")+"</td></tr>"}).join("");
+ $("vLiveNone").textContent=a.length?"":"Nobody has been seen yet today.";
+ window.scrollTo(0,y0)}
+async function loadLive(){var pin=ss("pin");if(!pin)return;try{var r=await (await fetch(SCRIPT_URL+"?"+new URLSearchParams({live:1,pin:pin}))).json();if(r&&r.ok){LIVE=r;renderLive()}}catch(e){}}
+setInterval(function(){if(location.hash==="#admin"&&vis()&&ss("pin"))loadLive()},30000);
 var holdOn=false;
 // keeps the panel as tall as it was while the lists redraw, so the page does not jump up; released on the next scroll/touch
 function hold(){var c=box.querySelector(".card");
@@ -66,7 +106,7 @@ var y1=hold();msg("⏳ Loading…");window.scrollTo(0,y1);
   if(!r||!r.ok){msg("The Apps Script does not have the visitor part yet (Code.gs + New version).");return}
   R=r;HIST={};TODAY=r.today;var td=(r.days&&r.days[0]&&r.days[0].d===r.today)?r.days[0]:{v:0,g:0};
   msg("Total visits: "+r.total+" · Today: "+td.v+" visits (🪪 ID "+(td.v-td.g)+" · 👤 guest "+td.g+") from "+(r.todayDevices||0)+" device"+(r.todayDevices===1?"":"s")+" and "+(r.todayIds||0)+" ID"+(r.todayIds===1?"":"s")+" · 🤖 AI today: "+(r.aiToday||0)+" from "+(r.aiUsersToday||0)+" ID"+(r.aiUsersToday===1?"":"s")+" (total "+(r.aiTotal||0)+")  · All devices: "+r.devices+" · IDs seen: "+r.ids.length+" · Guest visits: "+r.guest.visits+" ("+r.guest.devices+" device"+(r.guest.devices===1?"":"s")+")");
-  renderRows();renderHours(r.hours||[]);
+  renderRows();renderMulti(r.multi||[]);renderHours(r.hours||[]);loadLive();
   window.scrollTo(0,y1);
   $("vDays").innerHTML=(r.days||[]).map(function(d){return"<tr><td>"+esc(d.d)+"</td><td>"+d.v+"</td><td><b>"+(d.v-d.g)+"</b></td><td>"+d.g+"</td></tr>"}).join("")||'<tr><td colspan="4">No visits yet.</td></tr>';ntfBtn()
  }catch(e){msg("Could not load visitors: "+(e.message||e))}}
@@ -78,7 +118,7 @@ $("vRows").onclick=async function(e){var tr=e.target.closest("tr[data-id]");if(!
  try{if(!HIST[id]){var r=await (await fetch(SCRIPT_URL+"?"+new URLSearchParams({visitdays:1,pin:ss("pin")||"",id:id}))).json();
    if(r&&r.error==="pin"){ss("pin",null);ntfOff();d.remove();return}
    if(!r||!r.ok){d.firstChild.textContent="Update Code.gs and deploy a New version.";return}HIST[id]=r.rows}
-  d.firstChild.innerHTML=HIST[id].length?"<b>Days (visits · 🤖 AI):</b> "+HIST[id].map(function(o){return esc(o.d)+" (<b>"+o.n+"</b>"+(o.a?" · 🤖 "+o.a:"")+")"}).join(" · "):"No day history yet (it starts from the update)."}
+  d.firstChild.innerHTML=(HIST[id].length?"<b>Days (visits · 🤖 AI):</b> "+HIST[id].map(function(o){return esc(o.d)+" (<b>"+o.n+"</b>"+(o.a?" · 🤖 "+o.a:"")+")"}).join(" · "):"No day history yet (it starts from the update).")+shared(id)}
  catch(x){d.firstChild.textContent="Could not load: "+(x.message||x)}};
 // ----- alert settings: the little 🔔 button is only created AFTER the server accepted the admin PIN, so students never see it -----
 var NM=[["off","🔕 Off"],["all","👀 Every visit"],["id","🪪 Only students with an ID"],["new","🆕 Only first-time devices"],["guest","👤 Only guests (no ID)"],["watch","⭐ Only people on my list"],["except","🚫 Everyone except people on my list"]],ntfLoaded=false;
