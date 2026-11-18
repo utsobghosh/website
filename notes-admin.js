@@ -4,7 +4,7 @@
    so the code reads exactly like it did inside notes.js. */
 (function(){
 var C=window.__notesCtx;if(!C)return;
-var boardDlg,drvDlg,visDlg;
+var boardDlg,drvDlg,visDlg,prioDlg;
 with(C){
 function boardDlg(sid,xid){
  var k=sid+"|"+xid,SELB={},LAST="",COPY=0,KEY=function(f){return f.cl?f.p+"@@"+f.cpTo:f.p},coarse=window.matchMedia&&matchMedia("(pointer:coarse)").matches;
@@ -81,6 +81,50 @@ function drvDlg(){
    h+="</div>"})});
   ov.querySelector("#edDl").innerHTML=h||'<div class="tiny">No Drive links are stored. (Links that were archived earlier are gone only if you removed them here.)</div>'}
  draw()}
+function prioDlg(){
+ var SEL={},LAST="",QS="",NOCLK=0,dg=null,hz=null,coarse=window.matchMedia&&matchMedia("(pointer:coarse)").matches;
+ var ov=modal('<b>⭐ Priority order</b> <span class="tiny">The groups are in order: the first group is the most important and gets the strongest colour. Drag files (or tap files, then tap a group title) into a group. Add a new group at the top or the end and move groups with ⬅ ➡. Up to 8 groups. 🚫 = no priority · 📛 = priority from the file name or the ⋮ menu (old way).</span><input type="search" id="prQ" placeholder="🔎 Filter files by name…" style="margin-top:6px;padding:6px 10px;border-radius:10px;border:2px solid var(--line);background:var(--panel);color:inherit;font:inherit"><div id="edPb" style="flex:1;overflow:auto;position:relative;margin-top:6px;user-select:none"></div><div class="edfoot"><button type="button" class="p" data-m="x">Done</button><button type="button" class="s" data-m="ngt">➕ New group at the top</button><button type="button" class="s" data-m="nge">➕ New group at the end</button><button type="button" class="s" data-m="clr">Clear selection</button><span class="tiny" id="edPn"></span></div>',function(a,ov,b){
+  if(a==="clr"){SEL={};draw();return}
+  if(a==="ngt"||a==="nge"){var ids=prioOrder().slice();if(ids.length>=8){alert("You can have up to 8 groups.");return}var id="g"+Date.now().toString(36);if(a==="ngt")ids.unshift(id);else ids.push(id);save(ids);return}
+  if(a.indexOf("to:")===0){var ps=Object.keys(SEL);if(ps.length)go(ps,a.slice(3));return}
+  var m=/^(gl|gr|gd):(.+)$/.exec(a);if(m){var o=prioOrder().slice(),i=o.indexOf(m[2]);if(i<0)return;
+   if(m[1]==="gd")o.splice(i,1);else{var j=m[1]==="gl"?i-1:i+1;if(j<0||j>=o.length)return;var t=o[i];o[i]=o[j];o[j]=t}
+   save(o)}});
+ var bx=ov.firstChild;bx.style.cssText+=";width:97vw;max-width:none;height:94vh;max-height:94vh;display:flex;flex-direction:column;box-sizing:border-box";
+ var D=ov.querySelector("#edPb");
+ function save(ids){return metaSet("__prio",{tg:ids.join("|")}).then(function(){draw()})}
+ function go(ps,t){var pr=Promise.resolve();ps.forEach(function(p){pr=pr.then(function(){return metaSet("__pg:"+p,{tg:t==="none"?"-":t==="name"?"":t})})});pr.then(function(){SEL={};draw()})}
+ function colOf(f,ord){var m=META["__pg:"+f.p],g=m&&m.tg?String(m.tg):"";if(g==="-")return"none";if(g&&ord.indexOf(g)>=0)return g;return f.pr!=null?"name":"none"}
+ function tint(c,p){return"color-mix(in srgb,"+c+" "+p+"%,transparent)"}
+ function recolor(){D.querySelectorAll("[data-fp]").forEach(function(x){x.style.background=SEL[x.getAttribute("data-fp")]?tint("var(--accent)",35):tint("var(--text)",8)})}
+ ov.querySelector("#prQ").addEventListener("input",function(){QS=this.value.trim().toLowerCase();draw()});
+ D.addEventListener("click",function(e){if(Date.now()-NOCLK<400)return;var c=e.target.closest("[data-fp]");if(!c)return;var p=c.getAttribute("data-fp");
+  if(e.shiftKey&&LAST){var cs=[].slice.call(D.querySelectorAll("[data-fp]")).map(function(x){return x.getAttribute("data-fp")}),i=cs.indexOf(LAST),j=cs.indexOf(p);if(i>=0&&j>=0)cs.slice(Math.min(i,j),Math.max(i,j)+1).forEach(function(q){SEL[q]=1})}
+  else if(e.ctrlKey||e.metaKey||coarse){if(SEL[p])delete SEL[p];else SEL[p]=1}
+  else{var only=SEL[p]&&Object.keys(SEL).length===1;SEL={};if(!only)SEL[p]=1}
+  LAST=p;draw()});
+ // pointer drag (mouse / pen); on phones: tap files, then tap a group title
+ function zoneAt(e){var el=document.elementFromPoint(e.clientX,e.clientY);return el&&el.closest?el.closest("[data-dz]"):null}
+ D.addEventListener("pointerdown",function(e){if(e.pointerType==="touch"||e.button!==0)return;var c=e.target.closest("[data-fp]");if(!c)return;dg={p:c.getAttribute("data-fp"),x:e.clientX,y:e.clientY,on:0,g:null}});
+ function end(){document.removeEventListener("pointermove",mv);document.removeEventListener("pointerup",up);document.removeEventListener("pointercancel",up);if(hz){hz.style.outline="";hz=null}if(dg&&dg.g)dg.g.remove();dg=null}
+ function mv(e){if(!document.body.contains(ov)){end();return}if(!dg)return;
+  if(!dg.on){if(Math.abs(e.clientX-dg.x)+Math.abs(e.clientY-dg.y)<6)return;dg.on=1;if(!SEL[dg.p]){SEL={};SEL[dg.p]=1;recolor()}
+   dg.g=document.createElement("div");dg.g.textContent="📄 "+Object.keys(SEL).length+" file(s)";dg.g.style.cssText="position:fixed;z-index:99999;pointer-events:none;background:var(--accent,#d6336c);color:var(--onacc,#fff);font:600 12px system-ui;padding:4px 8px;border-radius:8px;opacity:.92";document.body.appendChild(dg.g)}
+  dg.g.style.left=(e.clientX+10)+"px";dg.g.style.top=(e.clientY+10)+"px";
+  var z=zoneAt(e);if(hz&&hz!==z)hz.style.outline="";if(z)z.style.outline="3px dashed var(--accent,#d6336c)";hz=z}
+ function up(e){var d=dg,z=d&&d.on?zoneAt(e):null;if(hz){hz.style.outline="";hz=null}if(d&&d.g)d.g.remove();dg=null;
+  if(d&&d.on){NOCLK=Date.now();if(z){var ps=Object.keys(SEL);if(ps.length)go(ps,z.getAttribute("data-dz"))}}}
+ document.addEventListener("pointermove",mv);document.addEventListener("pointerup",up);document.addEventListener("pointercancel",up);
+ function draw(){var ord=prioOrder(),box={},list=FILES.filter(function(f){return!f.cl&&!f.hd&&!f.ar&&(!QS||String(f.nm).toLowerCase().indexOf(QS)>=0)});
+  list.forEach(function(f){var g=colOf(f,ord);(box[g]=box[g]||[]).push(f)});
+  function chips(L,pre){return L.slice(0,400).map(function(f){return'<div data-fp="'+esc(f.p)+'" style="font-size:12px;padding:2px 4px;margin:2px 0;border-radius:6px;cursor:grab;touch-action:pan-y;background:'+(SEL[f.p]?tint("var(--accent)",35):tint("var(--text)",8))+'">'+(pre&&f.pr!=null?"["+f.pr+"] ":"")+(f.pinned?"📌 ":"")+esc(f.nm)+"</div>"}).join("")+(L.length>400?'<div class="tiny">+'+(L.length-400)+' more (use the filter)</div>':"")}
+  var h='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;align-items:start;min-height:100%">';
+  var nm=box.name||[];if(nm.length)h+='<div data-dz="name" style="border:2px dashed '+tint("var(--text)",30)+';border-radius:12px;padding:5px"><button type="button" class="s" data-m="to:name" style="width:100%;margin-bottom:3px;padding:4px 6px;font-size:13px">📛 From file name ('+nm.length+')</button>'+chips(nm,1)+"</div>";
+  ord.forEach(function(g,i){var L=box[g]||[],c=pcol(i+1);
+   h+='<div data-dz="'+esc(g)+'" style="border:3px solid '+c+';border-radius:12px;padding:5px;background:'+tint(c,10)+'"><button type="button" class="s" data-m="to:'+esc(g)+'" style="width:100%;margin-bottom:3px;padding:4px 6px;font-size:13px;border-color:'+c+'"><b style="color:'+c+'">●</b> Priority '+(i+1)+" ("+L.length+')</button><div style="display:flex;gap:4px;margin-bottom:3px"><button type="button" class="s" data-m="gl:'+esc(g)+'" title="Move this group earlier" style="padding:1px 8px"'+(i?"":" disabled")+'>⬅</button><button type="button" class="s" data-m="gr:'+esc(g)+'" title="Move this group later" style="padding:1px 8px"'+(i<ord.length-1?"":" disabled")+'>➡</button>'+(L.length?"":'<button type="button" class="s" data-m="gd:'+esc(g)+'" title="Delete this empty group" style="padding:1px 8px">🗑</button>')+"</div>"+chips(L)+"</div>"});
+  var no=box.none||[];h+='<div data-dz="none" style="border:2px solid '+tint("var(--text)",24)+';border-radius:12px;padding:5px"><button type="button" class="s" data-m="to:none" style="width:100%;margin-bottom:3px;padding:4px 6px;font-size:13px">🚫 No priority ('+no.length+')</button>'+chips(no)+"</div></div>";
+  D.innerHTML=h;var n=Object.keys(SEL).length,el=ov.querySelector("#edPn");if(el)el.textContent=n?n+" selected":""}
+ draw()}
 function visDlg(){
  var ov=modal('<b>👁 Show / hide subjects</b><div class="tiny">Hidden subjects disappear for visitors. You can show them again here any time. Nothing is deleted.</div><div id="edVl"></div><div class="edfoot"><button type="button" class="p" data-m="x">Done</button></div>',function(a,ov,b){
   if(a.indexOf("t:")!==0)return;var id=a.slice(2),m=META["__hide:"+id],hid=!!(m&&m.tg);b.disabled=true;
@@ -91,5 +135,5 @@ function visDlg(){
    return'<div style="display:flex;gap:8px;align-items:center;padding:6px 0"><span style="flex:1;opacity:'+(hid?.5:1)+'">'+x.icon+" "+esc(x.label)+(hid?" (hidden)":"")+'</span><button type="button" class="s" data-m="t:'+x.id+'">'+(hid?"👁 Show":"🙈 Hide")+"</button></div>"}).join("")}
  draw()}
 }
-window.__notesAdmin={boardDlg:boardDlg,drvDlg:drvDlg,visDlg:visDlg};
+window.__notesAdmin={boardDlg:boardDlg,drvDlg:drvDlg,visDlg:visDlg,prioDlg:prioDlg};
 })();

@@ -15,9 +15,9 @@ function myId(){var v=ls("askId")||"";if(/^\d{8}$/.test(v))return v;
 function send(id,add){try{fetch(SCRIPT_URL,{method:"POST",body:JSON.stringify({action:"visit",dev:DEV,id:id,add:add?1:0})}).catch(function(){})}catch(e){}}
 
 // ----- counting -----
-// a page opened INSIDE another app (Messenger, Instagram...) only counts after it stayed visible for WAIT seconds, so people who are bounced out to their real browser are not counted from the mini browser. Normal browsers count at once.
+// a visit only counts after the page stayed visible for WAIT seconds: 4 in a normal browser, 10 inside another app (Messenger, Instagram...), so quick bounces, link previews and people sent on to their real browser are not counted. The "I am here" signals start after that too.
 var UA0=navigator.userAgent||"",IAB0=/FBAN|FBAV|FB_IAB|Messenger|Instagram|Line\/|Snapchat|TikTok|WhatsApp|Telegram|Twitter|LinkedInApp|MicroMessenger|; wv\)/i.test(UA0)||(/iPhone|iPad|iPod/i.test(UA0)&&!/Safari\//i.test(UA0));
-var WAIT=10;
+var WAIT=IAB0?10:4;
 var lastIn=Date.now(),lastBeat=0;
 ["pointerdown","keydown","wheel","touchstart","scroll","mousemove"].forEach(function(e){window.addEventListener(e,function(){lastIn=Date.now()},{passive:true,capture:true})});
 function vis(){return document.visibilityState!=="hidden"}
@@ -25,11 +25,16 @@ function vis(){return document.visibilityState!=="hidden"}
 function beat(){
  if(ss("visitSent")!=="1"||!vis()||Date.now()-lastIn>300000){lastBeat=0;return}
  var now=Date.now(),dt=lastBeat&&now-lastBeat<75000?Math.round((now-lastBeat)/1000):0;lastBeat=now;
- try{fetch(SCRIPT_URL+"?"+new URLSearchParams({hb:1,dev:DEV,id:myId(),dt:dt,iab:IAB0?1:0}),{mode:"no-cors",keepalive:true}).catch(function(){})}catch(e){}}
+ try{fetch(SCRIPT_URL+"?"+new URLSearchParams({hb:1,dev:DEV,id:myId(),dt:dt,iab:IAB0?1:0,w:where()}),{mode:"no-cors",keepalive:true}).catch(function(){})}catch(e){}}
+function where(){   // what the person is looking at right now: an open file, a subject, or a screen
+ try{var v=document.querySelector(".nv:not(.hidden) #nvT");if(v&&v.textContent.trim())return"📄 "+v.textContent.trim().slice(0,56);
+  var sn=document.getElementById("sn");if(sn&&!sn.classList.contains("hidden")){var c=window.__notesCtx,lb="";try{if(c&&c.curCat&&typeof c.labelOf==="function")lb=c.labelOf(c.curCat)}catch(x){}return"📚 "+(lb||"Notes")}
+  var h=location.hash;if(h==="#admin")return"🛠 Admin";if(h==="#print")return"🖨 Print order";if(h==="#student")return"🎓 Student page";
+  var aw=document.getElementById("askWin");if(aw&&aw.offsetParent)return"🐻 Ask the bear"}catch(e){}
+ return"🏠 Home"}
 function counted(){var id0=myId();ss("visitSent","1");ss("visitId",id0);send(id0,1);beat()}
 {
- if(ss("visitSent")==="1")setTimeout(beat,1500);   // tab reopened (Ctrl+Shift+T) or reloaded: already counted, just report that this person is here
- else if(!IAB0)counted();
+ if(ss("visitSent")==="1")setTimeout(beat,4000);   // tab reopened (Ctrl+Shift+T) or reloaded: already counted, just report that this person is here
  else{var seen=0,w=setInterval(function(){if(vis())seen++;if(seen>=WAIT){clearInterval(w);if(ss("visitSent")!=="1")counted()}},1000)}
 }
 setInterval(beat,40000);
@@ -51,12 +56,12 @@ box.innerHTML='<h2 class="h2">👀 Visitors</h2><div class="card" style="overflo
  '<div class="tiny" style="margin:12px 0 4px;font-weight:600">Last days</div>'+
  '<table><thead><tr><th>Day</th><th>All visits</th><th>ID visits</th><th>Guest visits</th></tr></thead><tbody id="vDays"></tbody></table>'+
  '<div class="tiny" style="margin:14px 0 4px;font-weight:600">⏰ Busy hours (last 14 days, Dhaka time)</div><div id="vHr"></div>'+
- '<p class="tiny" style="margin-top:10px">A visit = one browser opening the site (counted once per tab session). "Devices" = different phones/computers that used that ID. Guest = no ID known. “Active now” = a visible page where the person touched, scrolled or typed in the last 5 minutes; “Time today” counts only that active time. If the same ID is open on several devices at once, the time is counted once (clock time), not added up. Pages opened inside Messenger and similar apps (📲 in-app) are counted after 10 seconds. Tap a column title to sort, tap an ID to see the days it visited.</p></div>';
+ '<p class="tiny" style="margin-top:10px">A visit = one browser opening the site (counted once per tab session). "Devices" = different phones/computers that used that ID. Guest = no ID known. “Active now” = a visible page where the person touched, scrolled or typed in the last 5 minutes; “Time today” counts only that active time. If the same ID is open on several devices at once, the time is counted once (clock time), not added up. A visit is counted after the page stayed visible for 4 seconds (10 seconds inside Messenger and similar apps, 📲 in-app). Tap a column title to sort, tap an ID to see the days it visited.</p></div>';
 ad.appendChild(box);
 function $(i){return document.getElementById(i)}
 function nameOf(id){try{if(typeof STUDENTS!=="undefined"&&STUDENTS[id])return STUDENTS[id]}catch(e){}return ls("askNm:"+id)||""}
 function msg(t){$("vSum").textContent=t}
-var LIVE=null,LIVEBACK=0;
+var LIVE=null,LIVEBACK=0,OPENW={};
 function renderMulti(m){var d=$("vMulti");if(!m.length){d.style.display="none";return}d.style.display="";d.querySelector("summary").textContent="🔀 Devices that used more than one ID ("+m.length+")";
  $("vMultiRows").innerHTML=m.map(function(x){return"<tr><td>"+esc(String(x.dev).slice(0,4))+"</td><td>"+x.ids.map(function(i){return esc(i)+(nameOf(i)?" <small>"+esc(nameOf(i))+"</small>":"")}).join(" → ")+"</td><td>"+x.visits+"</td><td>"+esc(x.last)+"</td></tr>"}).join("")}
 function shared(id){var o={};((R&&R.multi)||[]).forEach(function(m){if(m.ids.indexOf(id)>=0)m.ids.forEach(function(x){if(x!==id)o[x]=1})});var k=Object.keys(o);
@@ -65,17 +70,18 @@ function fmtT(s){s=Math.round(s||0);if(s<60)return s+" s";var m=Math.floor(s/60)
 function hm(ts){try{return new Date(ts).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit",timeZone:"Asia/Dhaka"})}catch(e){return""}}
 function renderLive(){
  if(!LIVE)return;var y0=hold(),now=LIVE.now,a=[];
- (LIVE.people||[]).forEach(function(p){a.push({id:p.id,secs:p.secs,first:p.first,last:p.last,active:p.active,inapp:p.inapp,devs:p.devs,act:p.act})});
- (LIVE.guests||[]).forEach(function(g){a.push({id:"",dev:g.dev,secs:g.secs,first:g.first,last:g.last,active:g.active,inapp:g.inapp,devs:1,act:g.active?1:0})});
+ (LIVE.people||[]).forEach(function(p){a.push({where:p.where,id:p.id,secs:p.secs,first:p.first,last:p.last,active:p.active,inapp:p.inapp,devs:p.devs,act:p.act})});
+ (LIVE.guests||[]).forEach(function(g){a.push({where:g.where,id:"",dev:g.dev,secs:g.secs,first:g.first,last:g.last,active:g.active,inapp:g.inapp,devs:1,act:g.active?1:0})});
  a.sort(function(x,y){return(y.active-x.active)||(y.secs-x.secs)});
  var n=a.filter(function(o){return o.active}).length;
  $("vLiveN").textContent=LIVEBACK?"· "+a.length+" used the site yesterday":"· "+n+" active now · "+a.length+" used the site today";
  $("vLive").innerHTML=a.map(function(o){var ago=Math.max(0,Math.round((now-o.last)/60000));
-  return"<tr><td>"+(o.active?"🟢 now":"⚪ "+(ago<1?"just now":ago<60?ago+" min ago":Math.floor(ago/60)+" h ago"))+"</td><td>"+(o.id?esc(o.id):"👤 Guest")+"</td><td>"+(o.id?esc(nameOf(o.id)):"device "+esc(String(o.dev).slice(0,4)))+"</td><td><b>"+fmtT(o.secs)+"</b></td><td>"+hm(o.first)+"</td><td>"+(o.devs>1?"💻 "+o.devs+" devices"+(o.act>1?" · "+o.act+" on now":"")+" ":"")+(o.inapp?"📲 in-app":"")+"</td></tr>"}).join("");
+  var k=o.id||"g:"+o.dev;return"<tr><td>"+(o.active?"🟢 now":"⚪ "+(ago<1?"just now":ago<60?ago+" min ago":Math.floor(ago/60)+" h ago"))+"</td><td>"+(o.id?esc(o.id):"👤 Guest")+"</td><td>"+(o.id?esc(nameOf(o.id)):"device "+esc(String(o.dev).slice(0,4)))+"</td><td><b>"+fmtT(o.secs)+"</b></td><td>"+hm(o.first)+"</td><td>"+(o.devs>1?"💻 "+o.devs+" devices"+(o.act>1?" · "+o.act+" on now":"")+" ":"")+(o.inapp?"📲 in-app ":"")+((o.where||[]).length?'<button type="button" class="s vWb" data-k="'+esc(k)+'" style="margin:0;padding:1px 9px;font-size:12px">'+(OPENW[k]?"▾":"▸")+' 📍 Where</button>':"")+"</td></tr>"+(OPENW[k]&&(o.where||[]).length?'<tr><td colspan="6" style="padding:2px 8px 10px 28px;font-size:13px">'+o.where.map(function(x){return esc(x[0])+" — <b>"+fmtT(x[1])+"</b>"}).join("<br>")+"</td></tr>":"")}).join("");
  $("vLiveNone").textContent=a.length?"":"Nobody has been seen yet today.";
  window.scrollTo(0,y0)}
 async function loadLive(){var pin=ss("pin");if(!pin)return;try{var r=await (await fetch(SCRIPT_URL+"?"+new URLSearchParams({live:1,pin:pin,day:LIVEBACK}))).json();if(r&&r.ok){LIVE=r;renderLive()}}catch(e){}}
 setInterval(function(){if(location.hash==="#admin"&&vis()&&ss("pin"))loadLive()},30000);
+$("vLive").onclick=function(e){var b=e.target.closest&&e.target.closest(".vWb");if(!b)return;var k=b.getAttribute("data-k");OPENW[k]=!OPENW[k];renderLive()};
 $("vLiveDay").onclick=function(){LIVEBACK=LIVEBACK?0:1;this.textContent=LIVEBACK?"📅 Yesterday":"📅 Today";LIVE=null;loadLive()};
 var holdOn=false;
 // keeps the panel as tall as it was while the lists redraw, so the page does not jump up; released on the next scroll/touch
