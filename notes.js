@@ -865,8 +865,8 @@ function viewer(){if(vOv)return vOv;vOv=document.createElement("div");vOv.classN
 var vIO=null,vDoc=null;
 var stP=document.createElement("style");stP.textContent=".nvth{filter:none}.nvth.on{animation:none}.nvbe{animation:none}.nvbe.hop{animation:nvbh .6s ease}.nvb{overflow-anchor:none}@media (max-width:560px){.nvh{flex-wrap:wrap;gap:4px;padding:6px}.nvh button,.nvh a{padding:6px 8px;font-size:12px;white-space:nowrap;border-radius:8px}.nvh span{order:9;flex:1 1 100%;font-size:11px;opacity:.85;text-align:center}}@media (max-width:350px){.nvh button,.nvh a{padding:5px 6px;font-size:11px}}.nvp{margin:0 0 .5%}";document.head.appendChild(stP);   /* lighter: no always-running animations / shadows */
 function undraw(d){d.__want=0;if(d.__task){try{d.__task.cancel()}catch(e){}d.__task=null}var c=d.querySelector("canvas");if(c){c.width=c.height=0}d.textContent="";d.classList.remove("rdy");d.__done=0;d.__lo=0;d.__links=0}   /* frees the page picture (memory) when it is far from the screen */
-async function drawPg(doc,d,cw,my,hi){var pg=await doc.getPage(+d.getAttribute("data-n"));if(my!==vTok||!d.__want)return;
- var v0=pg.getViewport({scale:1}),v=pg.getViewport({scale:Math.min(cw*Math.min(window.devicePixelRatio||1,2)*(hi?1.4:.6),1500)/v0.width}),c=document.createElement("canvas");   // hi=false: quick small picture while scrolling; hi=true: sharp picture once scrolling stops
+async function drawPg(doc,d,cw,my,hi,tiny){var pg=await doc.getPage(+d.getAttribute("data-n"));if(my!==vTok||!d.__want)return;
+ var v0=pg.getViewport({scale:1}),v=pg.getViewport({scale:Math.min(cw*Math.min(window.devicePixelRatio||1,2)*(hi?1.4:(tiny?.4:.6)),1500)/v0.width}),c=document.createElement("canvas");   // hi=false: quick small picture while scrolling; hi=true: sharp picture once scrolling stops
  c.width=Math.round(v.width);c.height=Math.round(v.height);var x=c.getContext("2d",{alpha:false});x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);
  var t=pg.render({canvasContext:x,viewport:v});d.__task=t;d.__hiR=hi;
  try{await t.promise}catch(er){c.width=c.height=0;return}
@@ -938,13 +938,13 @@ async function openV(path,name){budSeen={};clearTimeout(budT);
   b.innerHTML='<div class="nvi" id="nvI"></div>';var host=$("nvI");vZ=Math.min(1,900/cw);host.style.setProperty("--z",vZ);
   if(vIO)vIO.disconnect();if(vDoc&&vDoc!==doc){try{vDoc.destroy()}catch(er){}}vDoc=doc;
   var want=[],busy=false,tm=0,pl=0,vq=0,lastTop=b.scrollTop,dir=1,lastSc=0,vel=0,sT=b.scrollTop,sTm=Date.now();
-  function pump(){clearTimeout(tm);tm=0;if(busy||my!==vTok||b.__pin)return;var br=b.getBoundingClientRect(),cy=br.top+br.height/2,idle=Date.now()-lastSc>=130,best=null,bd=1e9,miss=false;if(!idle&&vel>1.1)return;   /* flinging fast: nothing is drawn, so the scroll stays smooth; pages show "loading" text and are drawn when it slows down */
+  function pump(){clearTimeout(tm);tm=0;if(busy||my!==vTok||b.__pin)return;var br=b.getBoundingClientRect(),cy=br.top+br.height/2,idle=Date.now()-lastSc>=130,best=null,bd=1e9,miss=false;var fast=!idle&&vel>1.8;   /* flinging fast: nothing is drawn, so the scroll stays smooth; pages show "loading" text and are drawn when it slows down */
    if(b.scrollTop!==lastTop){dir=b.scrollTop>lastTop?1:-1;lastTop=b.scrollTop}
    want.forEach(function(e){if(e.__rend)return;var m=!e.__done;if(!m&&!(idle&&e.__lo))return;if(miss&&!m)return;   // 1) pages with no picture yet, 2) when scrolling has stopped: make quick pictures sharp
-    var r=e.getBoundingClientRect();if(!idle&&(r.bottom<br.top||r.top>br.bottom))return;var dd=r.top+r.height/2-cy;   /* while moving: only pages that are on screen */dd=(dd*dir>=0?dd*dir:-dd*dir*1.8);   // on screen first, then ahead in scroll direction, then behind
+    var r=e.getBoundingClientRect();if(!idle){var ah=fast?0:br.height*1.2;if(dir>0?(r.bottom<br.top||r.top>br.bottom+ah):(r.top>br.bottom||r.bottom<br.top-ah))return}var dd=r.top+r.height/2-cy;   /* while moving: only pages that are on screen */dd=(dd*dir>=0?dd*dir:-dd*dir*1.8);   // on screen first, then ahead in scroll direction, then behind
     if(m&&!miss){miss=true;bd=1e9}if(dd<bd){bd=dd;best=e}});
    if(!best)return;busy=true;best.__rend=1;
-   drawPg(doc,best,cw,my,idle).catch(function(){}).then(function(){best.__rend=0;busy=false;if(my===vTok)pump()})}
+   drawPg(doc,best,cw,my,idle,fast).catch(function(){}).then(function(){best.__rend=0;busy=false;if(my===vTok)pump()})}
   b.__sc=function(){lastSc=Date.now();if(!vq)vq=requestAnimationFrame(function(){vq=0;var n=Date.now(),dt=n-sTm,y=b.scrollTop;if(dt>0)vel=vel*.6+Math.abs(y-sT)/dt*.4;sT=y;sTm=n});clearTimeout(tm);tm=setTimeout(pump,150);if(!pl)pl=setTimeout(function(){pl=0;pump()},220);want.forEach(function(e){if(e.__rend&&e.__hiR&&e.__task){try{e.__task.cancel()}catch(x){}}})};   // scrolling stopped -> sharpen
   var io=vIO=new IntersectionObserver(function(es){es.forEach(function(e){var d=e.target;
    if(e.isIntersecting){if(!d.__want){d.__want=1;want.push(d)}}
@@ -958,6 +958,20 @@ async function openV(path,name){budSeen={};clearTimeout(budT);
     if(i%4===0)await new Promise(function(r){setTimeout(r,25)})}})();
   setupNav(b,host,doc.numPages)}
  catch(e){console.error("notes viewer:",e);if(my===vTok)b.innerHTML='<p class="nvm">Could not show this file here ('+esc((e&&e.message)||e)+'). <a href="'+esc(url)+'" target="_blank" rel="noopener">Open it directly</a></p>'}}
+/* ----- videos and Word / PowerPoint / Excel from Drive: shown inside the site with Drive's own player (no download, nothing is drawn by us) ----- */
+function embFile(p){var f=FILES.filter(function(x){return x.p===p})[0];return f&&f.id&&(isVid(p)||/\.(docx?|pptx?|xlsx?)$/i.test(p))?f:null}
+function openEmb(path,name){var f=embFile(path);if(!f)return false;
+ var o=viewer(),b=$("nvB"),id=encodeURIComponent(f.id),op=$("nvOp");vTok++;vZ=1;if(vIO)vIO.disconnect();
+ o.classList.remove("hidden");document.documentElement.style.overflow="hidden";$("nvT").textContent=name;
+ var sb=$("nvS");if(sb){sb.setAttribute("data-star",path);syncStars()}
+ $("nvNav").style.display="none";$("nvInfo").className="nvinfo hidden";$("nvInfo").innerHTML="";
+ $("nvD").href="https://drive.google.com/uc?export=download&id="+id;$("nvD").setAttribute("download",name);$("nvD").style.visibility="";
+ var nm=$("nvMenu");if(nm)nm.remove();
+ if(op){op.onclick=null;op.style.display="";op.href="https://drive.google.com/file/d/"+id+"/view";op.target="_blank";op.rel="noopener";op.innerHTML='\u2601\ufe0f<span class="nl"> Open in Drive</span>'}
+ b.innerHTML='<iframe src="https://drive.google.com/file/d/'+id+'/preview" allow="autoplay; fullscreen" allowfullscreen style="display:block;width:100%;height:100%;min-height:60vh;border:0;background:#000"></iframe>';
+ return true}
+document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a.nchip,a.nf,a.nfv,a.npin");if(!a||e.ctrlKey||e.metaKey||e.shiftKey)return;
+ var p=a.getAttribute("data-p");if(p&&embFile(p)){e.preventDefault();openEmb(p,a.getAttribute("data-n")||"")}});
 window.__nvOpen=function(){return!!vOv&&!vOv.classList.contains("hidden")};
 window.__testLoading=function(){var o=viewer(),b=$("nvB"),f=FILES.filter(function(x){return x.id})[0]||FILES[0],path=f?f.p:"";   /* admin test button: shows the loading screen only, it never finishes (press Close) */
  vTok++;o.classList.remove("hidden");document.documentElement.style.overflow="hidden";
