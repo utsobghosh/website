@@ -838,11 +838,11 @@ function viewer(){if(vOv)return vOv;vOv=document.createElement("div");vOv.classN
  vOv.querySelector("#nvBe").onclick=function(){budSay((window.bearPick&&window.bearPick("study"))||BUD_MSG[Math.floor(Math.random()*BUD_MSG.length)],1)};
  vOv.querySelector("#nvBe").insertAdjacentHTML("afterend",'<span class="askb" id="nvAsk" role="button" title="Chat with the AI bear">💬 Ask AI</span>');vOv.querySelector("#nvAsk").onclick=function(e){e.stopPropagation();if(window.__askOpen)window.__askOpen()};   /* tiny ask badge on the viewer bear */
  document.body.appendChild(vOv);
- $("nvX").onclick=function(){try{if(document.fullscreenElement)document.exitFullscreen().catch(function(){})}catch(x){}$("nvNav").style.display="none";$("nvInfo").className="nvinfo hidden";vTok++;if(vIO)vIO.disconnect();document.documentElement.style.overflow="";vOv.classList.add("hidden");$("nvB").innerHTML=""};
+ $("nvX").onclick=function(){embOff();try{if(document.fullscreenElement)document.exitFullscreen().catch(function(){})}catch(x){}$("nvNav").style.display="none";$("nvInfo").className="nvinfo hidden";vTok++;if(vIO)vIO.disconnect();document.documentElement.style.overflow="";vOv.classList.add("hidden");$("nvB").innerHTML=""};
  var vb=$("nvB"),pz=null;budWatch(vb);
  function zoomTo(z,mx,my){var i=$("nvI");if(!i)return;var br=vb.getBoundingClientRect(),cx=br.left+mx,cy=br.top+my,h=i.getBoundingClientRect(),fx=(cx-h.left)/h.width,fy=(cy-h.top)/h.height;   // the point under your fingers stays under your fingers
   vZ=Math.max(.3,Math.min(3,z));i.style.setProperty("--z",vZ);var n=i.getBoundingClientRect();vb.scrollLeft+=n.left+fx*n.width-cx;vb.scrollTop+=n.top+fy*n.height-cy}
- function zoom(f){zoomTo(vZ*f,vb.clientWidth/2,vb.clientHeight/2)}   // keeps the middle of the screen in place
+ function zoom(f){if($("nvE")){embZoom(f);return}zoomTo(vZ*f,vb.clientWidth/2,vb.clientHeight/2)}   // keeps the middle of the screen in place
  function dist(t){return Math.hypot(t[0].clientX-t[1].clientX,t[0].clientY-t[1].clientY)}
  /* pinch: while two fingers are down the page is moved/scaled with a GPU transform (smooth, follows your fingers: zoom + two-finger drag); real size is applied once when you lift */
  function pzDraw(){var p=pz;if(!p)return;p.raf=0;p.i.style.transform="translate("+(p.cx-p.h.left-p.s*(p.mx-p.h.left))+"px,"+(p.cy-p.h.top-p.s*(p.my-p.h.top))+"px) scale("+p.s+")"}
@@ -857,7 +857,7 @@ function viewer(){if(vOv)return vOv;vOv=document.createElement("div");vOv.classN
  vb.addEventListener("touchend",pzEnd);vb.addEventListener("touchcancel",pzEnd);
  vb.addEventListener("wheel",function(e){if(!e.ctrlKey)return;e.preventDefault();var r=vb.getBoundingClientRect();zoomTo(vZ*Math.exp(-e.deltaY/300),e.clientX-r.left,e.clientY-r.top)},{passive:false});
  function fsLab(){var x=!!document.fullscreenElement;$("nvF").innerHTML=(x?"🗗":"⛶")+'<span class="nl">'+(x?" Exit full screen":" Full screen")+"</span>"}
- $("nvF").onclick=function(){try{if(document.fullscreenElement)document.exitFullscreen();else goFS()}catch(x){}};
+ $("nvF").onclick=function(){try{if(document.fullscreenElement)document.exitFullscreen();else if($("nvEf")){var fr=$("nvEf"),rq=fr.requestFullscreen||fr.webkitRequestFullscreen;if(rq)rq.call(fr);else goFS()}else goFS()}catch(x){}};
  document.addEventListener("fullscreenchange",fsLab);if(!document.fullscreenEnabled)$("nvF").style.display="none";fsLab();
  $("nvM").onclick=function(){zoom(1/1.25)};$("nvP").onclick=function(){zoom(1.25)};
  document.addEventListener("keydown",function(e){if(e.key==="Escape"&&!vOv.classList.contains("hidden"))$("nvX").click()});
@@ -923,7 +923,7 @@ function toggleMenu(a,path){var m=$("nvMenu");if(m){var same=m.__a===a;m.remove(
  vOv.appendChild(m)}
 document.addEventListener("click",function(e){var m=$("nvMenu");if(m&&!(e.target.closest&&e.target.closest(".nvopen,#nvMenu")))m.remove()});
 function goFS(){var d=document.documentElement;try{if(!document.fullscreenElement&&d.requestFullscreen)d.requestFullscreen().catch(function(){var f=$("nvF");if(f)f.textContent="Press F11 for full screen"})}catch(x){}}
-async function openV(path,name){budSeen={};clearTimeout(budT);
+async function openV(path,name){embOff();$("nvB")&&($("nvB").style.touchAction="");budSeen={};clearTimeout(budT);
  var o=viewer(),my=++vTok,b=$("nvB"),url=encodeURI(path);vZ=1;o.classList.remove("hidden");document.documentElement.style.overflow="hidden";
  goFS();   // full screen: hides the browser tabs/address bar (not on iPhone Safari)
  $("nvT").textContent=name;var sb=$("nvS");if(sb){sb.setAttribute("data-star",path);syncStars()}$("nvD").href=url;$("nvD").setAttribute("download",name+(isImg(path)?path.slice(path.lastIndexOf(".")):".pdf"));$("nvO").href=url;$("nvO").style.display=(isImg(path)||navigator.pdfViewerEnabled===true)?"":"none";$("nvD").style.visibility=$("nvO").style.visibility=FILES.some(function(x){return x.p===path&&x.id})?"hidden":"";   // Drive files have no real link until they are downloaded: buttons appear when ready   // "Open" only where the browser can really show PDFs (not phones)
@@ -959,16 +959,26 @@ async function openV(path,name){budSeen={};clearTimeout(budT);
   setupNav(b,host,doc.numPages)}
  catch(e){console.error("notes viewer:",e);if(my===vTok)b.innerHTML='<p class="nvm">Could not show this file here ('+esc((e&&e.message)||e)+'). <a href="'+esc(url)+'" target="_blank" rel="noopener">Open it directly</a></p>'}}
 /* ----- videos and Word / PowerPoint / Excel from Drive: shown inside the site with Drive's own player (no download, nothing is drawn by us) ----- */
-function embFile(p){var f=FILES.filter(function(x){return x.p===p})[0];return f&&f.id&&(isVid(p)||/\.(docx?|pptx?|xlsx?)$/i.test(p))?f:null}
-function openEmb(path,name){var f=embFile(path);if(!f)return false;
+var EMB_VID=true;   /* set to false to send videos back to the Drive page (if the in-site player lags on a phone) */
+function embOff(){if(vOv)vOv.classList.remove("emb","embv");document.documentElement.classList.remove("nvEmb")}
+function embFile(p){var f=FILES.filter(function(x){return x.p===p})[0];return f&&f.id&&((EMB_VID&&isVid(p))||/\.(docx?|pptx?|xlsx?)$/i.test(p))?f:null}
+var eZ=1;
+function embZoom(f){var fr=$("nvEf");if(!fr)return;eZ=Math.max(.6,Math.min(3,eZ*f));fr.style.width=100/eZ+"%";fr.style.height=100/eZ+"%";fr.style.transform="scale("+eZ+")"}   /* ➖ ➕ for videos / Word files: the frame is laid out smaller and scaled up, so text gets bigger and still scrolls normally */
+var eVid=0,eLis=0;
+function embCss(){if($("nvEcss"))return;var st=document.createElement("style");st.id="nvEcss";
+ st.textContent=".nv.emb .nvh{flex-wrap:nowrap!important;gap:3px!important;padding:3px 6px!important}.nv.emb .nvh .nl{display:none!important}.nv.emb .nvh button,.nv.emb .nvh a{padding:4px 9px!important;font-size:15px!important;min-width:0;white-space:nowrap}.nv.emb #nvT{font-size:13px!important;min-width:0;overflow:hidden;text-overflow:ellipsis}.nv.embv #nvM,.nv.embv #nvP,.nv.embv #nvS{display:none!important}.nv.emb #nvBe,.nv.emb #nvAsk{display:none!important}html.nvEmb body>*:not(.nv){visibility:hidden!important}#nvEx{display:none}@media (orientation:landscape) and (max-height:600px){.nv.emb .nvh{display:none!important}.nv.emb #nvEb{display:none!important}#nvEx{display:block;position:absolute;left:6px;top:6px;z-index:3;padding:3px 9px;border:0;border-radius:14px;background:rgba(0,0,0,.45);color:#fff;font:600 15px system-ui,sans-serif;opacity:.75}}";   /* phone turned sideways = the video takes the whole screen; paused page behind it so the phone has less to draw */
+ document.head.appendChild(st);
+ document.addEventListener("fullscreenchange",function(){var fe=document.fullscreenElement,so=screen.orientation;try{if(fe&&fe.id==="nvEf"&&eVid){if(so&&so.lock)so.lock("landscape").catch(function(){})}else if(!fe&&so&&so.unlock)so.unlock()}catch(x){}})}   /* full screen of the video = turns the phone view sideways by itself */
+function openEmb(path,name){eZ=1;var f=embFile(path);if(!f)return false;embCss();eVid=isVid(path)?1:0;
  var o=viewer(),b=$("nvB"),id=encodeURIComponent(f.id),op=$("nvOp");vTok++;vZ=1;if(vIO)vIO.disconnect();
- o.classList.remove("hidden");document.documentElement.style.overflow="hidden";$("nvT").textContent=name;
+ o.classList.remove("hidden");o.classList.add("emb");o.classList.toggle("embv",!!eVid);document.documentElement.classList.add("nvEmb");document.documentElement.style.overflow="hidden";$("nvT").textContent=name;
  var sb=$("nvS");if(sb){sb.setAttribute("data-star",path);syncStars()}
  $("nvNav").style.display="none";$("nvInfo").className="nvinfo hidden";$("nvInfo").innerHTML="";
  $("nvD").href="https://drive.google.com/uc?export=download&id="+id;$("nvD").setAttribute("download",name);$("nvD").style.visibility="";
  var nm=$("nvMenu");if(nm)nm.remove();
  if(op){op.onclick=null;op.style.display="";op.href="https://drive.google.com/file/d/"+id+"/view";op.target="_blank";op.rel="noopener";op.innerHTML='\u2601\ufe0f<span class="nl"> Open in Drive</span>'}
- b.innerHTML='<iframe src="https://drive.google.com/file/d/'+id+'/preview" allow="autoplay; fullscreen" allowfullscreen style="display:block;width:100%;height:100%;min-height:60vh;border:0;background:#000"></iframe>';
+ b.style.touchAction="pan-x pan-y pinch-zoom";   /* the viewer normally blocks the browser's own pinch (it has its own for PDFs); for Drive files the browser / Drive pinch must be allowed */
+ b.innerHTML='<div id="nvE" style="display:flex;flex-direction:column;height:100%;min-height:60vh"><div style="flex:1;min-height:0;position:relative;overflow:hidden;background:#000"><button type="button" id="nvEx" onclick="document.getElementById(\'nvX\').click()">\u2715</button><iframe id="nvEf" src="https://drive.google.com/file/d/'+id+'/preview" allow="autoplay; fullscreen" allowfullscreen style="position:absolute;left:0;top:0;width:100%;height:100%;border:0;transform-origin:0 0"></iframe></div><a id="nvEb" href="https://drive.google.com/file/d/'+id+'/view" target="_blank" rel="noopener" style="display:block;padding:4px 8px;background:#000;color:#aaa;text-align:center;font:500 12px system-ui,sans-serif;text-decoration:none">\u2601\ufe0f Not playing? Open in Drive</a></div>';
  return true}
 document.addEventListener("click",function(e){var a=e.target.closest&&e.target.closest("a.nchip,a.nf,a.nfv,a.npin");if(!a||e.ctrlKey||e.metaKey||e.shiftKey)return;
  var p=a.getAttribute("data-p");if(p&&embFile(p)){e.preventDefault();openEmb(p,a.getAttribute("data-n")||"")}});
