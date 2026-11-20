@@ -959,9 +959,10 @@ async function openV(path,name){embOff();$("nvB")&&($("nvB").style.touchAction="
   setupNav(b,host,doc.numPages)}
  catch(e){console.error("notes viewer:",e);if(my===vTok)b.innerHTML='<p class="nvm">Could not show this file here ('+esc((e&&e.message)||e)+'). <a href="'+esc(url)+'" target="_blank" rel="noopener">Open it directly</a></p>'}}
 /* ----- videos and Word / PowerPoint / Excel from Drive: shown inside the site with Drive's own player (no download, nothing is drawn by us) ----- */
-var EMB_VID=true;   /* set to false to send videos back to the Drive page (if the in-site player lags on a phone) */
+var EMB_VID=false;   /* true = videos play inside the site, false = videos open on the Drive page (now OFF) */
+var EMB_DOC=true;   /* true = Word / PowerPoint / Excel open inside the site, false = they open on the Drive page */
 function embOff(){if(vOv)vOv.classList.remove("emb","embv");document.documentElement.classList.remove("nvEmb")}
-function embFile(p){var f=FILES.filter(function(x){return x.p===p})[0];return f&&f.id&&((EMB_VID&&isVid(p))||/\.(docx?|pptx?|xlsx?)$/i.test(p))?f:null}
+function embFile(p){var f=FILES.filter(function(x){return x.p===p})[0];return f&&f.id&&((EMB_VID&&isVid(p))||(EMB_DOC&&/\.(docx?|pptx?|xlsx?)$/i.test(p)))?f:null}
 var eZ=1;
 function embZoom(f){var fr=$("nvEf");if(!fr)return;eZ=Math.max(.6,Math.min(3,eZ*f));fr.style.width=100/eZ+"%";fr.style.height=100/eZ+"%";fr.style.transform="scale("+eZ+")"}   /* ➖ ➕ for videos / Word files: the frame is laid out smaller and scaled up, so text gets bigger and still scrolls normally */
 var eVid=0,eLis=0;
