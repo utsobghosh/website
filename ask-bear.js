@@ -128,7 +128,7 @@ function visibleText() {
 }
 async function pagePicture() {
   try {
-    var c = null; try { c = window.__notesCtx && window.__notesCtx(); } catch (e) {}
+    var c = null; try { c = window.__notesOpen && window.__notesOpen(); } catch (e) {}
     if (c && c.viewer) {   // PDF viewer: copy the page pictures that are on screen (fast and exact; the viewer's bear is not part of these pictures)
       var vb = $("nvB"); if (!vb) return ""; var r = vb.getBoundingClientRect(), sc = Math.min(1, 800 / r.width), out = document.createElement("canvas");
       out.width = Math.max(1, Math.round(r.width * sc)); out.height = Math.max(1, Math.round(r.height * sc));
@@ -147,7 +147,7 @@ async function pagePicture() {
 }
 var ABOUT_PAGE = /\b(this|these|that|here|page|screen|screenshot|see|seeing|look|looking|showing|shown|displayed|visible|button|picture|image|above|below|on my)\b|এই|এখানে|পেজ|স্ক্রিন|দেখ|ছবি|বাটন|ওপরে|নিচে|উপরে/i;
 function captureShot(question) {   // {text: visible text (instant), img: promise of a small JPEG}. In the PDF viewer the picture is always taken (it is instant and the pages are pictures); on the website pages it is taken only when the question sounds like it is about the page, because drawing the page takes a second or two
-  var inViewer = false; try { var c = window.__notesCtx && window.__notesCtx(); inViewer = !!(c && c.viewer); } catch (e) {}
+  var inViewer = false; try { var c = window.__notesOpen && window.__notesOpen(); inViewer = !!(c && c.viewer); } catch (e) {}
   return { text: inViewer ? "" : visibleText(), img: (inViewer || ABOUT_PAGE.test(question || "")) ? pagePicture() : Promise.resolve("") };
 }
 
@@ -376,7 +376,7 @@ function lcSave(c) {
 function lcDel(cs) { lcSet(lcGet().filter(function (x) { return cs.indexOf(x.c) < 0; })); }
 function ctxNote() {
   try {
-    var c = window.__notesCtx && window.__notesCtx();
+    var c = window.__notesOpen && window.__notesOpen();
     if (c && c.viewer) { var pg = $("nvPg"); return 'the note "' + (c.label || "") + '"' + (pg && pg.textContent ? " (page " + pg.textContent + ")" : ""); }
     if (c && c.label) return 'the "' + c.label + '" notes list';
   } catch (e) {}
@@ -528,7 +528,7 @@ function buildBar() {
   window.addEventListener("resize", placeBar); paintSound();
 }
 function anchorRect() {   // the bear (or the bear of the PDF viewer): the bar is placed BESIDE it so the bear stays visible
-  var c = null; try { c = window.__notesCtx && window.__notesCtx(); } catch (e) {}
+  var c = null; try { c = window.__notesOpen && window.__notesOpen(); } catch (e) {}
   var el = (c && c.viewer) ? $("nvBe") : $("bear"); if (!el) return null; var r = el.getBoundingClientRect();
   if (!(r.width > 0 && r.right > 0 && r.left < innerWidth && r.bottom > 0 && r.top < innerHeight)) return null;
   return { left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, viewer: !!(c && c.viewer) };

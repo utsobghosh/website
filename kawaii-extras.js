@@ -484,10 +484,10 @@ async function kLiveQuiz(blocks,label,sig){kQWhy=[];
 async function kqWait(card,total,stop,onTick){var t=0;while(t<total&&!stop()&&!card.__gone){await kWait(100);
   if(card.__drag||card.__min){if(card.__min&&++card.__idle>1800)card.__gone=true;continue}
   t+=100;if(onTick)onTick(total-t)}return t>=total}
-function kInViewer(){try{var c=window.__notesCtx&&window.__notesCtx();return!!(c&&c.viewer)}catch(e){return false}}   // a PDF is open in the viewer
+function kInViewer(){try{var c=window.__notesOpen&&window.__notesOpen();return!!(c&&c.viewer)}catch(e){return false}}   // a PDF is open in the viewer
 async function kQuiz(force){var K=window.__bearK||{},bear=K.bear,body=$("bearBody");if(kBusy||document.hidden||kInViewer())return;   // tab in the background or PDF viewer open: nothing is shown, so NO Gemini call
  var bearOn=!!(bear&&bear.style.display!=="none"),say=function(t,ms){if(bearOn&&K.bsay)K.bsay(t,ms)};   // in the PDF viewer the bear is not there: the box pops up alone   // force: undefined = the subject that is open, "*" = any subject, "dsa" etc = that subject (Question zone tab)
- var ctx=null;try{ctx=window.__notesCtx&&window.__notesCtx()}catch(e){}
+ var ctx=null;try{ctx=window.__notesOpen&&window.__notesOpen()}catch(e){}
  var blocks=typeof force==="string"?(force==="*"?kRandSubject():(window.NOTES_INFO||[]).filter(function(e){return kSubj(e)===force})):(ctx&&ctx.blocks&&ctx.blocks.length?ctx.blocks:kRandSubject());
  var fixed=kQuizPool(blocks);if(!fixed.length&&typeof force!=="string"){blocks=kRandSubject();fixed=kQuizPool(blocks)}if(!fixed.length)return false;
  kBusy=true;window.__bearTalking=true;var card=document.createElement("div"),dot=null,tapped=false,pick=-1,answered=false,t;
