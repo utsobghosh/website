@@ -139,11 +139,12 @@ function settings() {
     + '<label>Height: <b id="spsHv"></b></label><div class="spr"><input type="range" id="spsHt" min="24" max="90"></div>'
     + '<label>Text size: <b id="spsFv"></b> <span class="spsm">(it shrinks by itself if the text does not fit)</span></label><div class="spr"><input type="range" id="spsFs" min="9" max="22"></div>'
     + '<label>Button text</label><input type="text" id="spsT">'
-    + '<label>Seat-plan PDF link on Google Drive (leave empty = students upload their own PDF)</label><input type="text" id="spsU" placeholder="https://drive.google.com/file/d/…">'
+    + '<label>Seat-plan PDF: a Google Drive link, or use the Gmail button below (leave empty = students upload their own PDF)</label><input type="text" id="spsU" placeholder="https://drive.google.com/file/d/…"><div class="spsm" id="spsGmNote"></div><button type="button" class="s" data-m="gm">📧 Find the PDF in my Gmail</button>'
     + '<label>Message above the upload box</label><textarea id="spsI" rows="2"></textarea>'
     + '<div class="edfoot"><button type="button" class="p" data-m="save">Save</button><button type="button" class="s" data-m="reset">Reset look</button><button type="button" class="s" data-m="x">Cancel</button></div></div>',
     function (a, ov) {
       if (a === "reset") { PREV = null; fill({ t: DEF.t, ht: DEF.ht, fs: DEF.fs, pos: DEF.pos }); live(); return; }
+      if (a === "gm") { gmPick(ov); return; }
       if (a !== "save") return;
       var v = read(); PREV = null;
       C.cfgSave(function (n) { n.sp = { h: v.h, pos: v.pos, ht: v.ht, fs: v.fs, t: v.t, u: v.u, ins: v.ins }; });
@@ -160,7 +161,7 @@ function settings() {
     if (o.ins !== undefined) g("spsI").value = o.ins;
   }
   function read() { return { h: g("spsShow").checked ? 0 : 1, pos: g("spsPos").value, ht: +g("spsHt").value, fs: +g("spsFs").value, t: g("spsT").value.trim() || DEF.t, u: g("spsU").value.trim(), ins: g("spsI").value.trim() || DEF.ins }; }
-  function live() { var v = read(); g("spsHv").textContent = v.ht + " px"; g("spsFv").textContent = v.fs + " px"; PREV = { h: v.h, pos: v.pos, ht: v.ht, fs: v.fs, t: v.t }; paint(true); }
+  function live() { var uu = g("spsU").value.trim(); g("spsGmNote").textContent = /^gmail:/i.test(uu) ? "📧 From Gmail: " + (/^gmail:latest$/i.test(uu) ? "always the newest seat-plan email (it updates by itself)" : "the email you chose") : ""; var v = read(); g("spsHv").textContent = v.ht + " px"; g("spsFv").textContent = v.fs + " px"; PREV = { h: v.h, pos: v.pos, ht: v.ht, fs: v.fs, t: v.t }; paint(true); }
   fill(c); live();
   ov.addEventListener("input", live); ov.addEventListener("change", live);
   var wt = setInterval(function () { if (!document.body.contains(ov)) { clearInterval(wt); if (PREV) { PREV = null; paint(true); } } }, 400);   // Cancel / outside: drop the preview
@@ -196,6 +197,39 @@ async function fromDrive(id) {   // same route notes.js uses for Drive files (Ap
   throw new Error("drive");
 }
 
+function gmPick(ov) {   // lists the seat-plan mails found in Gmail (Apps Script: ?gmlist=1) and puts the chosen one into the link box
+  var pin = ""; try { pin = sessionStorage.getItem("pin") || ""; } catch (e) {}
+  var box = C.modal('<div class="spf"><b>📧 Seat plans found in Gmail</b><div id="spGmL" class="spmsg">⏳ Looking in Gmail… (a few seconds)</div><div class="edfoot"><button type="button" class="s" data-m="x">Cancel</button></div></div>', function (a, o2) {
+    if (a.indexOf("pick:") !== 0) return;
+    var u = ov.querySelector("#spsU"); u.value = "gmail:" + a.slice(5); u.dispatchEvent(new Event("input", { bubbles: true })); o2.remove();
+  });
+  var L = box.querySelector("#spGmL");
+  function fail(t) { L.className = "spmsg warn"; L.textContent = t; }
+  fetch(SCRIPT_URL + "?gmlist=1&pin=" + encodeURIComponent(pin)).then(function (r) { return r.json(); }).then(function (r) {
+    if (!r || !r.ok) {
+      var e = String((r && r.error) || "");
+      fail(e === "pin" ? "The admin PIN was not accepted." : /authoriz|permission|GmailApp/i.test(e) ? "Apps Script has no Gmail permission yet. Run the function spTest once in the Apps Script editor, allow Gmail, then deploy a New version." : e ? "Gmail said: " + e : "The Apps Script has no Gmail part yet (add the file Code-gmail.gs and its 2 lines in doGet).");
+      return;
+    }
+    if (!r.items.length) { fail("No seat-plan email with a PDF was found in this Gmail account."); return; }
+    L.className = ""; L.textContent = "";
+    var h = '<button type="button" class="edb edwide" data-m="pick:latest"><b>✨ Always use the newest seat-plan email</b><br><small>nothing to do next time, it updates by itself</small></button>';
+    r.items.forEach(function (it) {
+      var d = new Date(it.t).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+      h += '<button type="button" class="edb edwide" data-m="pick:' + esc(it.id) + ':' + it.n + '"><b>' + esc(it.name) + '</b> · ' + Math.max(1, Math.round(it.size / 1024)) + ' KB<br><small>' + esc(d) + ' · ' + esc(it.s) + '</small></button>';
+    });
+    L.insertAdjacentHTML("beforebegin", h);
+  }).catch(function () { fail("No internet, or the Apps Script did not answer."); });
+}
+async function fromGmail(spec) {   // "gmail:latest" or "gmail:<mailId>:<n>"  ->  Apps Script ?gmfile=
+  var p = String(spec).split(":"), url = SCRIPT_URL + "?gmfile=" + encodeURIComponent(p[1] || "latest") + (p[2] ? "&n=" + encodeURIComponent(p[2]) : "");
+  var t = (await (await fetch(url)).text()).trim();
+  if (!t || t === "denied" || t.length < 50 || !/^[A-Za-z0-9+\/=\s]+$/.test(t.slice(0, 80))) throw new Error("gmail");
+  var buf = b64buf(t), h = new Uint8Array(buf, 0, 4);
+  if (h[0] === 37 && h[1] === 80 && h[2] === 68 && h[3] === 70) return buf;   // %PDF
+  throw new Error("gmail");
+}
+
 function openGen() {
   if ($("spOv")) return;
   var c = cfg(), ov = document.createElement("div"); ov.id = "spOv"; ov.className = "spov";
@@ -210,10 +244,10 @@ function openGen() {
   ov.addEventListener("click", function (e) { if (e.target === ov) close(); });
   ov.addEventListener("dragover", function (e) { e.preventDefault(); });
   ov.addEventListener("drop", function (e) { e.preventDefault(); var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) takeFile(f); });
-  var id = driveId(c.u);
-  if (id) {
+  var uu = String(c.u || "").trim(), gm = /^gmail:/i.test(uu), id = driveId(uu);
+  if (id || gm) {
     $("spSrc").innerHTML = '<div class="spmsg" id="spMsg">⏳ Loading the seat plan…</div>';
-    fromDrive(id).then(loadBuf).catch(function () { if (S) showUpload("The seat plan could not be loaded from the link. Please upload the PDF you got in your email."); });
+    (gm ? fromGmail(uu) : fromDrive(id)).then(loadBuf).catch(function () { if (S) showUpload("The seat plan could not be loaded from the link. Please upload the PDF you got in your email."); });
   } else showUpload("");
 }
 function showUpload(note) {
