@@ -208,26 +208,30 @@ function gmPick(ov) {   // lists the seat-plan mails found in Gmail (Apps Script
   fetch(SCRIPT_URL + "?gmlist=1&pin=" + encodeURIComponent(pin)).then(function (r) { return r.json(); }).then(function (r) {
     if (!r || !r.ok) {
       var e = String((r && r.error) || "");
-      fail(e === "pin" ? "The admin PIN was not accepted." : /authoriz|permission|GmailApp/i.test(e) ? "Apps Script has no Gmail permission yet. Run the function spTest once in the Apps Script editor, allow Gmail, then deploy a New version." : e ? "Gmail said: " + e : "The Apps Script has no Gmail part yet (add the file Code-gmail.gs and its 2 lines in doGet).");
+      fail(e === "pin" ? "The admin PIN was not accepted." : /authoriz|permission|GmailApp/i.test(e) ? "Apps Script has no Gmail permission yet. Run the function spTest once in the Apps Script editor, allow Gmail, then deploy a New version." : e ? "Gmail said: " + e : "The Apps Script has no Gmail part yet (see the Gmail section at the bottom of code.gs).");
       return;
     }
     if (!r.items.length) { fail("No seat-plan email with a PDF was found in this Gmail account."); return; }
     L.className = ""; L.textContent = "";
-    var h = '<button type="button" class="edb edwide" data-m="pick:latest"><b>✨ Always use the newest seat-plan email</b><br><small>nothing to do next time, it updates by itself</small></button>';
+    var h = '<button type="button" class="edb edwide" data-m="pick:latest"><b>✨ Always use the newest seat-plan email</b><br><small>all its PDFs are used (a mid exam has one per batch). Nothing to do next time, it updates by itself</small></button>';
     r.items.forEach(function (it) {
       var d = new Date(it.t).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
-      h += '<button type="button" class="edb edwide" data-m="pick:' + esc(it.id) + ':' + it.n + '"><b>' + esc(it.name) + '</b> · ' + Math.max(1, Math.round(it.size / 1024)) + ' KB<br><small>' + esc(d) + ' · ' + esc(it.s) + '</small></button>';
+      h += '<button type="button" class="edb edwide" data-m="pick:' + esc(it.id) + '"><b>' + esc(it.s) + '</b><br><small>' + esc(d) + ' · ' + it.pdfs.length + ' PDF' + (it.pdfs.length === 1 ? "" : "s") + ': ' + it.pdfs.map(function (x) { return esc(x.name); }).join(", ") + '</small></button>';
     });
     L.insertAdjacentHTML("beforebegin", h);
   }).catch(function () { fail("No internet, or the Apps Script did not answer."); });
 }
-async function fromGmail(spec) {   // "gmail:latest" or "gmail:<mailId>:<n>"  ->  Apps Script ?gmfile=
-  var p = String(spec).split(":"), url = SCRIPT_URL + "?gmfile=" + encodeURIComponent(p[1] || "latest") + (p[2] ? "&n=" + encodeURIComponent(p[2]) : "");
-  var t = (await (await fetch(url)).text()).trim();
-  if (!t || t === "denied" || t.length < 50 || !/^[A-Za-z0-9+\/=\s]+$/.test(t.slice(0, 80))) throw new Error("gmail");
-  var buf = b64buf(t), h = new Uint8Array(buf, 0, 4);
-  if (h[0] === 37 && h[1] === 80 && h[2] === 68 && h[3] === 70) return buf;   // %PDF
-  throw new Error("gmail");
+async function fromGmail(spec) {   // "gmail:latest" / "gmail:<mailId>" = ALL the PDFs of that mail (mid exam: one per batch);  "gmail:<mailId>:<n>" = just PDF number n
+  var p = String(spec).split(":"), mail = p[1] || "latest", one = p.length > 2 && p[2] !== "", out = [], n = one ? +p[2] : 0, max = one ? n + 1 : 6;
+  for (; n < max; n++) {
+    var t = (await (await fetch(SCRIPT_URL + "?gmfile=" + encodeURIComponent(mail) + "&n=" + n)).text()).trim();
+    if (!t || t === "denied" || t.length < 50 || !/^[A-Za-z0-9+\/=\s]+$/.test(t.slice(0, 80))) { if (!out.length) throw new Error("gmail"); break; }
+    var buf = b64buf(t), h = new Uint8Array(buf, 0, 4);
+    if (!(h[0] === 37 && h[1] === 80 && h[2] === 68 && h[3] === 70)) { if (!out.length) throw new Error("gmail"); break; }   // %PDF
+    out.push(buf);
+  }
+  if (!out.length) throw new Error("gmail");
+  return out;
 }
 
 function openGen() {
@@ -243,7 +247,7 @@ function openGen() {
   $("spClose").onclick = close;
   ov.addEventListener("click", function (e) { if (e.target === ov) close(); });
   ov.addEventListener("dragover", function (e) { e.preventDefault(); });
-  ov.addEventListener("drop", function (e) { e.preventDefault(); var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if (f) takeFile(f); });
+  ov.addEventListener("drop", function (e) { e.preventDefault(); var fl = e.dataTransfer && e.dataTransfer.files; if (fl && fl.length) takeFiles(fl); });
   var uu = String(c.u || "").trim(), gm = /^gmail:/i.test(uu), id = driveId(uu);
   if (id || gm) {
     $("spSrc").innerHTML = '<div class="spmsg" id="spMsg">⏳ Loading the seat plan…</div>';
@@ -252,21 +256,26 @@ function openGen() {
 }
 function showUpload(note) {
   var h = cfg().ins;
-  $("spSrc").innerHTML = (note ? '<div class="spmsg warn">' + esc(note) + '</div>' : '') + '<label class="spdz" for="spFile">📤 <b>' + esc(h) + '</b><small>PDF only · it is read on your phone, nothing is uploaded anywhere</small></label><input type="file" id="spFile" accept="application/pdf,.pdf" style="display:none">';
-  $("spFile").onchange = function () { if (this.files[0]) takeFile(this.files[0]); };
+  $("spSrc").innerHTML = (note ? '<div class="spmsg warn">' + esc(note) + '</div>' : '') + '<label class="spdz" for="spFile">📤 <b>' + esc(h) + '</b><small>PDF only · it is read on your phone, nothing is uploaded anywhere</small></label><input type="file" id="spFile" accept="application/pdf,.pdf" multiple style="display:none">';
+  $("spFile").onchange = function () { if (this.files.length) takeFiles(this.files); };
 }
-function takeFile(f) {
-  if (!/\.pdf$/i.test(f.name) && f.type !== "application/pdf") { showUpload("That is not a PDF file."); return; }
-  $("spSrc").innerHTML = '<div class="spmsg" id="spMsg">⏳ Reading ' + esc(f.name) + '…</div>';
-  var r = new FileReader(); r.onload = function () { loadBuf(r.result); }; r.onerror = function () { showUpload("Could not read that file."); }; r.readAsArrayBuffer(f);
+function takeFiles(list) {   // one or several PDFs (the email can have two: one per batch)
+  var fs = [].slice.call(list || []).filter(function (f) { return /\.pdf$/i.test(f.name) || f.type === "application/pdf"; });
+  if (!fs.length) { showUpload("That is not a PDF file."); return; }
+  $("spSrc").innerHTML = '<div class="spmsg" id="spMsg">⏳ Reading ' + esc(fs.map(function (f) { return f.name; }).join(", ")) + '…</div>';
+  Promise.all(fs.map(function (f) { return new Promise(function (ok, no) { var r = new FileReader(); r.onload = function () { ok(r.result); }; r.onerror = no; r.readAsArrayBuffer(f); }); })).then(function (b) { loadBuf(b); }, function () { showUpload("Could not read that file."); });
 }
-async function loadBuf(buf) {
+function takeFile(f) { takeFiles([f]); }
+async function loadBuf(src) {
   if (!S) return;
+  var bufs = Array.isArray(src) ? src : [src];   // one PDF, or all the PDFs of the email (mid exam: one per batch)
   var msg = function (t) { var m = $("spMsg"); if (m) m.textContent = t; };
   try {
     if (!$("spMsg")) $("spSrc").innerHTML = '<div class="spmsg" id="spMsg"></div>';
     msg("⏳ Reading the PDF…");
-    var lib = await pdfLib(), pdf = await lib.getDocument({ data: new Uint8Array(buf) }).promise, pages = [], total = 0, n;
+    var lib = await pdfLib(), pages = [], total = 0, n, k, pdf;
+    for (k = 0; k < bufs.length; k++) {
+    pdf = await lib.getDocument({ data: new Uint8Array(bufs[k]) }).promise;
     for (n = 1; n <= pdf.numPages; n++) {
       if (!S) return;
       var page = await pdf.getPage(n), vp = page.getViewport({ scale: SCALE }), tc = await page.getTextContent(), texts = [], items = [];
@@ -277,12 +286,13 @@ async function loadBuf(buf) {
         var re = /\d{8}/g, m; while ((m = re.exec(s))) items.push({ x: tr[4] + (m.index / s.length) * W, y: tr[5] - fh * 0.95, w: (8 / s.length) * W, h: fh * 1.2, id: m[0] });
       });
       var P = { page: page, vp: vp, w: vp.width, h: vp.height, texts: texts, items: items, base: null, blocks: [] };
-      P.lines = mkLines(texts); P.blocks = layout(P); total += items.length; pages.push(P);
-      msg("⏳ Reading page " + n + " of " + pdf.numPages + "…");
+      P.src = k; P.lines = mkLines(texts); P.blocks = layout(P); total += items.length; pages.push(P);
+      msg("⏳ Reading " + (bufs.length > 1 ? "PDF " + (k + 1) + " of " + bufs.length + ", " : "") + "page " + n + " of " + pdf.numPages + "…");
+    }
     }
     if (!total) { showUpload("This does not look like a seat plan (no student IDs found). Please upload the right PDF."); return; }
     S.pages = pages;
-    $("spSrc").innerHTML = '<div class="spsm">✅ Seat plan loaded (' + pages.length + ' pages). <a href="#" id="spOther">Use another PDF</a></div>';
+    $("spSrc").innerHTML = '<div class="spsm">✅ Seat plan loaded (' + pages.length + ' pages' + (bufs.length > 1 ? ' from ' + bufs.length + ' PDFs' : '') + '). <a href="#" id="spOther">Use another PDF</a></div>';
     $("spOther").onclick = function (e) { e.preventDefault(); S.pages = null; S.canvas = null; $("spWho").style.display = "none"; $("spRes").innerHTML = ""; showUpload(""); };
     whoRender(); schedule(0);
   } catch (e) { console.error(e); if (S) showUpload("Could not read this PDF (" + (e && e.message || "error") + "). Try again, or upload another copy."); }
@@ -364,7 +374,7 @@ async function generate() {
   picked.forEach(function (o, k) {
     var P = o.P, b = o.b, ix = S.pages.indexOf(P), c = cache[ix] || (cache[ix] = hide(P, m, S.blur, S.fade)), own = k === 0 && b.hasHeader;
     var top = Math.floor(own ? b.naturalTop : b.cropTop), h = Math.max(4, Math.ceil(b.bottom - top)), stripH = 0, strip = null, GH = null;
-    if (k === 0 && !b.hasHeader) { S.pages.some(function (Q) { var q = Q.blocks.filter(function (z) { return z.hasHeader; })[0]; if (q) { GH = { P: Q, b: q }; return true; } }); }
+    if (k === 0 && !b.hasHeader) { [function (Q) { return Q.src === P.src; }, function () { return true; }].some(function (pick) { return S.pages.some(function (Q) { if (!pick(Q)) return false; var q = Q.blocks.filter(function (z) { return z.hasHeader; })[0]; if (q) { GH = { P: Q, b: q }; return true; } }); }); }
     if (GH) { strip = { x0: Math.max(0, minOf(GH.b.hdr, function (t) { return t.x; }) - 12 * U), x1: Math.min(W, maxOf(GH.b.hdr, function (t) { return t.x + t.w; }) + 12 * U), y0: GH.b.hTop - 8 * U, y1: GH.b.hBot + 8 * U }; stripH = Math.ceil(strip.y1 - strip.y0); }
     var seg = document.createElement("canvas"); seg.width = W; seg.height = stripH + h; var s = seg.getContext("2d"); s.fillStyle = "#fff"; s.fillRect(0, 0, seg.width, seg.height);
     if (strip) s.drawImage(GH.P.base, strip.x0, strip.y0, strip.x1 - strip.x0, stripH, strip.x0, 0, strip.x1 - strip.x0, stripH);
