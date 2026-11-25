@@ -77,12 +77,26 @@ function peWatch(g){   // thumbnails are drawn only near the screen, and given b
  peRel=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting)return;var it=e.target.__it,c=it.el;if(!it||it.job||it.w===undefined||!c||!c.width||!c.height)return;
   c.style.aspectRatio=c.width+"/"+c.height;c.width=0;c.height=0;it.w=undefined})},{rootMargin:"1600px"});
  cs.forEach(function(c){peObs.observe(c);peRel.observe(c)})}
+// ----- ✏ Edit photo: a small Paint (photo-edit.js, loaded only when somebody taps Edit) -----
+function peLoadEd(){return window.photoEdit?Promise.resolve():new Promise(function(res,rej){var s=document.createElement("script");s.src="photo-edit.js?v="+(window.__V||Date.now());s.onload=res;s.onerror=function(){rej(new Error("The photo editor could not be loaded (is photo-edit.js uploaded to the website?)."))};document.head.appendChild(s)})}
+async function peRaster(it){   // a page of a PDF -> a picture (long side 1800 px, like a photo), with its rotation
+ var pg=await SRC[it.s].doc.getPage(it.i+1),rot=((pg.rotate||0)+(it.rot||0))%360,v0=pg.getViewport({scale:1,rotation:rot}),v=pg.getViewport({scale:1800/Math.max(v0.width,v0.height),rotation:rot}),c=document.createElement("canvas");
+ c.width=Math.round(v.width);c.height=Math.round(v.height);var x=c.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,c.width,c.height);
+ await pg.render({canvasContext:x,viewport:v}).promise;try{pg.cleanup()}catch(e){}
+ var b=await new Promise(function(r){c.toBlob(r,"image/jpeg",.92)});c.width=c.height=0;
+ return new File([b],((SRC[it.s].name||"page").replace(/\.[^.]+$/,"")||"page")+"-p"+(it.i+1)+".jpg",{type:"image/jpeg"})}
+async function peEditImg(k){var it=PE[k];if(!it)return;say("errPe","");var wasPdf=!it.img;
+ try{busy("⏳ Opening the photo editor…");var src=it.img||await peRaster(it);await peLoadEd();busy("");
+  var f=await window.photoEdit(src,{title:short(fname(it)+(wasPdf?" · page "+(it.i+1):""),26)});if(!f)return;
+  peSnap();it.img=f;it.url=URL.createObjectURL(f);it.im=null;if(wasPdf)it.rot=0;it.ver=(it.ver||0)+1;peFlash=[it.u];peRender();if(peView===k)peOpenView(k);   // a PDF page becomes a picture (its rotation is already in it); Undo brings the original page back
+  peNote("Page edited"+(wasPdf?" (it is a picture now, so its text can no longer be selected)":"")+". ↩ Undo brings the old one back.")}
+ catch(e){busy("");say("errPe",(e&&e.message)||"Could not open the photo editor.")}}
 function peRotate(k){peSnap();var it=PE[k];it.rot=((it.rot||0)+90)%360;it.ver=(it.ver||0)+1;peFlash=[it.u];peRender()}
 function peCanvas(it,k){if(!it.el){it.el=document.createElement("canvas");it.el.__it=it}it.el.onclick=function(){if(peW<92)return;peOpenView(k)};return it.el}
 
 // ----- undo: every change can be taken back with ↩ Undo (up to 60 steps) -----
-function peSnap(){H.push(PE.map(function(it){return{it:it,rm:!!it.rm,rot:it.rot||0}}));if(H.length>60)H.shift()}
-function peUndo(){var sn=H.pop();if(!sn)return;PE=sn.map(function(x){x.it.rm=x.rm;if((x.it.rot||0)!==x.rot){x.it.rot=x.rot;x.it.ver=(x.it.ver||0)+1}return x.it});peFlash=[];peRender();peNote("↩ Undone")}
+function peSnap(){H.push(PE.map(function(it){return{it:it,rm:!!it.rm,rot:it.rot||0,img:it.img,url:it.url}}));if(H.length>60)H.shift()}
+function peUndo(){var sn=H.pop();if(!sn)return;PE=sn.map(function(x){x.it.rm=x.rm;if((x.it.rot||0)!==x.rot){x.it.rot=x.rot;x.it.ver=(x.it.ver||0)+1}if(x.img!==x.it.img){x.it.img=x.img;x.it.url=x.url;x.it.im=null;x.it.ver=(x.it.ver||0)+1}return x.it});peFlash=[];peRender();peNote("↩ Undone")}
 function peOriginal(){if(!PE.length)return;peSnap();PE.sort(function(a,b){return a.og-b.og});peFlash=[];peRender();peNote("⟲ Back in the original order")}   // removed pages stay removed, use Undo for those
 
 // ----- units: the grid is a list of units. A unit is ONE page tile, or ONE collapsed file (all its neighbouring pages as a thin bar) -----
@@ -150,7 +164,7 @@ function peTile(u,ui,N){var it=u.it,k=u.start;
  d.appendChild(peCanvas(it,k));
  var cap=document.createElement("div");cap.className="pcap";cap.textContent=(it.img?"📷 "+short(fname(it),14):short(fname(it),14)+" · p."+it.o);cap.title=fname(it)+(it.img?"":" · original page "+it.o);d.appendChild(cap);
  var r=document.createElement("div");r.className="pb";
- r.innerHTML='<button type="button" class="s m" data-mv="'+k+'" title="Move this page: type the page number it should go after">⤵ Move</button><button type="button" class="s" data-ro="'+k+'" title="Rotate 90°">↻</button><button type="button" class="s" data-a="'+k+'" title="Add new pages after this one">＋</button><button type="button" class="s danger" data-r="'+k+'" title="'+(it.rm?"Put this page back":"Remove this page")+'">'+(it.rm?"↩":"✕")+'</button>';
+ r.innerHTML='<button type="button" class="s m" data-mv="'+k+'" title="Move this page: type the page number it should go after">⤵ Move</button><button type="button" class="s" data-ro="'+k+'" title="Rotate 90°">↻</button>'+'<button type="button" class="s m" data-ed="'+k+'" title="'+(it.img?"Edit this photo: crop, draw, add a picture on top…":"Edit this page as a picture: crop, draw, add a picture on top… (the page becomes a picture)")+'"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg> Edit</button>'+'<button type="button" class="s" data-a="'+k+'" title="Add new pages after this one">＋</button><button type="button" class="s danger" data-r="'+k+'" title="'+(it.rm?"Put this page back":"Remove this page")+'">'+(it.rm?"↩":"✕")+'</button>';
  d.appendChild(r);return d}
 
 // ----- a collapsed file = ONE thin bar. ◀ ▶ move the whole file -----
@@ -250,13 +264,14 @@ function peNote(m){busy(m);clearTimeout(peNote.t);peNote.t=setTimeout(function()
 // ----- big preview of one page -----
 function peOv(){var o=$("peov");if(o)return o;
  o=document.createElement("div");o.id="peov";o.className="peov hidden";
- o.innerHTML='<div class="st" id="peSt"></div><div class="rw"><button type="button" class="s" id="pePrev">◀</button><span id="peLab"></span><button type="button" class="s" id="peNext">▶</button><button type="button" class="s" id="peRot">↻ Rotate</button><button type="button" class="s danger" id="peRm"></button><button type="button" class="p" id="peClose">Close</button></div>';
+ o.innerHTML='<div class="st" id="peSt"></div><div class="rw"><button type="button" class="s" id="pePrev">◀</button><span id="peLab"></span><button type="button" class="s" id="peNext">▶</button><button type="button" class="s" id="peEd">Edit</button><button type="button" class="s" id="peRot">↻ Rotate</button><button type="button" class="s danger" id="peRm"></button><button type="button" class="p" id="peClose">Close</button></div>';
  document.body.appendChild(o);
  $("peClose").onclick=function(){o.classList.add("hidden");peView=-1};
  o.addEventListener("click",function(e){if(e.target===o)$("peClose").click()});
  $("pePrev").onclick=function(){if(peView>0)peOpenView(peView-1)};
  $("peNext").onclick=function(){if(peView<PE.length-1)peOpenView(peView+1)};
  $("peRot").onclick=function(){peRotate(peView);peOpenView(peView)};
+ $("peEd").onclick=function(){peEditImg(peView)};
  $("peRm").onclick=function(){peSnap();PE[peView].rm=!PE[peView].rm;peRender();peOpenView(peView)};
  return o}
 async function peOpenView(k){
@@ -307,6 +322,7 @@ $("peGrid").addEventListener("click",function(e){var t=e.target.closest("button"
  else if(g("data-bx")!==null){var u2=peUnits()[g("data-bx")];if(u2){peSnap();var all=PE.slice(u2.start,u2.end+1),to=!all.every(function(x){return x.rm});all.forEach(function(x){x.rm=to});peRender()}}
  else if(g("data-ba")!==null){var u3=peUnits()[g("data-ba")];if(u3){peAt=u3.end+1;$("peIns").click()}}
  else if(g("data-ro")!==null)peRotate(g("data-ro"));
+ else if(g("data-ed")!==null)peEditImg(g("data-ed"));
  else if(g("data-r")!==null){peSnap();PE[g("data-r")].rm=!PE[g("data-r")].rm;peRender()}
  else if(g("data-a")!==null){peAt=g("data-a")+1;$("peIns").click()}});
 $("peStart").onclick=function(){peAt=0;$("peIns").click()};

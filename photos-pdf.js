@@ -5,7 +5,7 @@ var A=window.APP,$=A.$,say=A.say,save=A.save,openPdf=A.openPdf,needPdfLib=A.need
 var PP=[],ppUrls=[];
 function ppRender(){
  ppUrls.forEach(function(u){URL.revokeObjectURL(u)});ppUrls=PP.map(function(f){return URL.createObjectURL(f)});
- $("ppGrid").innerHTML=PP.map(function(f,i){return'<div class="pph"><span class="pn">'+(i+1)+'</span><img alt="Photo '+(i+1)+'" src="'+ppUrls[i]+'"><div class="pb"><button type="button" class="s" data-pm="'+i+'"'+(i===0?" disabled":"")+'>◀</button><button type="button" class="s" data-pp="'+i+'"'+(i===PP.length-1?" disabled":"")+'>▶</button><button type="button" class="s danger" data-px="'+i+'">✕</button></div></div>'}).join("");
+ $("ppGrid").innerHTML=PP.map(function(f,i){return'<div class="pph"><span class="pn">'+(i+1)+'</span><img alt="Photo '+(i+1)+'" src="'+ppUrls[i]+'"><div class="pb"><button type="button" class="s" data-pm="'+i+'"'+(i===0?" disabled":"")+'>◀</button><button type="button" class="s" data-pp="'+i+'"'+(i===PP.length-1?" disabled":"")+'>▶</button><button type="button" class="s" data-pe="'+i+'" title="Edit this photo: crop, draw, add a picture on top…"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button><button type="button" class="s danger" data-px="'+i+'">✕</button></div></div>'}).join("");
  $("ppInfo").textContent=PP.length?PP.length+" photo"+(PP.length>1?"s":"")+" → "+PP.length+" page"+(PP.length>1?"s":"")+". Use ◀ ▶ to change the order, ✕ to remove, tap a photo to see it bigger.":"";
  $("ppDl").disabled=!PP.length;$("ppDl").textContent="📥 Download PDF"+(PP.length?" ("+PP.length+" page"+(PP.length>1?"s":"")+")":"")}
 async function ppAddFiles(fs){
@@ -21,7 +21,11 @@ async function ppAddFiles(fs){
  ppRender()}
 $("ppAdd").onchange=function(){var fs=Array.prototype.slice.call(this.files);this.value="";ppAddFiles(fs)};
 $("ppCam").onchange=function(){var fs=Array.prototype.slice.call(this.files);this.value="";ppAddFiles(fs)};
-$("ppGrid").addEventListener("click",function(e){var t=e.target,m=t.getAttribute("data-pm"),p=t.getAttribute("data-pp"),x=t.getAttribute("data-px");$("ppOk").classList.add("hidden");
+function ppLoadEd(){return window.photoEdit?Promise.resolve():new Promise(function(res,rej){var s=document.createElement("script");s.src="photo-edit.js?v="+(window.__V||Date.now());s.onload=res;s.onerror=function(){rej(new Error("The photo editor could not be loaded (is photo-edit.js uploaded to the website?)."))};document.head.appendChild(s)})}
+async function ppEdit(i){var f0=PP[i];if(!f0)return;say("errPp","");$("ppBusy").textContent="⏳ Opening the photo editor…";
+ try{await ppLoadEd();$("ppBusy").textContent="";var f=await window.photoEdit(f0,{title:"Photo "+(i+1)});if(f&&PP[i]===f0){PP[i]=f;ppRender()}}
+ catch(e){$("ppBusy").textContent="";say("errPp",(e&&e.message)||"Could not open the photo editor.")}}
+$("ppGrid").addEventListener("click",function(e){var t=e.target.closest?e.target.closest("button"):e.target;if(!t)return;var pe=t.getAttribute("data-pe");if(pe!==null){ppEdit(+pe);return}var m=t.getAttribute("data-pm"),p=t.getAttribute("data-pp"),x=t.getAttribute("data-px");$("ppOk").classList.add("hidden");
  if(m!==null){m=+m;if(m>0){var a=PP[m];PP[m]=PP[m-1];PP[m-1]=a;ppRender()}}
  else if(p!==null){p=+p;if(p<PP.length-1){var b=PP[p];PP[p]=PP[p+1];PP[p+1]=b;ppRender()}}
  else if(x!==null){PP.splice(+x,1);ppRender()}});
